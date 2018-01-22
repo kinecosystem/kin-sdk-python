@@ -1,0 +1,14 @@
+certifi==2018.1.18
+chardet==3.0.4
+crc16==0.1.1
+ed25519==1.4
+idna==2.6
+mnemonic==0.18
+numpy==1.14.0
+pbkdf2==1.3
+requests==2.18.4
+six==1.11.0
+sseclient==0.0.18
+stellar-base==0.1.7.3
+toml==0.9.4
+urllib3==1.22

@@ -7,15 +7,16 @@ from threading import Lock
 
 from stellar_base.address import Address
 from stellar_base.asset import Asset
-from stellar_base.builder import Builder
 from stellar_base.horizon import Horizon, horizon_testnet, horizon_livenet
 from stellar_base.keypair import Keypair
 
+from .builder import Builder
 from .exceptions import (
     SdkConfigurationError,
     SdkNotConfiguredError,
+    SdkHorizonError,
 )
-from .utils import validate_address
+from .utils import validate_address, check_horizon_reply
 
 import logging
 logger = logging.getLogger(__name__)
@@ -39,28 +40,68 @@ class TransactionStatus:
     FAIL = 3
 
 
-class OperationData(object):
+class PrintableObject(object):
+    def __str__(self):
+        sb = []
+        for key in self.__dict__:
+            if not key.startswith('__'):
+                sb.append("\t{key}='{value}'".format(key=key, value=self.__dict__[key]))
+        return '\n'.join(sb)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class OperationData(PrintableObject):
     """Operation data holder"""
     id = None
     source_account = None
     type = None
     created_at = None
     transaction_hash = None
+    asset_type = None
     asset_code = None
+    asset_issuer = None
+    limit = None
+    trustor = None
+    trustee = None
     from_address = None
     to_address = None
     amount = None
 
 
-class TransactionData(object):
+class TransactionData(PrintableObject):
     """Transaction data holder"""
     hash = None
     created_at = None
-    account = None
     source_account = None
+    sequence = None
     operations = []
-    status = TransactionStatus.UNKNOWN
+    time_bounds = []
     memo = None
+    fee = None
+    signatures = []
+
+
+class AccountData(PrintableObject):
+    """Account data holder"""
+
+    #class Struct:
+    #    """Handy variable holder"""
+    #    def __init__(self, **entries): self.__dict__.update(entries)
+
+    class Thresholds(object):
+        def __init__(self, low, medium, high):
+            self.low = low
+            self.medium = medium
+            self.high = high
+
+    id = None
+    sequence = None
+    thresholds = None
+    balances = None
+    signers = None
+    data = None
 
 
 class SDK(object):
@@ -129,7 +170,7 @@ class SDK(object):
         if seed:
             self.keypair = Keypair.from_seed(seed)
             # create a first builder, load the sequence from our account
-            self.builder = Builder(secret=seed, network=self.network, horizon=self.horizon)
+            self.builder = Builder(secret=seed, network=self.network, horizon=self.horizon.horizon)
             self.builder_lock = Lock()
 
     def get_address(self):
@@ -193,13 +234,13 @@ class SDK(object):
 
     def get_address_asset_balance(self, address, asset):
         validate_address(address)
-        addr = Address(address=address, network=self.network, horizon=self.horizon)
+        addr = Address(address=address, network=self.network, horizon=self.horizon.horizon)
         addr.get()  # TODO: exception handling
 
         for b in addr.balances:
-            if (b.asset_type == 'native' and asset.code == 'XLM') \
-                    or (b.asset_code == asset.code and b.asset_issuer == asset.issuer):
-                return Decimal(b.balance)
+            if (b.get('asset_type') == 'native' and asset.code == 'XLM') \
+                    or (b.get('asset_code') == asset.code and b.get('asset_issuer') == asset.issuer):
+                return Decimal(b.get('balance'))
         return 0
 
     def create_account(self, address, starting_balance=DEFAULT_STARTING_BALANCE, source=None):
@@ -208,14 +249,16 @@ class SDK(object):
         validate_address(address)
 
         with self.builder_lock:
-            self.builder.append_create_account_op(address, starting_balance, source=source)
-            self.builder.sign()
             try:
+                self.builder.append_create_account_op(address, starting_balance, source=source)
+                self.builder.sign()
                 reply = self.builder.submit()
-                self.builder = self.builder.next_builder()
-                return reply
-            except Exception as e:
-                raise e
+                check_horizon_reply(reply)
+                return reply.get('hash')
+            except:
+                raise
+            finally:
+                self.builder.clear()
 
     def trust_asset(self, asset, limit=None, source=None):
         if not asset.code:
@@ -225,25 +268,27 @@ class SDK(object):
         validate_address(asset.issuer)
 
         with self.builder_lock:
-            self.builder.append_trust_op(asset.issuer, asset.code, limit=limit, source=source)
-            self.builder.sign()
             try:
+                self.builder.append_trust_op(asset.issuer, asset.code, limit=limit, source=source)
+                self.builder.sign()
                 reply = self.builder.submit()
-                self.builder = self.builder.next_builder()
-                return reply
-            except Exception as e:
-                raise e
+                check_horizon_reply(reply)
+                return reply.get('hash')
+            except:
+                raise
+            finally:
+                self.builder.clear()
 
     def check_asset_trusted(self, address, asset):
-        addr = Address(address=address, network=self.network, horizon=self.horizon)
+        addr = Address(address=address, network=self.network, horizon=self.horizon.horizon)
         addr.get()  # TODO: exception handling?
         for balance in addr.balances:
-            if balance.asset_code == asset.dode and balance.asset_issuer == asset.issuer:
+            if balance.get('asset_code') == asset.code and balance.get('asset_issuer') == asset.issuer:
                 return True
         return False
 
     def check_account_exists(self, address):
-        addr = Address(address=address, network=self.network, horizon=self.horizon)
+        addr = Address(address=address, network=self.network, horizon=self.horizon.horizon)
         try:
             addr.get()
             return True
@@ -278,61 +323,86 @@ class SDK(object):
             raise ValueError('amount must be positive')
 
         with self.builder_lock:
-            self.builder.append_payment_op(address, amount, asset_type=asset.code, asset_issuer=asset.issuer, source=source)
-            if memo:
-                self.builder.add_text_memo(memo[:28])  # max memo length is 28
-            self.builder.sign()
             try:
+                self.builder.append_payment_op(address, amount, asset_type=asset.code, asset_issuer=asset.issuer, source=source)
+                if memo:
+                    self.builder.add_text_memo(memo[:28])  # max memo length is 28
+                self.builder.sign()
                 reply = self.builder.submit()
-                self.builder = self.builder.next_builder()
+                check_horizon_reply(reply)
                 return reply
-            except Exception as e:
-                raise e
+            except:
+                raise
+            finally:
+                self.builder.clear()
 
-    def get_transaction_status(self, tx_hash):
-        """Get the transaction status.
+    def get_account_data(self, address):
+        addr = Address(address=address, network=self.network, horizon=self.horizon.horizon)
+        addr.get()  # will raise AccountNotExistsError. TODO: good?
+        acc_data = AccountData()
+        acc_data.id = address
 
-        :param str tx_id: transaction id (hash).
-
-        :returns: transaction status.
-        :rtype: `~kin.TransactionStatus`
-        """
-        try:
-            tx_data = self.horizon.transaction(tx_hash)
-            # TODO: check response status
-            return TransactionStatus.SUCCESS
-        except Exception as e:
-            return TransactionStatus.FAIL
+        '''
+        self.sequence = None
+        self.balances = None
+        self.paging_token = None
+        self.thresholds = None
+        self.flags = None
+        self.signers = None
+        self.data = None
+            id = None
+    sequence = None
+    data = None
+    thresholds = None
+    balances = None
+    signers = None
+        '''
 
     def get_transaction_data(self, tx_hash):
         """Gets transaction data.
 
-        :param str tx_id: transaction id
+        :param str tx_hash: transaction hash
         :return: transaction data
         :rtype: :class:`~kin.TransactionData`
         """
-        tx_data = TransactionData()
         tx = self.horizon.transaction(tx_hash)
-        tx_data.hash = tx['hash']
-        tx_data.created_at = tx['created_at']
-        tx_data.account = None  # TODO
-        tx_data.source_account = tx['source_account']
+        check_horizon_reply(tx)
+
+        tx_data = TransactionData()
+        tx_data.hash = tx.get('hash')
+        tx_data.created_at = tx.get('created_at')
+        tx_data.source_account = tx.get('source_account')
+        tx_data.sequence = tx.get('source_account_sequence')
         tx_data.operations = []
-        tx_data.status = None  # TODO TransactionStatus.SUCCESS if tx['result_code'] == 0 else TransactionStatus.FAIL
+        tx_data.fee = tx.get('fee_paid')
+        tx_data.signatures = tx.get('signatures')
         tx_data.memo = None  # TODO
 
-        tx_ops = self.horizon.transaction_operations(tx_hash)
-        for tx_op in tx_ops:
+        tx_ops = self.horizon.transaction_operations(tx_hash)  # TODO: max 50, paged?
+        check_horizon_reply(tx_ops)
+        for tx_op in tx_ops.get('_embedded').get('records'):
             op_data = OperationData()
-            op_data.id = tx_op['id']
-            op_data.source_account = tx_op['source_account']
-            op_data.type = tx_op['type']
-            op_data.created_at = tx_op['created_at']
-            op_data.transaction_hash = tx_op['transaction_hash']
-            op_data.asset_code = tx_op['asset_code']
-            op_data.from_address = tx_op['from']
-            op_data.to_address = tx_op['to']
-            op_data.amount = Decimal(tx_op['amount'])
+            op_data.id = tx_op.get('id')
+            op_data.source_account = tx_op.get('source_account')
+            op_data.type = tx_op.get('type')
+            op_data.created_at = tx_op.get('created_at')
+            op_data.transaction_hash = tx_op.get('transaction_hash')
+            op_data.asset_type = tx_op.get('asset_type')
+            op_data.asset_code = tx_op.get('asset_code')
+            op_data.asset_issuer = tx_op.get('asset_issuer')
+            op_data.trustor = tx_op.get('trustor')
+            op_data.trustee = tx_op.get('trustee')
+            op_data.from_address = tx_op.get('from')
+            op_data.to_address = tx_op.get('to')
+            amount = tx_op.get('amount')
+            if amount:
+                op_data.amount = Decimal(amount)
+            limit = tx_op.get('limit')
+            if limit:
+                op_data.limit = Decimal(limit)
             tx_data.operations.append(op_data)
 
+        return tx_data
+
     # helpers
+

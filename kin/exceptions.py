@@ -1,10 +1,13 @@
+# -*- coding: utf-8 -*
 
-import json
+# Copyright (C) 2018 Kin Foundation
 
 
 # All exceptions should subclass from SdkError in this module.
 class SdkError(Exception):
     """Base class for all SDK errors."""
+    #def __init__(self, msg):
+    #    super(SdkError, self).__init__(msg)
 
 
 class SdkConfigurationError(SdkError):
@@ -15,16 +18,21 @@ class SdkNotConfiguredError(SdkError):
     pass
 
 
-class HttpProblemDetails(object):
+class SdkHorizonError(SdkError):
     #def __init__(self, j):
     #    self.__dict__ = json.loads(j)
 
     def __init__(self, err_obj):
+        print '\n------ ', err_obj
+        # parse HTTP Problem Details object
+        # see https://tools.ietf.org/html/rfc7807
         self.type = err_obj.get('type')
         self.title = err_obj.get('title')
         self.status = err_obj.get('status')
         self.detail = err_obj.get('detail')
         self.instance = err_obj.get('instance')
+        self.transaction_result_code = None
+        self.operation_result_codes = []
         extras = err_obj.get('extras')
         if extras:
             result_codes = extras.get('result_codes')
@@ -32,6 +40,10 @@ class HttpProblemDetails(object):
                 self.transaction_result_code = result_codes.get('transaction')
                 self.operation_result_codes = result_codes.get('operations')
 
+    def __str__(self):
+        if self.operation_result_codes:
+            return repr(self.operation_result_codes[0])
+        return repr(self.transaction_result_code)
 
 # result codes from github.com/stellar/horizon/codes/main.go
 

@@ -2,13 +2,14 @@
 
 # Copyright (C) 2018 Kin Foundation
 
-from decimal import Decimal
+from decimal import Decimal, getcontext
 from threading import Lock
 
 from stellar_base.address import Address
 from stellar_base.asset import Asset
 from stellar_base.horizon import Horizon, horizon_testnet, horizon_livenet
 from stellar_base.keypair import Keypair
+from stellar_base.utils import AccountNotExistError
 
 from .builder import Builder
 from .exceptions import (
@@ -21,6 +22,8 @@ from .utils import validate_address, check_horizon_reply
 import logging
 logger = logging.getLogger(__name__)
 
+getcontext().prec = 7  # XLM precision
+
 KIN_ISSUER = 'GDVDKQFP665JAO7A2LSHNLQIUNYNAAIGJ6FYJVMG4DT3YJQQJSRBLQDG'  # TODO: real address
 KIN_ASSET = Asset('KIN', KIN_ISSUER)
 
@@ -29,15 +32,6 @@ DEFAULT_STARTING_BALANCE = 200
 # default request retry configuration (linear backoff).
 RETRY_ATTEMPTS = 3
 RETRY_DELAY = 0.3
-
-
-# noinspection PyClassHasNoInit
-class TransactionStatus:
-    """Transaction status enumerator."""
-    UNKNOWN = 0
-    PENDING = 1
-    SUCCESS = 2
-    FAIL = 3
 
 
 class PrintableObject(object):
@@ -110,7 +104,7 @@ class SDK(object):
     It maintains a connection context with a Horizon node and hides all the specifics of dealing with Stellar REST API.
     """
 
-    def __init__(self, seed='', horizon_endpoint_uri='', testnet=False):
+    def __init__(self, seed='', horizon_endpoint_uri='', network='PUBLIC'):
         """Create a new instance of the KIN SDK for Stellar.
 
         The SDK needs a JSON-RPC provider, contract definitions and the wallet private key.
@@ -147,15 +141,15 @@ class SDK(object):
         :raises: :class:`~kin.exceptions.SdkConfigurationError` if some of the configuration parameters are invalid.
         """
 
-        if testnet:
-            self.network = 'TESTNET'
+        if network:
+            self.network = network
         else:
-            self.network = 'PUBLIC'
+            self.network = 'TESTNET'
 
         if horizon_endpoint_uri:
             self.horizon = Horizon(horizon_endpoint_uri)
         else:
-            if testnet:
+            if self.network == 'TESTNET':
                 self.horizon = horizon_testnet()
             else:
                 self.horizon = horizon_livenet()
@@ -255,17 +249,20 @@ class SDK(object):
                 reply = self.builder.submit()
                 check_horizon_reply(reply)
                 return reply.get('hash')
-            except:
-                raise
             finally:
                 self.builder.clear()
 
+    def trust_kin(self, limit=None, source=None):
+        print '=======> KIN issuer ', KIN_ASSET.issuer
+        return self.trust_asset(KIN_ASSET, limit, source)
+
     def trust_asset(self, asset, limit=None, source=None):
-        if not asset.code:
-            raise ValueError('asset code invalid')
         if not self.keypair:
             raise SdkNotConfiguredError('address not configured')
-        validate_address(asset.issuer)
+        try:
+            validate_address(asset.issuer)
+        except:
+            raise ValueError('asset issuer invalid')
 
         with self.builder_lock:
             try:
@@ -274,12 +271,15 @@ class SDK(object):
                 reply = self.builder.submit()
                 check_horizon_reply(reply)
                 return reply.get('hash')
-            except:
-                raise
             finally:
                 self.builder.clear()
 
+    def check_kin_trusted(self, address):
+        return self.check_asset_trusted(address, KIN_ASSET)
+
     def check_asset_trusted(self, address, asset):
+        validate_address(address)
+
         addr = Address(address=address, network=self.network, horizon=self.horizon.horizon)
         addr.get()  # TODO: exception handling?
         for balance in addr.balances:
@@ -288,20 +288,22 @@ class SDK(object):
         return False
 
     def check_account_exists(self, address):
+        validate_address(address)
+
         addr = Address(address=address, network=self.network, horizon=self.horizon.horizon)
         try:
             addr.get()
             return True
-        except:
+        except AccountNotExistError:
             return False
 
-    def send_lumen(self, address, amount, source=None, memo=None):
+    def send_lumens(self, address, amount, source=None, memo=None):
         return self.send_asset(address, Asset('XLM'), amount, source, memo)
 
     def send_kin(self, address, amount, source=None, memo=None):
         return self.send_asset(address, KIN_ASSET, amount, source, memo)
 
-    def send_asset(self, address, asset, amount, source=None, memo=None):
+    def send_asset(self, address, asset, amount, source=None, memo_text=None):
         """Send tokens from my wallet to address.
 
         :param str address: the address to send tokens to.
@@ -325,14 +327,12 @@ class SDK(object):
         with self.builder_lock:
             try:
                 self.builder.append_payment_op(address, amount, asset_type=asset.code, asset_issuer=asset.issuer, source=source)
-                if memo:
-                    self.builder.add_text_memo(memo[:28])  # max memo length is 28
+                if memo_text:
+                    self.builder.add_text_memo(memo_text[:28])  # max memo length is 28
                 self.builder.sign()
                 reply = self.builder.submit()
                 check_horizon_reply(reply)
-                return reply
-            except:
-                raise
+                return reply.get('hash')
             finally:
                 self.builder.clear()
 

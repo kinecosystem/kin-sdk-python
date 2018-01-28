@@ -1,13 +1,15 @@
-
 from decimal import Decimal
 import json
 import requests
 import pytest
+from time import sleep
+
 from stellar_base.asset import Asset
 from stellar_base.keypair import Keypair
 from stellar_base.utils import XdrLengthError
-from time import sleep
+
 import kin
+from kin.builder import Builder
 
 
 #TEST_SEED = 'SAWNYEI5LGSCFIOTMZVND5BDWM7REDOK2TWNBFAQXINLBKYYBUR6A2M7'  # GDQNZRZAU5D5MYSMQX7VNANEVXF6IEIYKAP3TK6WX5HYBV6FGATJ462F
@@ -65,15 +67,17 @@ def setup(testnet):
 
     # global testnet
     if testnet:
+        from stellar_base.horizon import HORIZON_TEST
         return Struct(type='testnet',
                       network='TESTNET',
                       sdk_keypair=sdk_keypair,
                       issuer_keypair=issuer_keypair,
-                      test_asset=test_asset)
+                      test_asset=test_asset,
+                      horizon_endpoint_uri=HORIZON_TEST)
 
-    # local testnet (docker)
-    from stellar_base.network import NETWORKS
+    # local testnet (zulucrypto docker)
     # https://github.com/zulucrypto/docker-stellar-integration-test-network
+    from stellar_base.network import NETWORKS
     NETWORKS['CUSTOM'] = 'Integration Test Network ; zulucrypto'
     return Struct(type='local',
                   network='CUSTOM',
@@ -86,10 +90,10 @@ def setup(testnet):
 @pytest.fixture(scope='session')
 def test_sdk(setup):
     # create and fund sdk account
-    fund(setup.horizon_endpoint_uri, setup.sdk_keypair.address().decode())
+    fund(setup, setup.sdk_keypair.address().decode())
 
     # create and fund issuer account
-    fund(setup.horizon_endpoint_uri, setup.issuer_keypair.address().decode())
+    fund(setup, setup.issuer_keypair.address().decode())
 
     # override KIN with our test asset
     kin.KIN_ASSET = setup.test_asset
@@ -173,108 +177,138 @@ def test_trust_asset_failed(test_sdk):
         test_sdk.trust_asset(Asset('TMP', 'tmp'))
 
 
-def test_trust_kin(setup, test_sdk):
-    tx_hash = test_sdk.trust_kin(limit=1000)
+def test_trust_asset(setup, test_sdk):
+    tx_hash = test_sdk.trust_asset(setup.test_asset, limit=1000)
     assert tx_hash
-    assert test_sdk.check_kin_trusted(test_sdk.get_address())
+    assert test_sdk.check_asset_trusted(test_sdk.get_address(), setup.test_asset)
     # TODO: check limit
 
-    # now fund sdk account with kin
-    from kin.builder import Builder
-    builder = Builder(secret=setup.issuer_keypair.seed(), horizon=setup.horizon_endpoint_uri, network=setup.network)
-    builder.append_payment_op(test_sdk.get_address(), 1000, asset_type=kin.KIN_ASSET.code, asset_issuer=kin.KIN_ASSET.issuer)
-    builder.sign()
-    reply = builder.submit()
-    kin.check_horizon_reply(reply)
-    tx_hash = reply.get('hash')
-    assert tx_hash
-    assert test_sdk.get_kin_balance() == Decimal('1000')
+    # now fund the sdk account with asset
+    fund_asset(setup, test_sdk.get_address(), 1000)
+    assert test_sdk.get_address_asset_balance(test_sdk.get_address(), setup.test_asset) == Decimal('1000')
 
-'''
-def test_send_kin(test_sdk):
+
+def test_send_asset(setup, test_sdk):
     with pytest.raises(ValueError, match='invalid address'):
-        test_sdk.send_kin('bad', 100)
+        test_sdk.send_asset('bad', setup.test_asset, 10)
 
     keypair = Keypair.random()
     address = keypair.address().decode()
 
     with pytest.raises(ValueError, match='amount must be positive'):
-        test_sdk.send_kin(address, 0)
+        test_sdk.send_asset(address, setup.test_asset, 0)
 
     with pytest.raises(kin.SdkHorizonError, match=kin.PaymentResultCode.NO_DESTINATION):
-        test_sdk.send_kin(address, 100)
+        test_sdk.send_asset(address, setup.test_asset, 10)
 
     tx_hash = test_sdk.create_account(address, starting_balance=100)
     assert tx_hash
 
     # no trustline yet
     with pytest.raises(kin.SdkHorizonError, match=kin.PaymentResultCode.NO_TRUST):
-        test_sdk.send_kin(address, 10)
-
-
+        test_sdk.send_asset(address, setup.test_asset, 10)
 
     # add trustline from the newly created account to the kin issuer
-    # TODO: add 'secret' or 'seed' parameter to the methods to use a different key?
-    builder = Builder(secret=keypair.seed(), horizon=test_sdk.horizon.horizon, network=test_sdk.network)
-    builder.append_trust_op(kin.KIN_ASSET.issuer, kin.KIN_ASSET.code)
+    trust_asset(setup, test_sdk, keypair.seed())
+
+    # send asset
+    tx_hash = test_sdk.send_asset(address, setup.test_asset, 10.123)
+    assert tx_hash
+    assert test_sdk.get_address_asset_balance(address, setup.test_asset) == Decimal('10.123')
+
+
+def test_get_transaction_data(setup, test_sdk):
+    with pytest.raises(kin.SdkHorizonError):
+        test_sdk.get_transaction_data('bad')
+
+    tx_hash = test_sdk.trust_asset(setup.test_asset, limit=1000)
+    assert tx_hash
+    sleep(1)
+    tx_data = test_sdk.get_transaction_data(tx_hash)
+    assert tx_data
+    assert tx_data.hash == tx_hash
+    assert tx_data.source_account == test_sdk.get_address()
+    assert tx_data.created_at
+    assert tx_data.source_account_sequence
+    assert tx_data.fee_paid == 100
+    assert tx_data.memo_type == 'none'
+    assert len(tx_data.signatures) == 1
+    assert len(tx_data.operations) == 1
+
+    op = tx_data.operations[0]
+    assert op.id
+    # assert op.created_at
+    # assert op.transaction_hash == tx_hash
+    assert op.type == 'change_trust'
+    assert op.asset_code == setup.test_asset.code
+    assert op.asset_type == 'credit_alphanum4'
+    assert op.asset_issuer == setup.test_asset.issuer
+    assert op.trustor == test_sdk.get_address()
+    assert op.trustee == setup.test_asset.issuer
+    assert op.limit == Decimal('1000')
+    assert op.from_address is None
+    assert op.to_address is None
+    assert op.amount is None
+
+
+def test_get_account_data(setup, test_sdk):
+    with pytest.raises(kin.SdkHorizonError):
+        test_sdk.get_account_data('bad')
+
+    acc_data = test_sdk.get_account_data(test_sdk.get_address())
+    assert acc_data
+    assert acc_data.id == test_sdk.get_address()
+    assert acc_data.sequence
+    assert acc_data.data == {}
+
+    assert acc_data.thresholds
+    assert acc_data.thresholds.low_threshold == 0
+    assert acc_data.thresholds.medium_threshold == 0
+    assert acc_data.thresholds.high_threshold == 0
+
+    assert acc_data.flags
+    assert not acc_data.flags.auth_revocable
+    assert not acc_data.flags.auth_required
+
+    assert len(acc_data.balances) == 2
+    asset_balance = acc_data.balances[0]
+    native_balance = acc_data.balances[1]
+    assert asset_balance.balance > 900
+    assert asset_balance.limit == Decimal('1000')
+    assert asset_balance.asset_type == 'credit_alphanum4'
+    assert asset_balance.asset_code == setup.test_asset.code
+    assert asset_balance.asset_issuer == setup.test_asset.issuer
+    assert native_balance.balance > 9000
+    assert native_balance.asset_type == 'native'
+
+
+# helpers
+
+
+def fund(setup, address):
+    for attempt in range(3):
+        r = requests.get(setup.horizon_endpoint_uri + '/friendbot?addr=' + address)  # Get 10000 lumens
+        j = json.loads(r.text)
+        if 'hash' in j or 'op_already_exists' in j:
+            return
+    raise Exception("account funding failed")
+
+
+def fund_asset(setup, address, amount):
+    builder = Builder(secret=setup.issuer_keypair.seed(), horizon=setup.horizon_endpoint_uri, network=setup.network)
+    builder.append_payment_op(address, amount, asset_type=setup.test_asset.code, asset_issuer=setup.test_asset.issuer)
     builder.sign()
     reply = builder.submit()
     kin.check_horizon_reply(reply)
     tx_hash = reply.get('hash')
     assert tx_hash
 
-    # send
-    tx_hash = test_sdk.send_kin(address, 10.123)
+
+def trust_asset(setup, test_sdk, seed):
+    builder = Builder(secret=seed, horizon=test_sdk.horizon.horizon, network=test_sdk.network)
+    builder.append_trust_op(setup.test_asset.issuer, setup.test_asset.code)
+    builder.sign()
+    reply = builder.submit()
+    kin.check_horizon_reply(reply)
+    tx_hash = reply.get('hash')
     assert tx_hash
-    assert test_sdk.get_address_kin_balance(address) == Decimal('10.123')
-
-
-def test_get_kin_balance(test_sdk, network):
-    # TODO
-    pass
-    #assert test_sdk.get_lumen_balance() > 100
-
-
-def test_get_address_kin_balance(test_sdk):
-    # TODO
-    pass
-
-
-def test_get_transaction_data(test_sdk):
-    with pytest.raises(kin.SdkHorizonError):
-        test_sdk.get_transaction_data('bad')
-
-    tx_hash = test_sdk.trust_asset(TEST_ASSET, limit=1000)
-    assert tx_hash
-    sleep(1)
-    tx_data = test_sdk.get_transaction_data(tx_hash)
-    assert tx_data
-    print '======== ', tx_data
-    assert tx_data.hash == tx_hash
-    assert tx_data.source_account == test_sdk.get_address()
-    assert tx_data.created_at
-    assert len(tx_data.operations) == 1
-    op = tx_data.operations[0]
-    assert op.id
-    assert op.created_at
-    assert op.transaction_hash == tx_hash
-    assert op.type == 'change_trust'
-    assert op.asset_code == TEST_ASSET.code
-    assert op.asset_type == 'credit_alphanum4'
-    assert op.asset_issuer == TEST_ASSET.issuer
-    assert op.trustor == test_sdk.get_address()
-    assert op.trustee == TEST_ASSET.issuer
-    assert op.limit == Decimal(1000)
-    assert op.from_address is None
-    assert op.to_address is None
-    assert op.amount is None
-'''
-
-
-def fund(horizon_endpoint_uri, address):
-    for attempt in range(3):
-        r = requests.get(horizon_endpoint_uri + '/friendbot?addr=' + address)  # Get 10000 lumens
-        j = json.loads(r.text)
-        if 'hash' in j or 'op_already_exists' in j:
-            return
-    raise Exception("account funding failed")

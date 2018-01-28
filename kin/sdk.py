@@ -17,12 +17,13 @@ from .exceptions import (
     SdkNotConfiguredError,
     SdkHorizonError,
 )
+from models import AccountData, TransactionData
 from .utils import validate_address, check_horizon_reply
 
 import logging
 logger = logging.getLogger(__name__)
 
-getcontext().prec = 7  # XLM precision
+getcontext().prec = 7  # IMPORTANT: XLM precision
 
 KIN_ISSUER = 'GDVDKQFP665JAO7A2LSHNLQIUNYNAAIGJ6FYJVMG4DT3YJQQJSRBLQDG'  # TODO: real address
 KIN_ASSET = Asset('KIN', KIN_ISSUER)
@@ -32,70 +33,6 @@ DEFAULT_STARTING_BALANCE = 200
 # default request retry configuration (linear backoff).
 RETRY_ATTEMPTS = 3
 RETRY_DELAY = 0.3
-
-
-class PrintableObject(object):
-    def __str__(self):
-        sb = []
-        for key in self.__dict__:
-            if not key.startswith('__'):
-                sb.append("\t{key}='{value}'".format(key=key, value=self.__dict__[key]))
-        return '\n'.join(sb)
-
-    def __repr__(self):
-        return self.__str__()
-
-
-class OperationData(PrintableObject):
-    """Operation data holder"""
-    id = None
-    source_account = None
-    type = None
-    created_at = None
-    transaction_hash = None
-    asset_type = None
-    asset_code = None
-    asset_issuer = None
-    limit = None
-    trustor = None
-    trustee = None
-    from_address = None
-    to_address = None
-    amount = None
-
-
-class TransactionData(PrintableObject):
-    """Transaction data holder"""
-    hash = None
-    created_at = None
-    source_account = None
-    sequence = None
-    operations = []
-    time_bounds = []
-    memo = None
-    fee = None
-    signatures = []
-
-
-class AccountData(PrintableObject):
-    """Account data holder"""
-
-    #class Struct:
-    #    """Handy variable holder"""
-    #    def __init__(self, **entries): self.__dict__.update(entries)
-
-    class Thresholds(object):
-        def __init__(self, low, medium, high):
-            self.low = low
-            self.medium = medium
-            self.high = high
-
-    id = None
-    sequence = None
-    thresholds = None
-    balances = None
-    signers = None
-    data = None
 
 
 class SDK(object):
@@ -253,7 +190,6 @@ class SDK(object):
                 self.builder.clear()
 
     def trust_kin(self, limit=None, source=None):
-        print '=======> KIN issuer ', KIN_ASSET.issuer
         return self.trust_asset(KIN_ASSET, limit, source)
 
     def trust_asset(self, asset, limit=None, source=None):
@@ -337,26 +273,17 @@ class SDK(object):
                 self.builder.clear()
 
     def get_account_data(self, address):
-        addr = Address(address=address, network=self.network, horizon=self.horizon.horizon)
-        addr.get()  # will raise AccountNotExistsError. TODO: good?
-        acc_data = AccountData()
-        acc_data.id = address
+        """Gets account data.
 
-        '''
-        self.sequence = None
-        self.balances = None
-        self.paging_token = None
-        self.thresholds = None
-        self.flags = None
-        self.signers = None
-        self.data = None
-            id = None
-    sequence = None
-    data = None
-    thresholds = None
-    balances = None
-    signers = None
-        '''
+        :param str address: account address
+        :return: account data
+        :rtype: :class:`~kin.AccountData`
+        """
+        # Address.get()
+        acc = self.horizon.account(address)
+        check_horizon_reply(acc)
+
+        return AccountData(acc, strict=False)
 
     def get_transaction_data(self, tx_hash):
         """Gets transaction data.
@@ -365,44 +292,16 @@ class SDK(object):
         :return: transaction data
         :rtype: :class:`~kin.TransactionData`
         """
+        # get transaction data
         tx = self.horizon.transaction(tx_hash)
         check_horizon_reply(tx)
 
-        tx_data = TransactionData()
-        tx_data.hash = tx.get('hash')
-        tx_data.created_at = tx.get('created_at')
-        tx_data.source_account = tx.get('source_account')
-        tx_data.sequence = tx.get('source_account_sequence')
-        tx_data.operations = []
-        tx_data.fee = tx.get('fee_paid')
-        tx_data.signatures = tx.get('signatures')
-        tx_data.memo = None  # TODO
-
-        tx_ops = self.horizon.transaction_operations(tx_hash)  # TODO: max 50, paged?
+        # get transaction operations
+        tx_ops = self.horizon.transaction_operations(tx['hash'])  # TODO: max 50, paged?
         check_horizon_reply(tx_ops)
-        for tx_op in tx_ops.get('_embedded').get('records'):
-            op_data = OperationData()
-            op_data.id = tx_op.get('id')
-            op_data.source_account = tx_op.get('source_account')
-            op_data.type = tx_op.get('type')
-            op_data.created_at = tx_op.get('created_at')
-            op_data.transaction_hash = tx_op.get('transaction_hash')
-            op_data.asset_type = tx_op.get('asset_type')
-            op_data.asset_code = tx_op.get('asset_code')
-            op_data.asset_issuer = tx_op.get('asset_issuer')
-            op_data.trustor = tx_op.get('trustor')
-            op_data.trustee = tx_op.get('trustee')
-            op_data.from_address = tx_op.get('from')
-            op_data.to_address = tx_op.get('to')
-            amount = tx_op.get('amount')
-            if amount:
-                op_data.amount = Decimal(amount)
-            limit = tx_op.get('limit')
-            if limit:
-                op_data.limit = Decimal(limit)
-            tx_data.operations.append(op_data)
 
-        return tx_data
+        tx['operations'] = tx_ops['_embedded']['records']
 
-    # helpers
+        return TransactionData(tx, strict=False)
+
 

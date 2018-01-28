@@ -17,7 +17,7 @@ from .exceptions import (
     SdkNotConfiguredError,
     SdkHorizonError,
 )
-from models import AccountData, TransactionData
+from .models import AccountData, TransactionData
 from .utils import validate_address, check_horizon_reply
 
 import logging

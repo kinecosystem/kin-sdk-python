@@ -1,0 +1,31 @@
+sudo: required
+language: python
+python:
+  - "2.7"
+  - "3.6"
+
+services:
+  - docker
+
+cache:
+  - pip
+
+before_install:
+  - docker pull zulucrypto/stellar-integration-test-network
+  - make start
+  - docker ps -a
+
+install:
+  - make init
+
+script:
+  - make test
+
+#after_success:
+  # - codecov --token=TOKEN
+
+after_script:
+  - make stop
+
+notifications:
+  email: false

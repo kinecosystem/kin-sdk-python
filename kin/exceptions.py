@@ -23,7 +23,7 @@ class SdkHorizonError(SdkError):
     #    self.__dict__ = json.loads(j)
 
     def __init__(self, err_obj):
-        print '\n------ ', err_obj
+        print('\n------ ', err_obj)
         # parse HTTP Problem Details object
         # see https://tools.ietf.org/html/rfc7807
         self.type = err_obj.get('type')

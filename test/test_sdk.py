@@ -6,7 +6,7 @@ from time import sleep
 
 from stellar_base.asset import Asset
 from stellar_base.keypair import Keypair
-from stellar_base.utils import XdrLengthError
+from stellar_base.utils import XdrLengthError, DecodeError
 
 import kin
 from kin.builder import Builder
@@ -24,7 +24,7 @@ def test_sdk_create_fail():
         kin.SDK(horizon_endpoint_uri='http://localhost:666')
 
     # bad seed
-    with pytest.raises(TypeError, match='Incorrect padding'):  # TODO: change error
+    with pytest.raises(Exception, match='Incorrect padding'):  # TODO: change error
         kin.SDK(seed='bad')
 
 
@@ -288,10 +288,11 @@ def test_get_account_data(setup, test_sdk):
 def fund(setup, address):
     for attempt in range(3):
         r = requests.get(setup.horizon_endpoint_uri + '/friendbot?addr=' + address)  # Get 10000 lumens
+        print('----> ', r.text)
         j = json.loads(r.text)
         if 'hash' in j or 'op_already_exists' in j:
             return
-    raise Exception("account funding failed")
+    raise Exception('account funding failed')
 
 
 def fund_asset(setup, address, amount):

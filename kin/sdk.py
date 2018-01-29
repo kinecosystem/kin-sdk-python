@@ -78,10 +78,9 @@ class SDK(object):
         :raises: :class:`~kin.exceptions.SdkConfigurationError` if some of the configuration parameters are invalid.
         """
 
-        if network:
-            self.network = network
-        else:
-            self.network = 'TESTNET'
+        self.network = network
+        if not self.network:
+            self.network = 'PUBLIC'
 
         if horizon_endpoint_uri:
             self.horizon = Horizon(horizon_endpoint_uri)
@@ -308,4 +307,40 @@ class SDK(object):
 
         return TransactionData(tx, strict=False)
 
+    def monitor_transactions(self, callback_fn):
+        if not self.keypair:
+            raise SdkNotConfiguredError('address not configured')
+        self.monitor_address_transactions(self.get_address(), callback_fn)
+
+    def monitor_address_transactions(self, address, callback_fn):
+
+        # make the SSE request synchronous (will throw errors in the current thread)
+        events = self.horizon.account_transactions(address, sse=True)  # TODO: last_id support
+
+        # asynchronous event processor
+        def event_processor():
+            import json
+            for event in events:
+                if event.event == 'message':
+                    try:
+                        tx = json.loads(event.data)
+
+                        # get transaction operations
+                        tx_ops = self.horizon.transaction_operations(tx['hash'])  # TODO: max 50, paged?
+                        check_horizon_reply(tx_ops)
+
+                        tx['operations'] = tx_ops['_embedded']['records']
+
+                        tx_data = TransactionData(tx, strict=False)
+                        callback_fn(tx_data)
+
+                    except Exception as e:
+                        logger.exception(e)
+                        continue
+
+        # start monitoring thread
+        import threading
+        t = threading.Thread(target=event_processor)
+        t.daemon = True
+        t.start()
 

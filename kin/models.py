@@ -73,6 +73,14 @@ class TransactionData(Model):
     # operation_count
     # fee_meta_xdr
 
+    # TODO: do it properly
+    def __str__(self):
+        sb = []
+        for key in self.__dict__:
+            if not key.startswith('__'):
+                sb.append("\t{key}='{value}'".format(key=key, value=self.__dict__[key]))
+        return '\n'.join(sb)
 
-
+    def __repr__(self):
+        return self.__str__()
 

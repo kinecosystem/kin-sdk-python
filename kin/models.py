@@ -58,7 +58,8 @@ class TransactionData(Model):
     source_account = StringType()  # TODO: min, max length?
     source_account_sequence = StringType()
     operations = ListType(ModelType(OperationData), default=[])
-    memo_type = StringType()  # TODO: init memo
+    memo_type = StringType()
+    memo = StringType()
     fee_paid = DecimalType()
     signatures = ListType(StringType, default=[])
     # id

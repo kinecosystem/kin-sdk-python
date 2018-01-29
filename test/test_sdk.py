@@ -135,10 +135,37 @@ def test_create_account(test_sdk):
 
     # successful
     starting_balance = 100
-    tx_hash = test_sdk.create_account(address, starting_balance=starting_balance)
+    tx_hash = test_sdk.create_account(address, starting_balance=starting_balance, memo_text='foobar')
     assert tx_hash
     assert test_sdk.check_account_exists(address)
     assert test_sdk.get_address_lumen_balance(address) == starting_balance
+
+    # test get_transaction_data for this transaction
+    sleep(1)
+    tx_data = test_sdk.get_transaction_data(tx_hash)
+    assert tx_data
+    assert tx_data.hash == tx_hash
+    assert tx_data.source_account == test_sdk.get_address()
+    assert tx_data.created_at
+    assert tx_data.source_account_sequence
+    assert tx_data.fee_paid == 100
+    assert tx_data.memo_type == 'text'
+    assert tx_data.memo == 'foobar'
+    assert len(tx_data.signatures) == 1
+    assert len(tx_data.operations) == 1
+
+    op = tx_data.operations[0]
+    assert op.id
+    assert op.type == 'create_account'
+    assert op.asset_code is None
+    assert op.asset_type is None
+    assert op.asset_issuer is None
+    assert op.trustor is None
+    assert op.trustee is None
+    assert op.limit is None
+    assert op.from_address is None
+    assert op.to_address is None
+    assert op.amount is None
 
 
 def test_send_lumens(test_sdk):
@@ -160,13 +187,41 @@ def test_send_lumens(test_sdk):
     with pytest.raises(kin.SdkHorizonError, match=kin.PaymentResultCode.UNDERFUNDED):
         test_sdk.send_lumens(address, 1000000)
 
-    tx_hash = test_sdk.send_lumens(address, 10.123)
+    tx_hash = test_sdk.send_lumens(address, 10.123, memo_text='foobar')
     assert tx_hash
 
     assert test_sdk.get_address_lumen_balance(address) == Decimal('110.123')
 
+    # test get_transaction_data for this transaction
+    sleep(1)
+    tx_data = test_sdk.get_transaction_data(tx_hash)
+    assert tx_data
+    assert tx_data.hash == tx_hash
+    assert tx_data.source_account == test_sdk.get_address()
+    assert tx_data.created_at
+    assert tx_data.source_account_sequence
+    assert tx_data.fee_paid == 100
+    assert tx_data.memo_type == 'text'
+    assert tx_data.memo == 'foobar'
+    assert len(tx_data.signatures) == 1
+    assert len(tx_data.operations) == 1
 
-def test_trust_asset_failed(test_sdk):
+    op = tx_data.operations[0]
+    assert op.id
+    assert op.type == 'payment'
+    assert op.asset_code is None
+    assert op.asset_type == 'native'
+    assert op.asset_issuer is None
+    assert op.trustor is None
+    assert op.trustee is None
+    assert op.limit is None
+    assert op.from_address is None
+    assert op.to_address is None
+    assert op.amount == Decimal('10.123')
+
+
+def test_trust_asset(setup, test_sdk):
+    # failures
     with pytest.raises(Exception, match='Issuer cannot be null'):
         test_sdk.trust_asset(Asset(''))
     with pytest.raises(XdrLengthError, match='Asset code must be 12 characters at max.'):
@@ -176,14 +231,42 @@ def test_trust_asset_failed(test_sdk):
     with pytest.raises(ValueError, match='asset issuer invalid'):
         test_sdk.trust_asset(Asset('TMP', 'tmp'))
 
-
-def test_trust_asset(setup, test_sdk):
-    tx_hash = test_sdk.trust_asset(setup.test_asset, limit=1000)
+    # success
+    tx_hash = test_sdk.trust_asset(setup.test_asset, limit=1000, memo_text='foobar')
     assert tx_hash
     assert test_sdk.check_asset_trusted(test_sdk.get_address(), setup.test_asset)
-    # TODO: check limit
+    # TODO: check asset limit
 
-    # now fund the sdk account with asset
+    # test get_transaction_data for this transaction
+    sleep(1)
+    tx_data = test_sdk.get_transaction_data(tx_hash)
+    assert tx_data
+    assert tx_data.hash == tx_hash
+    assert tx_data.source_account == test_sdk.get_address()
+    assert tx_data.created_at
+    assert tx_data.source_account_sequence
+    assert tx_data.fee_paid == 100
+    assert tx_data.memo_type == 'text'
+    assert tx_data.memo == 'foobar'
+    assert len(tx_data.signatures) == 1
+    assert len(tx_data.operations) == 1
+
+    op = tx_data.operations[0]
+    assert op.id
+    # assert op.created_at
+    # assert op.transaction_hash == tx_hash
+    assert op.type == 'change_trust'
+    assert op.asset_code == setup.test_asset.code
+    assert op.asset_type == 'credit_alphanum4'
+    assert op.asset_issuer == setup.test_asset.issuer
+    assert op.trustor == test_sdk.get_address()
+    assert op.trustee == setup.test_asset.issuer
+    assert op.limit == Decimal('1000')
+    assert op.from_address is None
+    assert op.to_address is None
+    assert op.amount is None
+
+    # finally, fund the sdk account with asset
     fund_asset(setup, test_sdk.get_address(), 1000)
     assert test_sdk.get_address_asset_balance(test_sdk.get_address(), setup.test_asset) == Decimal('1000')
 
@@ -212,17 +295,11 @@ def test_send_asset(setup, test_sdk):
     trust_asset(setup, test_sdk, keypair.seed())
 
     # send asset
-    tx_hash = test_sdk.send_asset(address, setup.test_asset, 10.123)
+    tx_hash = test_sdk.send_asset(address, setup.test_asset, 10.123, memo_text='foobar')
     assert tx_hash
     assert test_sdk.get_address_asset_balance(address, setup.test_asset) == Decimal('10.123')
 
-
-def test_get_transaction_data(setup, test_sdk):
-    with pytest.raises(kin.SdkHorizonError):
-        test_sdk.get_transaction_data('bad')
-
-    tx_hash = test_sdk.trust_asset(setup.test_asset, limit=1000)
-    assert tx_hash
+    # test get_transaction_data for this transaction
     sleep(1)
     tx_data = test_sdk.get_transaction_data(tx_hash)
     assert tx_data
@@ -231,24 +308,23 @@ def test_get_transaction_data(setup, test_sdk):
     assert tx_data.created_at
     assert tx_data.source_account_sequence
     assert tx_data.fee_paid == 100
-    assert tx_data.memo_type == 'none'
+    assert tx_data.memo_type == 'text'
+    assert tx_data.memo == 'foobar'
     assert len(tx_data.signatures) == 1
     assert len(tx_data.operations) == 1
 
     op = tx_data.operations[0]
     assert op.id
-    # assert op.created_at
-    # assert op.transaction_hash == tx_hash
-    assert op.type == 'change_trust'
+    assert op.type == 'payment'
     assert op.asset_code == setup.test_asset.code
     assert op.asset_type == 'credit_alphanum4'
     assert op.asset_issuer == setup.test_asset.issuer
-    assert op.trustor == test_sdk.get_address()
-    assert op.trustee == setup.test_asset.issuer
-    assert op.limit == Decimal('1000')
+    assert op.trustor is None
+    assert op.trustee is None
+    assert op.limit is None
     assert op.from_address is None
     assert op.to_address is None
-    assert op.amount is None
+    assert op.amount == Decimal('10.123')
 
 
 def test_get_account_data(setup, test_sdk):
@@ -288,7 +364,6 @@ def test_get_account_data(setup, test_sdk):
 def fund(setup, address):
     for attempt in range(3):
         r = requests.get(setup.horizon_endpoint_uri + '/friendbot?addr=' + address)  # Get 10000 lumens
-        print('----> ', r.text)
         j = json.loads(r.text)
         if 'hash' in j or 'op_already_exists' in j:
             return

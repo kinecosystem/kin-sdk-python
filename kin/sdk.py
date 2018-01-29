@@ -174,7 +174,7 @@ class SDK(object):
                 return Decimal(b.get('balance'))
         return 0
 
-    def create_account(self, address, starting_balance=DEFAULT_STARTING_BALANCE, source=None):
+    def create_account(self, address, starting_balance=DEFAULT_STARTING_BALANCE, source=None, memo_text=None):
         if not self.keypair:
             raise SdkNotConfiguredError('address not configured')
         validate_address(address)
@@ -182,6 +182,8 @@ class SDK(object):
         with self.builder_lock:
             try:
                 self.builder.append_create_account_op(address, starting_balance, source=source)
+                if memo_text:
+                    self.builder.add_text_memo(memo_text[:28])  # max memo length is 28
                 self.builder.sign()
                 reply = self.builder.submit()
                 check_horizon_reply(reply)
@@ -192,7 +194,7 @@ class SDK(object):
     def trust_kin(self, limit=None, source=None):
         return self.trust_asset(KIN_ASSET, limit, source)
 
-    def trust_asset(self, asset, limit=None, source=None):
+    def trust_asset(self, asset, limit=None, source=None, memo_text=None):
         if not self.keypair:
             raise SdkNotConfiguredError('address not configured')
         try:
@@ -203,6 +205,8 @@ class SDK(object):
         with self.builder_lock:
             try:
                 self.builder.append_trust_op(asset.issuer, asset.code, limit=limit, source=source)
+                if memo_text:
+                    self.builder.add_text_memo(memo_text[:28])  # max memo length is 28
                 self.builder.sign()
                 reply = self.builder.submit()
                 check_horizon_reply(reply)
@@ -233,11 +237,11 @@ class SDK(object):
         except AccountNotExistError:
             return False
 
-    def send_lumens(self, address, amount, source=None, memo=None):
-        return self.send_asset(address, Asset('XLM'), amount, source, memo)
+    def send_lumens(self, address, amount, source=None, memo_text=None):
+        return self.send_asset(address, Asset('XLM'), amount, source, memo_text)
 
-    def send_kin(self, address, amount, source=None, memo=None):
-        return self.send_asset(address, KIN_ASSET, amount, source, memo)
+    def send_kin(self, address, amount, source=None, memo_text=None):
+        return self.send_asset(address, KIN_ASSET, amount, source, memo_text)
 
     def send_asset(self, address, asset, amount, source=None, memo_text=None):
         """Send tokens from my wallet to address.

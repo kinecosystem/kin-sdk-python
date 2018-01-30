@@ -2,6 +2,7 @@ from decimal import Decimal
 import json
 import requests
 import pytest
+import threading
 from time import sleep
 
 from stellar_base.asset import Asset
@@ -21,7 +22,7 @@ def test_sdk_create_fail():
 
     # bad seed
     with pytest.raises(Exception, match='Incorrect padding'):  # TODO: change error
-        kin.SDK(seed='bad')
+        kin.SDK(base_seed='bad')
 
 
 def test_sdk_not_configured():
@@ -44,13 +45,13 @@ def test_sdk_not_configured():
 
 def test_sdk_create_success():
     keypair = Keypair.random()
-    sdk = kin.SDK(seed=keypair.seed())
+    sdk = kin.SDK(base_seed=keypair.seed())
     assert sdk
     assert sdk.horizon
     assert sdk.network == 'PUBLIC'
-    assert sdk.keypair.verifying_key == keypair.verifying_key
-    assert sdk.keypair.signing_key == keypair.signing_key
-    assert sdk.builder
+    assert sdk.base_keypair.verifying_key == keypair.verifying_key
+    assert sdk.base_keypair.signing_key == keypair.signing_key
+    assert sdk.channel_manager
 
 
 @pytest.fixture(scope='session')
@@ -98,7 +99,7 @@ def test_sdk(setup):
     kin.KIN_ASSET = setup.test_asset
 
     # init sdk
-    sdk = kin.SDK(seed=setup.sdk_keypair.seed(), horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network)
+    sdk = kin.SDK(base_seed=setup.sdk_keypair.seed(), horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network)
     assert sdk
     return sdk
 
@@ -408,6 +409,47 @@ def test_monitor_address_transactions(setup, test_sdk):
     assert tx_datas[2].source_account == test_sdk.get_address()
     assert tx_datas[2].memo == 'send'
     assert tx_datas[2].operations[0].type == 'payment'
+
+
+def test_channels(setup):
+    # prepare channel accounts
+    channel_keypairs = [Keypair.random(), Keypair.random(), Keypair.random(), Keypair.random()]
+    channel_seeds = [channel_keypair.seed() for channel_keypair in channel_keypairs]
+    channel_addresses = [channel_keypair.address().decode() for channel_keypair in channel_keypairs]
+    for channel_address in channel_addresses:
+        fund(setup, channel_address)
+
+    # init sdk with these channels
+    sdk = kin.SDK(base_seed=setup.sdk_keypair.seed(), horizon_endpoint_uri=setup.horizon_endpoint_uri,
+                  network=setup.network, channel_seeds=channel_seeds)
+    assert sdk
+    assert sdk.channel_manager
+    assert sdk.channel_manager.channel_builders.qsize() == len(channel_keypairs)
+
+    def channel_worker():
+        # create an account using a channel
+        address = Keypair.random().address().decode()
+        tx_hash = sdk.create_account(address, starting_balance=100)
+        assert tx_hash
+        sleep(1)
+        tx_data = sdk.get_transaction_data(tx_hash)
+        assert tx_data
+        # transaction envelope source is some channel account
+        assert tx_data.source_account in channel_addresses
+        # operation source is the base account
+        assert tx_data.operations[0].source_account == sdk.get_address()
+
+    # now issue parallel transactions
+    threads = []
+    for channel_keypair in channel_keypairs:
+        t = threading.Thread(target=channel_worker)
+        threads.append(t)
+    for t in threads:
+        t.start()
+
+    # wait for all to finish
+    for t in threads:
+        t.join()
 
 
 # helpers

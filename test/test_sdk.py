@@ -330,7 +330,7 @@ def test_send_asset(setup, test_sdk):
 
 
 def test_get_account_data(setup, test_sdk):
-    with pytest.raises(kin.SdkHorizonError):
+    with pytest.raises(ValueError, match='invalid address'):
         test_sdk.get_account_data('bad')
 
     acc_data = test_sdk.get_account_data(test_sdk.get_address())

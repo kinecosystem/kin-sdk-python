@@ -5,11 +5,9 @@
 from decimal import Decimal, getcontext
 from threading import Lock
 
-from stellar_base.address import Address
 from stellar_base.asset import Asset
 from stellar_base.horizon import Horizon, horizon_testnet, horizon_livenet
 from stellar_base.keypair import Keypair
-from stellar_base.utils import AccountNotExistError
 
 from .builder import Builder
 from .exceptions import (
@@ -23,7 +21,7 @@ from .utils import validate_address, check_horizon_reply
 import logging
 logger = logging.getLogger(__name__)
 
-getcontext().prec = 7  # IMPORTANT: XLM precision
+getcontext().prec = 7  # IMPORTANT: XLM decimal precision
 
 KIN_ISSUER = 'GDVDKQFP665JAO7A2LSHNLQIUNYNAAIGJ6FYJVMG4DT3YJQQJSRBLQDG'  # TODO: real address
 KIN_ASSET = Asset('KIN', KIN_ISSUER)
@@ -163,14 +161,11 @@ class SDK(object):
         return self.get_address_asset_balance(address, KIN_ASSET)
 
     def get_address_asset_balance(self, address, asset):
-        validate_address(address)
-        addr = Address(address=address, network=self.network, horizon=self.horizon.horizon)
-        addr.get()  # TODO: exception handling
-
-        for b in addr.balances:
-            if (b.get('asset_type') == 'native' and asset.code == 'XLM') \
-                    or (b.get('asset_code') == asset.code and b.get('asset_issuer') == asset.issuer):
-                return Decimal(b.get('balance'))
+        acc_data = self.get_account_data(address)
+        for balance in acc_data.balances:
+            if (balance.asset_type == 'native' and asset.code == 'XLM') \
+                    or (balance.asset_code == asset.code and balance.asset_issuer == asset.issuer):
+                return balance.balance
         return 0
 
     def create_account(self, address, starting_balance=DEFAULT_STARTING_BALANCE, source=None, memo_text=None):
@@ -217,24 +212,20 @@ class SDK(object):
         return self.check_asset_trusted(address, KIN_ASSET)
 
     def check_asset_trusted(self, address, asset):
-        validate_address(address)
-
-        addr = Address(address=address, network=self.network, horizon=self.horizon.horizon)
-        addr.get()  # TODO: exception handling?
-        for balance in addr.balances:
-            if balance.get('asset_code') == asset.code and balance.get('asset_issuer') == asset.issuer:
+        acc_data = self.get_account_data(address)
+        for balance in acc_data.balances:
+            if balance.asset_code == asset.code and balance.asset_issuer == asset.issuer:
                 return True
         return False
 
     def check_account_exists(self, address):
-        validate_address(address)
-
-        addr = Address(address=address, network=self.network, horizon=self.horizon.horizon)
         try:
-            addr.get()
+            self.get_account_data(address)
             return True
-        except AccountNotExistError:
-            return False
+        except SdkHorizonError as se:
+            if se.status == 404:
+                return False
+            raise
 
     def send_lumens(self, address, amount, source=None, memo_text=None):
         return self.send_asset(address, Asset('XLM'), amount, source, memo_text)
@@ -282,7 +273,7 @@ class SDK(object):
         :return: account data
         :rtype: :class:`~kin.AccountData`
         """
-        # Address.get()
+        validate_address(address)
         acc = self.horizon.account(address)
         check_horizon_reply(acc)
 
@@ -308,11 +299,13 @@ class SDK(object):
         return TransactionData(tx, strict=False)
 
     def monitor_transactions(self, callback_fn):
+        """Monitor transactions related to the sdk account"""
         if not self.keypair:
             raise SdkNotConfiguredError('address not configured')
         self.monitor_address_transactions(self.get_address(), callback_fn)
 
     def monitor_address_transactions(self, address, callback_fn):
+        """Monitor transactions related to specific acccount"""
 
         # make the SSE request synchronous (will throw errors in the current thread)
         events = self.horizon.account_transactions(address, sse=True)  # TODO: last_id support

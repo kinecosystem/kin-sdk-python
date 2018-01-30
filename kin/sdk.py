@@ -26,7 +26,9 @@ getcontext().prec = 7  # IMPORTANT: XLM decimal precision
 KIN_ISSUER = 'GDVDKQFP665JAO7A2LSHNLQIUNYNAAIGJ6FYJVMG4DT3YJQQJSRBLQDG'  # TODO: real address
 KIN_ASSET = Asset('KIN', KIN_ISSUER)
 
-DEFAULT_STARTING_BALANCE = 200
+# https://www.stellar.org/developers/guides/concepts/fees.html
+BASE_RESERVE = 0.5  # in XLM
+MIN_ACCOUNT_BALANCE = (2 + 1) * BASE_RESERVE  # 1 additional trustline op
 
 # default request retry configuration (linear backoff).
 RETRY_ATTEMPTS = 3
@@ -97,7 +99,7 @@ class SDK(object):
         self.keypair = None
         if seed:
             self.keypair = Keypair.from_seed(seed)
-            # create a first builder, load the sequence from our account
+            # create a transaction builder and load account sequence number.
             self.builder = Builder(secret=seed, network=self.network, horizon=self.horizon.horizon)
             self.builder_lock = Lock()
 
@@ -168,22 +170,14 @@ class SDK(object):
                 return balance.balance
         return 0
 
-    def create_account(self, address, starting_balance=DEFAULT_STARTING_BALANCE, source=None, memo_text=None):
+    def create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, source=None, memo_text=None):
         if not self.keypair:
             raise SdkNotConfiguredError('address not configured')
         validate_address(address)
 
-        with self.builder_lock:
-            try:
-                self.builder.append_create_account_op(address, starting_balance, source=source)
-                if memo_text:
-                    self.builder.add_text_memo(memo_text[:28])  # max memo length is 28
-                self.builder.sign()
-                reply = self.builder.submit()
-                check_horizon_reply(reply)
-                return reply.get('hash')
-            finally:
-                self.builder.clear()
+        return self._send_transaction(lambda builder:
+                                      builder.append_create_account_op(address, starting_balance, source=source),
+                                      memo_text=memo_text)
 
     def trust_kin(self, limit=None, source=None):
         return self.trust_asset(KIN_ASSET, limit, source)
@@ -196,17 +190,9 @@ class SDK(object):
         except:
             raise ValueError('asset issuer invalid')
 
-        with self.builder_lock:
-            try:
-                self.builder.append_trust_op(asset.issuer, asset.code, limit=limit, source=source)
-                if memo_text:
-                    self.builder.add_text_memo(memo_text[:28])  # max memo length is 28
-                self.builder.sign()
-                reply = self.builder.submit()
-                check_horizon_reply(reply)
-                return reply.get('hash')
-            finally:
-                self.builder.clear()
+        return self._send_transaction(lambda builder:
+                                      builder.append_trust_op(asset.issuer, asset.code, limit=limit, source=source),
+                                      memo_text=memo_text)
 
     def check_kin_trusted(self, address):
         return self.check_asset_trusted(address, KIN_ASSET)
@@ -254,17 +240,10 @@ class SDK(object):
         if amount <= 0:
             raise ValueError('amount must be positive')
 
-        with self.builder_lock:
-            try:
-                self.builder.append_payment_op(address, amount, asset_type=asset.code, asset_issuer=asset.issuer, source=source)
-                if memo_text:
-                    self.builder.add_text_memo(memo_text[:28])  # max memo length is 28
-                self.builder.sign()
-                reply = self.builder.submit()
-                check_horizon_reply(reply)
-                return reply.get('hash')
-            finally:
-                self.builder.clear()
+        return self._send_transaction(lambda builder:
+                                      builder.append_payment_op(address, amount, asset_type=asset.code,
+                                                                asset_issuer=asset.issuer, source=source),
+                                      memo_text=memo_text)
 
     def get_account_data(self, address):
         """Gets account data.
@@ -337,3 +316,17 @@ class SDK(object):
         t.daemon = True
         t.start()
 
+    # helpers
+
+    def _send_transaction(self, add_ops_fn, memo_text=None):
+        with self.builder_lock:
+            try:
+                add_ops_fn(self.builder)
+                if memo_text:
+                    self.builder.add_text_memo(memo_text[:28])  # max memo length is 28
+                self.builder.sign()
+                reply = self.builder.submit()
+                check_horizon_reply(reply)
+                return reply.get('hash')
+            finally:
+                self.builder.clear()

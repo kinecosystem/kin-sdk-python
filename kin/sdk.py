@@ -3,13 +3,13 @@
 # Copyright (C) 2018 Kin Foundation
 
 from decimal import Decimal, getcontext
-from threading import Lock
+from functools import partial
 
 from stellar_base.asset import Asset
 from stellar_base.horizon import Horizon, horizon_testnet, horizon_livenet
 from stellar_base.keypair import Keypair
 
-from .builder import Builder
+from .channel_manager import ChannelManager
 from .exceptions import (
     SdkConfigurationError,
     SdkNotConfiguredError,
@@ -41,7 +41,7 @@ class SDK(object):
     It maintains a connection context with a Horizon node and hides all the specifics of dealing with Stellar REST API.
     """
 
-    def __init__(self, seed='', horizon_endpoint_uri='', network='PUBLIC'):
+    def __init__(self, base_seed='', horizon_endpoint_uri='', network='PUBLIC', channel_seeds=[]):
         """Create a new instance of the KIN SDK for Stellar.
 
         The SDK needs a JSON-RPC provider, contract definitions and the wallet private key.
@@ -96,12 +96,14 @@ class SDK(object):
         except Exception as e:
             raise SdkConfigurationError('cannot connect to horizon')
 
-        self.keypair = None
-        if seed:
-            self.keypair = Keypair.from_seed(seed)
-            # create a transaction builder and load account sequence number.
-            self.builder = Builder(secret=seed, network=self.network, horizon=self.horizon.horizon)
-            self.builder_lock = Lock()
+        # init sdk account base_keypair if a base_seed is supplied
+        self.base_keypair = None
+        if base_seed:
+            self.base_keypair = Keypair.from_seed(base_seed)
+            # init channel manager
+            if not channel_seeds:
+                channel_seeds = [base_seed]
+            self.channel_manager = ChannelManager(base_seed, channel_seeds, self.network, self.horizon.horizon)
 
     def get_address(self):
         """Get public address of the SDK wallet.
@@ -112,9 +114,9 @@ class SDK(object):
 
         :raises: :class:`~kin.exceptions.SdkConfigurationError`: if the SDK was not configured with a private key.
         """
-        if not self.keypair:
+        if not self.base_keypair:
             raise SdkNotConfiguredError('address not configured')
-        return self.keypair.address().decode()
+        return self.base_keypair.address().decode()
 
     def get_lumen_balance(self):
         """Get XLM balance of the SDK wallet.
@@ -170,29 +172,31 @@ class SDK(object):
                 return balance.balance
         return 0
 
-    def create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, source=None, memo_text=None):
-        if not self.keypair:
+    def create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, memo_text=None):
+        if not self.base_keypair:
             raise SdkNotConfiguredError('address not configured')
         validate_address(address)
 
-        return self._send_transaction(lambda builder:
-                                      builder.append_create_account_op(address, starting_balance, source=source),
-                                      memo_text=memo_text)
+        return self.channel_manager.send_transaction(lambda builder:
+                                                     partial(builder.append_create_account_op, address,
+                                                             starting_balance),
+                                                     memo_text=memo_text)
 
-    def trust_kin(self, limit=None, source=None):
-        return self.trust_asset(KIN_ASSET, limit, source)
+    def trust_kin(self, limit=None):
+        return self.trust_asset(KIN_ASSET, limit)
 
-    def trust_asset(self, asset, limit=None, source=None, memo_text=None):
-        if not self.keypair:
+    def trust_asset(self, asset, limit=None, memo_text=None):
+        if not self.base_keypair:
             raise SdkNotConfiguredError('address not configured')
         try:
             validate_address(asset.issuer)
         except:
             raise ValueError('asset issuer invalid')
 
-        return self._send_transaction(lambda builder:
-                                      builder.append_trust_op(asset.issuer, asset.code, limit=limit, source=source),
-                                      memo_text=memo_text)
+        return self.channel_manager.send_transaction(lambda builder:
+                                                     partial(builder.append_trust_op, asset.issuer, asset.code,
+                                                             limit=limit),
+                                                     memo_text=memo_text)
 
     def check_kin_trusted(self, address):
         return self.check_asset_trusted(address, KIN_ASSET)
@@ -213,13 +217,13 @@ class SDK(object):
                 return False
             raise
 
-    def send_lumens(self, address, amount, source=None, memo_text=None):
-        return self.send_asset(address, Asset('XLM'), amount, source, memo_text)
+    def send_lumens(self, address, amount, memo_text=None):
+        return self.send_asset(address, Asset('XLM'), amount, memo_text)
 
-    def send_kin(self, address, amount, source=None, memo_text=None):
-        return self.send_asset(address, KIN_ASSET, amount, source, memo_text)
+    def send_kin(self, address, amount, memo_text=None):
+        return self.send_asset(address, KIN_ASSET, amount, memo_text)
 
-    def send_asset(self, address, asset, amount, source=None, memo_text=None):
+    def send_asset(self, address, asset, amount, memo_text=None):
         """Send tokens from my wallet to address.
 
         :param str address: the address to send tokens to.
@@ -234,16 +238,16 @@ class SDK(object):
         :raises: ValueError: if the nonce is incorrect.
         :raises: ValueError if insufficient funds for for gas * price.
         """
-        if not self.keypair:
+        if not self.base_keypair:
             raise SdkNotConfiguredError('address not configured')
         validate_address(address)
         if amount <= 0:
             raise ValueError('amount must be positive')
 
-        return self._send_transaction(lambda builder:
-                                      builder.append_payment_op(address, amount, asset_type=asset.code,
-                                                                asset_issuer=asset.issuer, source=source),
-                                      memo_text=memo_text)
+        return self.channel_manager.send_transaction(lambda builder:
+                                                     partial(builder.append_payment_op, address, amount,
+                                                             asset_type=asset.code, asset_issuer=asset.issuer),
+                                                     memo_text=memo_text)
 
     def get_account_data(self, address):
         """Gets account data.
@@ -279,7 +283,7 @@ class SDK(object):
 
     def monitor_transactions(self, callback_fn):
         """Monitor transactions related to the sdk account"""
-        if not self.keypair:
+        if not self.base_keypair:
             raise SdkNotConfiguredError('address not configured')
         self.monitor_address_transactions(self.get_address(), callback_fn)
 
@@ -315,18 +319,3 @@ class SDK(object):
         t = threading.Thread(target=event_processor)
         t.daemon = True
         t.start()
-
-    # helpers
-
-    def _send_transaction(self, add_ops_fn, memo_text=None):
-        with self.builder_lock:
-            try:
-                add_ops_fn(self.builder)
-                if memo_text:
-                    self.builder.add_text_memo(memo_text[:28])  # max memo length is 28
-                self.builder.sign()
-                reply = self.builder.submit()
-                check_horizon_reply(reply)
-                return reply.get('hash')
-            finally:
-                self.builder.clear()

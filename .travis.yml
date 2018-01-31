@@ -21,8 +21,8 @@ install:
 script:
   - make test
 
-#after_success:
-  # - codecov --token=TOKEN
+after_success:
+   - codecov --token=f644f5f2-b455-4e5c-8ec6-fefce1fc587a
 
 after_script:
   - make stop

@@ -20,9 +20,13 @@ def test_sdk_create_fail():
     with pytest.raises(kin.SdkConfigurationError, match='cannot connect to horizon'):
         kin.SDK(horizon_endpoint_uri='http://localhost:666')
 
-    # bad seed
-    with pytest.raises(Exception, match='Incorrect padding'):  # TODO: change error
+    # bad seeds (without Nick Cave)
+    with pytest.raises(kin.SdkConfigurationError, match='invalid base seed'):
         kin.SDK(base_seed='bad')
+
+    keypair = Keypair.random()
+    with pytest.raises(kin.SdkConfigurationError, match='invalid channel seed'):
+        kin.SDK(base_seed=keypair.seed(), channel_seeds=['bad'])
 
 
 def test_sdk_not_configured():
@@ -104,13 +108,28 @@ def test_sdk(setup):
     return sdk
 
 
-def test_get_address(test_sdk, setup):
+def test_get_address(setup, test_sdk):
     assert test_sdk.get_address() == setup.sdk_keypair.address().decode()
 
 
 def test_get_lumen_balance(test_sdk):
     assert test_sdk.get_lumen_balance() == 10000
 
+
+def test_get_address_asset_balance(test_sdk, setup):
+    with pytest.raises(ValueError, match='invalid address'):
+        test_sdk.get_address_asset_balance('bad', setup.test_asset)
+
+    keypair = Keypair.random()
+    address = keypair.address().decode()
+
+    with pytest.raises(ValueError, match='asset issuer invalid'):
+        test_sdk.get_address_asset_balance(address, Asset('TMP', 'bad'))
+
+    with pytest.raises(kin.SdkHorizonError, match='Resource Missing'):
+        test_sdk.get_address_asset_balance(address, setup.test_asset)
+
+    # success is tested below
 
 def test_check_account_exists(setup, test_sdk):
     with pytest.raises(ValueError, match='invalid address'):
@@ -128,6 +147,9 @@ def test_check_account_exists(setup, test_sdk):
 def test_create_account(test_sdk):
     keypair = Keypair.random()
     address = keypair.address().decode()
+
+    with pytest.raises(ValueError, match='invalid address'):
+        test_sdk.create_account('bad')
 
     # underfunded
     with pytest.raises(kin.SdkHorizonError, match=kin.CreateAccountResultCode.UNDERFUNDED):
@@ -273,6 +295,25 @@ def test_trust_asset(setup, test_sdk):
     assert test_sdk.get_address_asset_balance(test_sdk.get_address(), setup.test_asset) == Decimal('1000')
 
 
+def test_asset_trusted(setup, test_sdk):
+    with pytest.raises(ValueError, match='invalid address'):
+        test_sdk.check_asset_trusted('bad', setup.test_asset)
+
+    keypair = Keypair.random()
+    address = keypair.address().decode()
+
+    with pytest.raises(ValueError, match='asset issuer invalid'):
+        test_sdk.check_asset_trusted(address, Asset('TMP', 'bad'))
+
+    with pytest.raises(kin.SdkHorizonError, match='Resource Missing'):
+        test_sdk.check_asset_trusted(address, setup.test_asset)
+
+    tx_hash = test_sdk.create_account(address, starting_balance=100)
+    assert tx_hash
+
+    assert not test_sdk.check_asset_trusted(address, setup.test_asset)
+
+
 def test_send_asset(setup, test_sdk):
     with pytest.raises(ValueError, match='invalid address'):
         test_sdk.send_asset('bad', setup.test_asset, 10)
@@ -282,6 +323,9 @@ def test_send_asset(setup, test_sdk):
 
     with pytest.raises(ValueError, match='amount must be positive'):
         test_sdk.send_asset(address, setup.test_asset, 0)
+
+    with pytest.raises(ValueError, match='asset issuer invalid'):
+        test_sdk.send_asset(address, Asset('TMP', 'bad'), 10)
 
     # account does not exist yet
     with pytest.raises(kin.SdkHorizonError, match=kin.PaymentResultCode.NO_DESTINATION):
@@ -361,11 +405,16 @@ def test_get_account_data(setup, test_sdk):
     assert native_balance.asset_type == 'native'
 
 
+def test_get_transaction_data(test_sdk):
+    with pytest.raises(kin.SdkHorizonError, match='Resource Missing'):
+        test_sdk.get_transaction_data('bad')
+
+
 def test_monitor_address_transactions(setup, test_sdk):
     keypair = Keypair.random()
     address = keypair.address().decode()
 
-    with pytest.raises(Exception, match='404 Client Error: Not Found'):
+    with pytest.raises(Exception, match='404 Client Error: Not Found'):  # TODO: why not consistent?
         test_sdk.monitor_address_transactions(address, None)
 
     tx_hash1 = test_sdk.create_account(address, starting_balance=100, memo_text='create')

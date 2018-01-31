@@ -16,7 +16,7 @@ from .exceptions import (
     SdkHorizonError,
 )
 from .models import AccountData, TransactionData
-from .utils import validate_address, check_horizon_reply
+from .utils import validate_address, validate_seed, check_horizon_reply
 
 import logging
 logger = logging.getLogger(__name__)
@@ -44,38 +44,32 @@ class SDK(object):
     def __init__(self, base_seed='', horizon_endpoint_uri='', network='PUBLIC', channel_seeds=[]):
         """Create a new instance of the KIN SDK for Stellar.
 
-        The SDK needs a JSON-RPC provider, contract definitions and the wallet private key.
-
-        If private_key is not provided, the SDK can still be used in "anonymous" mode with only the following
+        If seed is not provided, the SDK can still be used in "anonymous" mode with only the following
         functions available:
-            - get_address_ether_balance
-            - get_transaction_status
-            - monitor_ether_transactions
+            - get_address_lumen_balance
+            - get_address_kin_balance
+            - check_kin_trusted
+            - check_account_exists
+            - get_account_data
+            - get_transaction_data
+            - monitor_address_transactions
 
-        :param str private_key: a private key to initialize the wallet with. If either private key or keyfile
-            are not provided, the wallet will not be initialized and methods needing the wallet will raise exception.
+        :param str seed: a seed to initialize the sdk wallet account with. If not provided, the wallet will not be
+            initialized and methods needing the wallet will raise exception.
 
-        :param str keyfile: the path to the keyfile to initialize to wallet with. Usually you will also need to supply
-        a password for this keyfile.
+        :param str horizon_endpoint_uri: a Horizon endpoint. If not provided, a default endpoint will be used,
+            either a testnet or pubnet, depending on the `network` parameter.
 
-        :param str password: a password for the keyfile.
+        :param str network: either PUBLIC or TESTNET, will set the Horizon endpoint in the absence of
+            `horizon_endpoint_uri`.
 
-        :param provider: JSON-RPC provider to work with. If not provided, a default `web3:providers:HTTPProvider`
-            is used, inited with provider_endpoint_uri.
-        :type provider: :class:`web3:providers:BaseProvider`
+        :param list channel_seeds: a list of channels to sign transactions with. More channels means less blocking
+            on transactions and better response time.
 
-        :param str provider_endpoint_uri: a URI to use with a default HTTPProvider. If not provided, a
-            default endpoint will be used.
+        :return: An instance of the SDK.
+        :rtype: :class:`~kin.SDK`
 
-        :param str contract_address: the address of the token contract. If not provided, a default KIN
-            contract address will be used.
-
-        :param dict contract_abi: The contract ABI. If not provided, a default KIN contract ABI will be used.
-
-        :returns: An instance of the SDK.
-        :rtype: :class:`~kin.TokenSDK`
-
-        :raises: :class:`~kin.exceptions.SdkConfigurationError` if some of the configuration parameters are invalid.
+        :raises: :class:`~kin.SdkConfigurationError` if some of the configuration parameters are invalid.
         """
 
         self.network = network
@@ -99,65 +93,78 @@ class SDK(object):
         # init sdk account base_keypair if a base_seed is supplied
         self.base_keypair = None
         if base_seed:
+            try:
+                validate_seed(base_seed)
+            except ValueError:
+                raise SdkConfigurationError('invalid base seed: {}'.format(base_seed))
             self.base_keypair = Keypair.from_seed(base_seed)
-            # init channel manager
-            if not channel_seeds:
+
+            # check channel seeds
+            if channel_seeds:
+                for channel_seed in channel_seeds:
+                    try:
+                        validate_seed(channel_seed)
+                    except ValueError:
+                        raise SdkConfigurationError('invalid channel seed: {}'.format(channel_seed))
+            else:
                 channel_seeds = [base_seed]
+
+            # init channel manager
             self.channel_manager = ChannelManager(base_seed, channel_seeds, self.network, self.horizon.horizon)
 
     def get_address(self):
-        """Get public address of the SDK wallet.
-        The wallet is configured by a private key supplied in during SDK initialization.
+        """Get the address of the SDK wallet account.
+        The wallet is configured by a seed supplied during SDK initialization.
 
-        :returns: public address of the wallet.
+        :return: public address of the wallet.
         :rtype: str
 
-        :raises: :class:`~kin.exceptions.SdkConfigurationError`: if the SDK was not configured with a private key.
+        :raises: :class:`~kin.SdkConfigurationError`: if the SDK wallet is not configured.
         """
         if not self.base_keypair:
             raise SdkNotConfiguredError('address not configured')
         return self.base_keypair.address().decode()
 
     def get_lumen_balance(self):
-        """Get XLM balance of the SDK wallet.
-        The wallet is configured by a private key supplied in during SDK initialization.
+        """Get lumen balance of the SDK wallet.
+        The wallet is configured by a seed supplied during SDK initialization.
 
-        :returns: : the balance in Ether of the internal wallet.
+        :return: : the balance in lumens.
         :rtype: Decimal
 
-        :raises: :class:`~kin.exceptions.SdkConfigurationError`: if the SDK was not configured with a private key.
+        :raises: :class:`~kin.SdkConfigurationError`: if the SDK wallet is not configured.
         """
         return self.get_address_lumen_balance(self.get_address())
 
     def get_kin_balance(self):
         """Get KIN balance of the SDK wallet.
-        The wallet is configured by a private key supplied in during SDK initialization.
+        The wallet is configured by a seed supplied during SDK initialization.
 
-        :returns: : the balance in KIN of the internal wallet.
+        :return: : the balance in KIN.
         :rtype: Decimal
 
-        :raises: :class:`~kin.exceptions.SdkConfigurationError`: if the SDK was not configured with a private key.
+        :raises: :class:`~kin.SdkConfigurationError`: if the SDK wallet is not configured.
         """
         return self.get_address_kin_balance(self.get_address())
 
     def get_address_lumen_balance(self, address):
-        """Get XLM balance of a public address.
+        """Get lumen balance of the account identified by the provided address.
 
-        :param: str address: a public address to query.
+        :param: str address: the address of the account to query.
 
-        :returns: the balance in Ether of the provided address.
+        :return: the lumen balance of the account.
         :rtype: Decimal
 
         :raises: ValueError: if the supplied address has a wrong format.
         """
-        return self.get_address_asset_balance(address, Asset('XLM'))
+        return self.get_address_asset_balance(address, Asset.native())
 
     def get_address_kin_balance(self, address):
-        """Get KIN balance of a public address.
+        """Get KIN balance of the account identified by the provided address.
 
-        :param: str address: a public address to query.
+        :param: str address: the address of the account to query.
 
-        :returns: : the balance in KIN of the provided address.
+        :return: : the balance in KIN of the account.
         :rtype: Decimal
 
         :raises: ValueError: if the supplied address has a wrong format.
@@ -165,6 +172,21 @@ class SDK(object):
         return self.get_address_asset_balance(address, KIN_ASSET)
 
     def get_address_asset_balance(self, address, asset):
+        """Get asset balance of the account identified by the provided address.
+
+        :param: str address: the address of the account to query.
+
+        :return: : the balance in asset units of the account.
+        :rtype: Decimal
+
+        :raises: ValueError: if the supplied address has a wrong format.
+        """
+        if not asset.is_native():
+            try:
+                validate_address(asset.issuer)
+            except ValueError:
+                raise ValueError('asset issuer invalid')
+
         acc_data = self.get_account_data(address)
         for balance in acc_data.balances:
             if (balance.asset_type == 'native' and asset.code == 'XLM') \
@@ -173,6 +195,21 @@ class SDK(object):
         return 0
 
     def create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, memo_text=None):
+        """Create a stellar account identified by the provided address.
+
+        :param str address: the address of the account to create.
+
+        :param number starting_balance: the starting balance of the account. If not provided, a default
+            MIN_ACCOUNT_BALANCE will be used.
+
+        :param str memo_text: a text to put into transaction memo.
+
+        :return: transaction hash
+        :rtype: str
+
+        :raises: :class:`~kin.SdkConfigurationError` if the SDK wallet is not configured.
+        :raises: ValueError: if the supplied address has a wrong format.
+        """
         if not self.base_keypair:
             raise SdkNotConfiguredError('address not configured')
         validate_address(address)
@@ -182,16 +219,30 @@ class SDK(object):
                                                              starting_balance),
                                                      memo_text=memo_text)
 
-    def trust_kin(self, limit=None):
-        return self.trust_asset(KIN_ASSET, limit)
-
     def trust_asset(self, asset, limit=None, memo_text=None):
+        """Establish a trustline from the SDK wallet to the asset issuer.
+
+        :param asset: the asset to establish a trustline to.
+        :rtype: :class:`~stellar_base.asset.Asset`
+
+        :param number limit: trustline limit.
+
+        :param str memo_text: a text to put into transaction memo.
+
+        :return: transaction hash
+        :rtype: str
+
+        :raises: :class:`~kin.SdkConfigurationError` if the SDK wallet is not configured.
+        :raises: ValueError: if the issuer address has a wrong format.
+        """
         if not self.base_keypair:
             raise SdkNotConfiguredError('address not configured')
-        try:
-            validate_address(asset.issuer)
-        except:
-            raise ValueError('asset issuer invalid')
+
+        if not asset.is_native():
+            try:
+                validate_address(asset.issuer)
+            except ValueError:
+                raise ValueError('asset issuer invalid')
 
         return self.channel_manager.send_transaction(lambda builder:
                                                      partial(builder.append_trust_op, asset.issuer, asset.code,
@@ -199,9 +250,34 @@ class SDK(object):
                                                      memo_text=memo_text)
 
     def check_kin_trusted(self, address):
+        """Check if the account has a trustline to KIN asset.
+
+        :param str address: the account address to query.
+
+        :return: True if the account has a trustline to KIN asset.
+        :rtype: boolean
+
+        :raises: ValueError: if the supplied address has a wrong format.
+        """
         return self.check_asset_trusted(address, KIN_ASSET)
 
     def check_asset_trusted(self, address, asset):
+        """Check if the account has a trustline to the provided asset.
+
+        :param str address: the account address to query.
+
+        :return: True if the account has a trustline to the asset.
+        :rtype: boolean
+
+        :raises: ValueError: if the supplied address has a wrong format.
+        :raises: ValueError: if the asset issuer address has a wrong format.
+        """
+        if not asset.is_native():
+            try:
+                validate_address(asset.issuer)
+            except ValueError:
+                raise ValueError('asset issuer invalid')
+
         acc_data = self.get_account_data(address)
         for balance in acc_data.balances:
             if balance.asset_code == asset.code and balance.asset_issuer == asset.issuer:
@@ -209,6 +285,14 @@ class SDK(object):
         return False
 
     def check_account_exists(self, address):
+        """Check whether the account identified by the provided address exists.
+
+        :param str address: the account address to query.
+
+        :return: True if the account exists.
+
+        :raises: ValueError: if the supplied address has a wrong format.
+        """
         try:
             self.get_account_data(address)
             return True
@@ -218,31 +302,70 @@ class SDK(object):
             raise
 
     def send_lumens(self, address, amount, memo_text=None):
-        return self.send_asset(address, Asset('XLM'), amount, memo_text)
+        """Send lumens to the account identified by the provided address.
+
+        :param str address: the account to send lumens to.
+
+        :param number amount: the number of lumens to send.
+
+        :param str memo_text: a text to put into transaction memo.
+
+        :return: transaction hash
+        :rtype: str
+
+        :raises: :class:`~kin.SdkConfigurationError` if the SDK wallet is not configured.
+        :raises: ValueError: if the provided address has a wrong format.
+        :raises: ValueError: if the amount is not positive.
+        """
+        return self.send_asset(address, Asset.native(), amount, memo_text)
 
     def send_kin(self, address, amount, memo_text=None):
+        """Send KIN to the account identified by the provided address.
+
+        :param str address: the account to send KIN to.
+
+        :param number amount: the number of KIN to send.
+
+        :param str memo_text: a text to put into transaction memo.
+
+        :return: transaction hash
+        :rtype: str
+
+        :raises: :class:`~kin.SdkConfigurationError` if the SDK wallet is not configured.
+        :raises: ValueError: if the provided address has a wrong format.
+        :raises: ValueError: if the amount is not positive.
+        """
         return self.send_asset(address, KIN_ASSET, amount, memo_text)
 
     def send_asset(self, address, asset, amount, memo_text=None):
-        """Send tokens from my wallet to address.
+        """Send asset to the account identified by the provided address.
 
-        :param str address: the address to send tokens to.
+        :param str address: the account to send asset to.
 
-        :param float amount: the amount of tokens to transfer.
+        :param number amount: the asset amount to send.
 
-        :returns: transaction id
+        :param str memo_text: a text to put into transaction memo.
+
+        :return: transaction hash
         :rtype: str
 
-        :raises: :class:`~kin.exceptions.SdkConfigurationError`: if the SDK was not configured with a private key.
+        :raises: :class:`~kin.SdkConfigurationError` if the SDK wallet is not configured.
+        :raises: ValueError: if the provided address has a wrong format.
+        :raises: ValueError: if the asset issuer address has a wrong format.
         :raises: ValueError: if the amount is not positive.
-        :raises: ValueError: if the nonce is incorrect.
-        :raises: ValueError if insufficient funds for for gas * price.
         """
         if not self.base_keypair:
             raise SdkNotConfiguredError('address not configured')
         validate_address(address)
+
         if amount <= 0:
             raise ValueError('amount must be positive')
+
+        if not asset.is_native():
+            try:
+                validate_address(asset.issuer)
+            except ValueError:
+                raise ValueError('asset issuer invalid')
 
         return self.channel_manager.send_transaction(lambda builder:
                                                      partial(builder.append_payment_op, address, amount,
@@ -252,9 +375,12 @@ class SDK(object):
     def get_account_data(self, address):
         """Gets account data.
 
-        :param str address: account address
+        :param str address: the account to query.
+
         :return: account data
         :rtype: :class:`~kin.AccountData`
+
+        :raises: ValueError: if the provided address has a wrong format.
         """
         validate_address(address)
         acc = self.horizon.account(address)
@@ -265,7 +391,8 @@ class SDK(object):
     def get_transaction_data(self, tx_hash):
         """Gets transaction data.
 
-        :param str tx_hash: transaction hash
+        :param str tx_hash: transaction hash.
+
         :return: transaction data
         :rtype: :class:`~kin.TransactionData`
         """
@@ -282,16 +409,30 @@ class SDK(object):
         return TransactionData(tx, strict=False)
 
     def monitor_transactions(self, callback_fn):
-        """Monitor transactions related to the sdk account"""
+        """Monitor transactions related to the SDK wallet account.
+        NOTE: the functions starts a background thread.
+
+        :param callback_fn: the function to call on each received transaction. The function has one parameter,
+            which is a transaction data object.
+        """
         if not self.base_keypair:
             raise SdkNotConfiguredError('address not configured')
         self.monitor_address_transactions(self.get_address(), callback_fn)
 
     def monitor_address_transactions(self, address, callback_fn):
-        """Monitor transactions related to specific acccount"""
+        """Monitor transactions related to the account identified by a provided address.
+        NOTE: the functions starts a background thread.
+
+        :param callback_fn: the function to call on each received transaction. The function has one parameter,
+            which is a transaction data object.
+
+        :raises: ValueError: if the provided address has a wrong format.
+        """
+        validate_address(address)
 
         # make the SSE request synchronous (will throw errors in the current thread)
         events = self.horizon.account_transactions(address, sse=True)  # TODO: last_id support
+        # check_horizon_reply(events)  # NOTE: not a Horizon reply!  # TODO: why not consistent
 
         # asynchronous event processor
         def event_processor():

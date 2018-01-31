@@ -18,7 +18,7 @@ class SdkNotConfiguredError(SdkError):
     pass
 
 
-class SdkHorizonError(SdkError):
+class SdkHorizonError(SdkError):  # TODO: schematics model
     #def __init__(self, j):
     #    self.__dict__ = json.loads(j)
 
@@ -43,9 +43,11 @@ class SdkHorizonError(SdkError):
     def __str__(self):
         if self.operation_result_codes:
             return repr(self.operation_result_codes[0])
-        return repr(self.transaction_result_code)
+        return repr(self.title)
+
 
 # result codes from github.com/stellar/horizon/codes/main.go
+
 
 # noinspection PyClassHasNoInit
 class TransactionResultCode:

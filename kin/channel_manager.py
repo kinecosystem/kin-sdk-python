@@ -1,5 +1,11 @@
+# -*- coding: utf-8 -*
+
+# Copyright (C) 2018 Kin Foundation
+
 import sys
+
 from stellar_base.keypair import Keypair
+
 from .builder import Builder
 from .utils import check_horizon_reply
 
@@ -10,6 +16,7 @@ else:
 
 
 class ChannelManager(object):
+    """ The class :class:`~kin.ChannelManager` wraps channel-related specifics of transaction sending."""
     def __init__(self, base_seed, channel_seeds, network, horizon):
         if not base_seed:
             raise ValueError('base seed not provided')
@@ -27,6 +34,16 @@ class ChannelManager(object):
             self.channel_builders.put(builder)
 
     def send_transaction(self, add_ops_fn, memo_text=None):
+        """Send a transaction using an available channel account.
+
+        :param add_ops_fn: a function to call, that will add operations to the transaction. The function should be
+            `partial`, because a `source` parameter will be added.
+
+        :param str memo_text: an optional text to add as transaction memo.
+
+        :return: transaction hash
+        :rtype: str
+        """
         # get an available channel builder first (blocking)
         builder = self.channel_builders.get(True)
         try:

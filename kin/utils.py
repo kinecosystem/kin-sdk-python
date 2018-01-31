@@ -16,6 +16,15 @@ def validate_address(address):
         raise ValueError('invalid address')
 
 
+def validate_seed(seed):
+    if len(seed) != 56:
+        raise ValueError('invalid seed')
+
+    decoded = decode_check('seed', seed)
+    if len(decoded) != 32:
+        raise ValueError('invalid seed')
+
+
 def check_horizon_reply(reply):
     if 'status' not in reply:
         return reply

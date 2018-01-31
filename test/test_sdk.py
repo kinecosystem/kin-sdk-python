@@ -131,6 +131,7 @@ def test_get_address_asset_balance(test_sdk, setup):
 
     # success is tested below
 
+
 def test_check_account_exists(setup, test_sdk):
     with pytest.raises(ValueError, match='invalid address'):
         test_sdk.check_account_exists('bad')

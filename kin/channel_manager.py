@@ -18,13 +18,6 @@ else:
 class ChannelManager(object):
     """ The class :class:`~kin.ChannelManager` wraps channel-related specifics of transaction sending."""
     def __init__(self, base_seed, channel_seeds, network, horizon):
-        if not base_seed:
-            raise ValueError('base seed not provided')
-        if not network:
-            raise ValueError('network not provided')
-        if not horizon:
-            raise ValueError('horizon not provided')
-
         self.base_seed = base_seed
         self.base_address = Keypair.from_seed(base_seed).address().decode()
         self.channel_builders = queue.Queue(len(channel_seeds))

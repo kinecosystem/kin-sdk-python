@@ -67,10 +67,6 @@ class Horizon(object):
         abs_url = self.horizon_uri + rel_url
         return self._query(abs_url, params, sse)
 
-    def accounts(self, params=None, sse=False):
-        url = '/accounts/'
-        return self.query(url, params, sse)
-
     def account(self, address):
         url = '/accounts/' + address
         return self.query(url)
@@ -128,23 +124,19 @@ class Horizon(object):
         return self.query(url, params, sse)
 
     def ledger(self, ledger_id):
-        url = '/ledgers/' + ledger_id
+        url = '/ledgers/' + str(ledger_id)
         return self.query(url)
 
     def ledger_effects(self, ledger_id, params=None):
-        url = '/ledgers/' + ledger_id + '/effects/'
-        return self.query(url, params)
-
-    def ledger_offers(self, ledger_id, params=None):
-        url = '/ledgers/' + ledger_id + '/offers/'
+        url = '/ledgers/' + str(ledger_id) + '/effects/'
         return self.query(url, params)
 
     def ledger_operations(self, ledger_id, params=None):
-        url = '/ledgers/' + ledger_id + '/operations/'
+        url = '/ledgers/' + str(ledger_id) + '/operations/'
         return self.query(url, params)
 
     def ledger_payments(self, ledger_id, params=None):
-        url = '/ledgers/' + ledger_id + '/payments/'
+        url = '/ledgers/' + str(ledger_id) + '/payments/'
         return self.query(url, params)
 
     def effects(self, params=None, sse=False):
@@ -156,11 +148,11 @@ class Horizon(object):
         return self.query(url, params, sse)
 
     def operation(self, op_id, params=None):
-        url = '/operations/' + op_id
+        url = '/operations/' + str(op_id)
         return self.query(url, params)
 
-    def operation_effects(self, tx_hash, params=None):
-        url = '/operations/' + tx_hash + '/effects/'
+    def operation_effects(self, op_id, params=None):
+        url = '/operations/' + str(op_id) + '/effects/'
         return self.query(url, params)
 
     def payments(self, params=None, sse=False):

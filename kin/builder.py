@@ -4,7 +4,6 @@
 
 import stellar_base.builder
 from stellar_base.memo import NoneMemo
-from stellar_base.keypair import Keypair
 
 from .horizon import HORIZON_LIVE, HORIZON_TEST
 from .horizon import Horizon

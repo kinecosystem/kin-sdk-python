@@ -108,6 +108,7 @@ def test_create_account(test_sdk):
     starting_balance = 100
     tx_hash = test_sdk.create_account(address, starting_balance=starting_balance, memo_text='foobar')
     assert tx_hash
+    print '+++++ ', tx_hash
     assert test_sdk.check_account_exists(address)
     assert test_sdk.get_address_lumen_balance(address) == starting_balance
 

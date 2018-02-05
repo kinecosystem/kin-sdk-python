@@ -33,7 +33,7 @@ USER_AGENT = 'kin-stellar-python/{}'.format(sdk_version)
 
 class Horizon(object):
     """
-    This class redefines :class:`~stellar_base.horizon_uri` to provide additional functionality.
+    This class redefines :class:`~stellar_base.horizon.Horizon` to provide additional functionality.
     """
     def __init__(self, horizon_uri=None, pool_size=DEFAULT_POOLSIZE, num_retries=DEFAULT_NUM_RETRIES,
                  request_timeout=DEFAULT_REQUEST_TIMEOUT, backoff_factor=DEFAULT_BACKOFF_FACTOR):

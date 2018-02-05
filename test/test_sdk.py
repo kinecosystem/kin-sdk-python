@@ -511,11 +511,12 @@ def fund(setup, address):
         j = json.loads(r.text)
         if 'hash' in j or 'op_already_exists' in j:
             return
+        print('fund error: ', r.text)
     raise Exception('account funding failed')
 
 
 def fund_asset(setup, address, amount, memo_text=None):
-    builder = Builder(secret=setup.issuer_keypair.seed(), horizon=setup.horizon_endpoint_uri, network=setup.network)
+    builder = Builder(secret=setup.issuer_keypair.seed(), horizon_uri=setup.horizon_endpoint_uri, network=setup.network)
     builder.append_payment_op(address, amount, asset_type=setup.test_asset.code, asset_issuer=setup.test_asset.issuer)
     if memo_text:
         builder.add_text_memo(memo_text[:28])  # max memo length is 28
@@ -526,7 +527,7 @@ def fund_asset(setup, address, amount, memo_text=None):
 
 
 def trust_asset(setup, test_sdk, seed, memo_text=None):
-    builder = Builder(secret=seed, horizon=test_sdk.horizon.horizon, network=test_sdk.network)
+    builder = Builder(secret=seed, horizon_uri=test_sdk.horizon.horizon_uri, network=test_sdk.network)
     builder.append_trust_op(setup.test_asset.issuer, setup.test_asset.code)
     if memo_text:
         builder.add_text_memo(memo_text[:28])  # max memo length is 28

@@ -6,7 +6,6 @@ from decimal import Decimal, getcontext
 from functools import partial
 
 from stellar_base.asset import Asset
-from stellar_base.horizon import Horizon, horizon_testnet, horizon_livenet
 from stellar_base.keypair import Keypair
 
 from .channel_manager import ChannelManager
@@ -15,6 +14,7 @@ from .exceptions import (
     SdkNotConfiguredError,
     SdkHorizonError,
 )
+from .horizon import Horizon
 from .models import AccountData, TransactionData
 from .utils import validate_address, validate_seed, check_horizon_reply
 
@@ -29,10 +29,6 @@ KIN_ASSET = Asset('KIN', KIN_ISSUER)
 # https://www.stellar.org/developers/guides/concepts/fees.html
 BASE_RESERVE = 0.5  # in XLM
 MIN_ACCOUNT_BALANCE = (2 + 1) * BASE_RESERVE  # 1 additional trustline op
-
-# default request retry configuration (linear backoff).
-RETRY_ATTEMPTS = 3
-RETRY_DELAY = 0.3
 
 
 class SDK(object):
@@ -72,17 +68,17 @@ class SDK(object):
         :raises: :class:`~kin.SdkConfigurationError` if some of the configuration parameters are invalid.
         """
 
-        self.network = network
-        if not self.network:
-            self.network = 'PUBLIC'
+        self.network = network or 'PUBLIC'
 
+        pool_size = max(1, len(channel_seeds)) + 2  # for monitoring connection + extra
         if horizon_endpoint_uri:
-            self.horizon = Horizon(horizon_endpoint_uri)
+            self.horizon = Horizon(horizon_uri=horizon_endpoint_uri, pool_size=pool_size)
         else:
+            from stellar_base.horizon import HORIZON_LIVE, HORIZON_TEST
             if self.network == 'TESTNET':
-                self.horizon = horizon_testnet()
+                self.horizon = Horizon(horizon_uri=HORIZON_TEST, pool_size=pool_size)
             else:
-                self.horizon = horizon_livenet()
+                self.horizon = Horizon(horizon_uri=HORIZON_LIVE, pool_size=pool_size)
 
         # check Horizon connection
         try:
@@ -110,7 +106,7 @@ class SDK(object):
                 channel_seeds = [base_seed]
 
             # init channel manager
-            self.channel_manager = ChannelManager(base_seed, channel_seeds, self.network, self.horizon.horizon)
+            self.channel_manager = ChannelManager(base_seed, channel_seeds, self.network, self.horizon)
 
     def get_address(self):
         """Get the address of the SDK wallet account.

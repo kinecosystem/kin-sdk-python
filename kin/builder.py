@@ -8,6 +8,7 @@ from stellar_base.keypair import Keypair
 
 from .horizon import HORIZON_LIVE, HORIZON_TEST
 from .horizon import Horizon
+from .utils import validate_address, validate_seed
 
 
 class Builder(stellar_base.builder.Builder):
@@ -15,15 +16,17 @@ class Builder(stellar_base.builder.Builder):
     This class overrides :class:`~stellar_base.builder` to provide additional functionality.
     """
     def __init__(self, secret=None, address=None, horizon=None, horizon_uri=None, network=None, sequence=None):
-        self.key_pair = None
-        self.address = None
         if secret:
-            self.key_pair = Keypair.from_seed(secret)
-            self.address = self.key_pair.address().decode()
+            validate_seed(secret)
         elif address:
-            self.address = address
+            validate_address(address)
         else:
-            raise Exception('no stellar address provided')
+            raise Exception('either secret or address must be provided')
+
+        # run baseclass constructor to init baseclass variables
+        super(Builder, self).__init__(secret=secret, address=address, sequence=1)
+
+        # custom overrides
 
         self.network = network.upper() if network else 'PUBLIC'
 
@@ -35,14 +38,6 @@ class Builder(stellar_base.builder.Builder):
             self.horizon = Horizon(HORIZON_LIVE) if self.network == 'PUBLIC' else Horizon(HORIZON_TEST)
 
         self.sequence = sequence if sequence else self.get_sequence()
-
-        self.ops = []
-        self.time_bounds = []
-        self.memo = NoneMemo()
-        self.fee = None
-        self.tx = None
-        self.te = None
-
 
     def clear(self):
         """"Clears the builder so it can be reused."""

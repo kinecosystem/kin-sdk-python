@@ -1,6 +1,4 @@
 from decimal import Decimal
-import json
-import requests
 import pytest
 import threading
 from time import sleep
@@ -56,56 +54,6 @@ def test_sdk_create_success():
     assert sdk.base_keypair.verifying_key == keypair.verifying_key
     assert sdk.base_keypair.signing_key == keypair.signing_key
     assert sdk.channel_manager
-
-
-@pytest.fixture(scope='session')
-def setup(testnet):
-    class Struct:
-        """Handy variable holder"""
-        def __init__(self, **entries): self.__dict__.update(entries)
-
-    sdk_keypair = Keypair.random()
-    issuer_keypair = Keypair.random()
-    test_asset = Asset('KIN', issuer_keypair.address().decode())
-
-    # global testnet
-    if testnet:
-        from stellar_base.horizon import HORIZON_TEST
-        return Struct(type='testnet',
-                      network='TESTNET',
-                      sdk_keypair=sdk_keypair,
-                      issuer_keypair=issuer_keypair,
-                      test_asset=test_asset,
-                      horizon_endpoint_uri=HORIZON_TEST)
-
-    # local testnet (zulucrypto docker)
-    # https://github.com/zulucrypto/docker-stellar-integration-test-network
-    from stellar_base.network import NETWORKS
-    NETWORKS['CUSTOM'] = 'Integration Test Network ; zulucrypto'
-    return Struct(type='local',
-                  network='CUSTOM',
-                  sdk_keypair=sdk_keypair,
-                  issuer_keypair=issuer_keypair,
-                  test_asset=test_asset,
-                  horizon_endpoint_uri='http://localhost:8000')
-
-
-@pytest.fixture(scope='session')
-def test_sdk(setup):
-    # create and fund sdk account
-    fund(setup, setup.sdk_keypair.address().decode())
-
-    # create and fund issuer account
-    fund(setup, setup.issuer_keypair.address().decode())
-
-    # override KIN with our test asset
-    # TODO: does not work?
-    kin.KIN_ASSET = setup.test_asset
-
-    # init sdk
-    sdk = kin.SDK(base_seed=setup.sdk_keypair.seed(), horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network)
-    assert sdk
-    return sdk
 
 
 def test_get_address(setup, test_sdk):
@@ -461,13 +409,13 @@ def test_monitor_address_transactions(setup, test_sdk):
     assert tx_datas[2].operations[0].type == 'payment'
 
 
-def test_channels(setup):
+def test_channels(setup, helpers):
     # prepare channel accounts
     channel_keypairs = [Keypair.random(), Keypair.random(), Keypair.random(), Keypair.random()]
     channel_seeds = [channel_keypair.seed() for channel_keypair in channel_keypairs]
     channel_addresses = [channel_keypair.address().decode() for channel_keypair in channel_keypairs]
     for channel_address in channel_addresses:
-        fund(setup, channel_address)
+        helpers.fund_account(setup, channel_address)
 
     # init sdk with these channels
     sdk = kin.SDK(base_seed=setup.sdk_keypair.seed(), horizon_endpoint_uri=setup.horizon_endpoint_uri,
@@ -502,17 +450,7 @@ def test_channels(setup):
         t.join()
 
 
-# helpers
-
-
-def fund(setup, address):
-    for attempt in range(3):
-        r = requests.get(setup.horizon_endpoint_uri + '/friendbot?addr=' + address)  # Get 10000 lumens
-        j = json.loads(r.text)
-        if 'hash' in j or 'op_already_exists' in j:
-            return
-        print('fund error: ', r.text)
-    raise Exception('account funding failed')
+# local helpers
 
 
 def fund_asset(setup, address, amount, memo_text=None):

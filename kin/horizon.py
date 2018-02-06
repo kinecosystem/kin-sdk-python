@@ -25,7 +25,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_REQUEST_TIMEOUT = 11  # two ledger times + extra
+DEFAULT_REQUEST_TIMEOUT = 60  # one minute, see github.com/stellar/horizon/txsub/system.go#L223
 DEFAULT_NUM_RETRIES = 3
 DEFAULT_BACKOFF_FACTOR = 0.3
 USER_AGENT = 'kin-stellar-python/{}'.format(sdk_version)

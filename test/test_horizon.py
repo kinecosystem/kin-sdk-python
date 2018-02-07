@@ -1,6 +1,7 @@
 import pytest
 from requests.adapters import DEFAULT_POOLSIZE
 from stellar_base.horizon import HORIZON_TEST, HORIZON_LIVE
+from kin.exceptions import SdkHorizonError
 from kin.horizon import Horizon, DEFAULT_REQUEST_TIMEOUT, DEFAULT_NUM_RETRIES, DEFAULT_BACKOFF_FACTOR, USER_AGENT
 
 
@@ -53,62 +54,120 @@ def test_create_custom():
 
 
 def test_account(test_sdk):
-    address = test_sdk.get_address()
+    with pytest.raises(SdkHorizonError, match='Resource Missing'):
+        test_sdk.horizon.account('bad')
 
+    address = test_sdk.get_address()
     reply = test_sdk.horizon.account(address)
     assert reply
     assert reply['id']
 
-    # effects
+
+def test_account_effects(test_sdk):
+    with pytest.raises(SdkHorizonError, match='Resource Missing'):
+        test_sdk.horizon.account_effects('bad')
+
+    address = test_sdk.get_address()
     reply = test_sdk.horizon.account_effects(address)
     assert reply
-    assert reply['_embedded']['records'][0]
+    assert reply['_embedded']['records']
 
-    # offers
+
+def test_account_offers(test_sdk):
+    # does not raise on nonexistent account!
+
+    address = test_sdk.get_address()
     reply = test_sdk.horizon.account_offers(address)
     assert reply
     assert reply['_embedded']
 
-    # operations
+
+def test_account_operations(test_sdk):
+    with pytest.raises(SdkHorizonError, match='Resource Missing'):
+        test_sdk.horizon.account_operations('bad')
+
+    address = test_sdk.get_address()
     reply = test_sdk.horizon.account_operations(address)
     assert reply
-    assert reply['_embedded']['records'][0]
+    assert reply['_embedded']['records']
 
-    # transactions
+
+def test_account_transactions(test_sdk):
+    with pytest.raises(SdkHorizonError, match='Resource Missing'):
+        test_sdk.horizon.account_transactions('bad')
+
+    address = test_sdk.get_address()
     reply = test_sdk.horizon.account_transactions(address)
     assert reply
-    assert reply['_embedded']['records'][0]
+    assert reply['_embedded']['records']
 
-    # payments
+
+def test_account_payments(test_sdk):
+    with pytest.raises(SdkHorizonError, match='Resource Missing'):
+        test_sdk.horizon.account_payments('bad')
+
+    address = test_sdk.get_address()
     reply = test_sdk.horizon.account_payments(address)
     assert reply
-    assert reply['_embedded']['records'][0]
+    assert reply['_embedded']['records']
+
+
+def test_transactions(test_sdk):
+    reply = test_sdk.horizon.transactions()
+    assert reply
+    assert reply['_embedded']['records']
+
+
+def get_first_tx_hash(test_sdk):
+    if not hasattr(test_sdk, 'first_tx_hash'):
+        reply = test_sdk.horizon.account_transactions(test_sdk.get_address())
+        assert reply
+        tx = reply['_embedded']['records'][0]
+        assert tx['hash']
+        test_sdk.first_tx_hash = tx['hash']
+    return test_sdk.first_tx_hash
 
 
 def test_transaction(test_sdk):
-    reply = test_sdk.horizon.transactions(test_sdk.get_address())
-    assert reply
-    assert reply['_embedded']['records'][0]
-    tx_id = reply['_embedded']['records'][0]['id']
+    with pytest.raises(SdkHorizonError, match='Resource Missing'):
+        test_sdk.horizon.transaction('bad')
 
+    tx_id = get_first_tx_hash(test_sdk)
     reply = test_sdk.horizon.transaction(tx_id)
     assert reply
     assert reply['id'] == tx_id
 
-    # effects
+    assert reply['operation_count'] == 1
+
+
+def test_transaction_effects(test_sdk):
+    with pytest.raises(SdkHorizonError, match='Resource Missing'):
+        test_sdk.horizon.transaction_effects('bad')
+
+    tx_id = get_first_tx_hash(test_sdk)
     reply = test_sdk.horizon.transaction_effects(tx_id)
     assert reply
-    assert reply['_embedded']['records'][0]
+    assert reply['_embedded']['records']
 
-    # operations
+
+def test_transaction_operations(test_sdk):
+    with pytest.raises(SdkHorizonError, match='Resource Missing'):
+        test_sdk.horizon.transaction_operations('bad')
+
+    tx_id = get_first_tx_hash(test_sdk)
     reply = test_sdk.horizon.transaction_operations(tx_id)
     assert reply
-    assert reply['_embedded']['records'][0]
+    assert reply['_embedded']['records']
 
-    # payments
+
+def test_transaction_payments(test_sdk):
+    with pytest.raises(SdkHorizonError, match='Resource Missing'):
+        test_sdk.horizon.transaction_payments('bad')
+
+    tx_id = get_first_tx_hash(test_sdk)
     reply = test_sdk.horizon.transaction_payments(tx_id)
     assert reply
-    assert reply['_embedded']['records'][0]
+    assert reply['_embedded']['records']
 
 
 def test_order_book(setup, test_sdk):
@@ -135,28 +194,44 @@ def test_order_book(setup, test_sdk):
     assert reply['_embedded']
 
 
-def test_ledger(test_sdk):
+def test_ledgers(test_sdk):
     reply = test_sdk.horizon.ledgers()
     assert reply
-    assert reply['_embedded']['records'][0]
-    ledger_num = reply['_embedded']['records'][0]['sequence']
+    assert reply['_embedded']['records']
 
-    reply = test_sdk.horizon.ledger(ledger_num)
+
+def test_ledger(test_sdk):
+    with pytest.raises(SdkHorizonError, match='Bad Request'):  # not 'Resource Missing'!
+        test_sdk.horizon.ledger('bad')
+
+    reply = test_sdk.horizon.ledger(2)
     assert reply
-    assert reply['sequence'] == ledger_num
+    assert reply['sequence'] == 2
 
-    # effects
-    reply = test_sdk.horizon.ledger_effects(ledger_num)
+
+def test_ledger_effects(test_sdk):
+    with pytest.raises(SdkHorizonError, match='Bad Request'):  # not 'Resource Missing'!
+        test_sdk.horizon.ledger_effects('bad')
+
+    reply = test_sdk.horizon.ledger_effects(2)
     assert reply
     assert reply['_embedded']
 
-    # operations
-    reply = test_sdk.horizon.ledger_operations(ledger_num)
+
+def test_ledger_operations(test_sdk):
+    with pytest.raises(SdkHorizonError, match='Bad Request'):  # not 'Resource Missing'!
+        test_sdk.horizon.ledger_operations('bad')
+
+    reply = test_sdk.horizon.ledger_operations(2)
     assert reply
     assert reply['_embedded']
 
-    # payments
-    reply = test_sdk.horizon.ledger_payments(ledger_num)
+
+def test_ledger_payments(test_sdk):
+    with pytest.raises(SdkHorizonError, match='Bad Request'):  # not 'Resource Missing'!
+        test_sdk.horizon.ledger_payments('bad')
+
+    reply = test_sdk.horizon.ledger_payments(2)
     assert reply
     assert reply['_embedded']
 
@@ -164,33 +239,48 @@ def test_ledger(test_sdk):
 def test_effects(test_sdk):
     reply = test_sdk.horizon.effects()
     assert reply
-    assert reply['_embedded']['records'][0]
+    assert reply['_embedded']['records']
+
+
+def test_operations(test_sdk):
+    reply = test_sdk.horizon.operations()
+    assert reply
+    assert reply['_embedded']['records']
 
 
 def test_operation(test_sdk):
+    with pytest.raises(SdkHorizonError, match='Bad Request'):  # not 'Resource Missing'!
+        test_sdk.horizon.operation('bad')
+
     reply = test_sdk.horizon.operations()
-    assert reply
-    assert reply['_embedded']['records'][0]
     op_id = reply['_embedded']['records'][0]['id']
 
     reply = test_sdk.horizon.operation(op_id)
     assert reply
     assert reply['id'] == op_id
 
-    # effects
+
+def test_operation_effects(test_sdk):
+    with pytest.raises(SdkHorizonError, match='Bad Request'):  # not 'Resource Missing'!
+        test_sdk.horizon.operation_effects('bad')
+
+    reply = test_sdk.horizon.operations()
+    op_id = reply['_embedded']['records'][0]['id']
+
     reply = test_sdk.horizon.operation_effects(op_id)
     assert reply
-    assert reply['_embedded']['records'][0]
+    assert reply['_embedded']['records']
 
 
 def test_payments(test_sdk):
     reply = test_sdk.horizon.payments()
     assert reply
-    assert reply['_embedded']['records'][0]
+    assert reply['_embedded']['records']
 
 
 def test_assets(test_sdk):
-    #reply = test_sdk.horizon.assets()
-    #assert reply
-    #assert reply['_embedded']['records'][0]
+    # TODO: 'Resource Missing' with local docker
+    # reply = test_sdk.horizon.assets()
+    # assert reply
+    # assert reply['_embedded']['records']
     pass

@@ -16,7 +16,7 @@ from .exceptions import (
 )
 from .horizon import Horizon
 from .models import AccountData, TransactionData
-from .utils import validate_address, validate_seed, check_horizon_reply
+from .utils import validate_address, validate_seed
 
 import logging
 logger = logging.getLogger(__name__)
@@ -380,8 +380,6 @@ class SDK(object):
         """
         validate_address(address)
         acc = self.horizon.account(address)
-        check_horizon_reply(acc)
-
         return AccountData(acc, strict=False)
 
     def get_transaction_data(self, tx_hash):
@@ -394,11 +392,9 @@ class SDK(object):
         """
         # get transaction data
         tx = self.horizon.transaction(tx_hash)
-        check_horizon_reply(tx)
 
         # get transaction operations
         tx_ops = self.horizon.transaction_operations(tx['hash'])  # TODO: max 50, paged?
-        check_horizon_reply(tx_ops)
 
         tx['operations'] = tx_ops['_embedded']['records']
 
@@ -440,7 +436,6 @@ class SDK(object):
 
                         # get transaction operations
                         tx_ops = self.horizon.transaction_operations(tx['hash'])  # TODO: max 50, paged?
-                        check_horizon_reply(tx_ops)
 
                         tx['operations'] = tx_ops['_embedded']['records']
 

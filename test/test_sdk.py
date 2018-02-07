@@ -45,15 +45,13 @@ def test_sdk_not_configured():
         sdk.monitor_transactions(None)
 
 
-def test_sdk_create_success():
-    keypair = Keypair.random()
-    sdk = kin.SDK(base_seed=keypair.seed())
-    assert sdk
-    assert sdk.horizon
-    assert sdk.network == 'PUBLIC'
-    assert sdk.base_keypair.verifying_key == keypair.verifying_key
-    assert sdk.base_keypair.signing_key == keypair.signing_key
-    assert sdk.channel_manager
+def test_sdk_create_success(setup, test_sdk):
+    assert test_sdk.horizon
+    assert test_sdk.horizon.horizon_uri == setup.horizon_endpoint_uri
+    assert test_sdk.network == setup.network
+    assert test_sdk.base_keypair.verifying_key == setup.sdk_keypair.verifying_key
+    assert test_sdk.base_keypair.signing_key == setup.sdk_keypair.signing_key
+    assert test_sdk.channel_manager
 
 
 def test_get_address(setup, test_sdk):
@@ -425,17 +423,20 @@ def test_channels(setup, helpers):
     assert sdk.channel_manager.channel_builders.qsize() == len(channel_keypairs)
 
     def channel_worker():
-        # create an account using a channel
-        address = Keypair.random().address().decode()
-        tx_hash = sdk.create_account(address, starting_balance=100)
-        assert tx_hash
-        sleep(1)
-        tx_data = sdk.get_transaction_data(tx_hash)
-        assert tx_data
-        # transaction envelope source is some channel account
-        assert tx_data.source_account in channel_addresses
-        # operation source is the base account
-        assert tx_data.operations[0].source_account == sdk.get_address()
+        try:
+            # create an account using a channel
+            address = Keypair.random().address().decode()
+            tx_hash = sdk.create_account(address, starting_balance=100)
+            assert tx_hash
+            sleep(1)
+            tx_data = sdk.get_transaction_data(tx_hash)
+            assert tx_data
+            # transaction envelope source is some channel account
+            assert tx_data.source_account in channel_addresses
+            # operation source is the base account
+            assert tx_data.operations[0].source_account == sdk.get_address()
+        except:
+            assert False
 
     # now issue parallel transactions
     threads = []
@@ -473,4 +474,3 @@ def trust_asset(setup, test_sdk, seed, memo_text=None):
     reply = builder.submit()
     kin.check_horizon_reply(reply)
     return reply.get('hash')
-

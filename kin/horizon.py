@@ -19,6 +19,7 @@ else:
 
 from stellar_base.horizon import HORIZON_LIVE, HORIZON_TEST
 
+from .utils import check_horizon_reply
 from .version import __version__ as sdk_version
 
 import logging
@@ -61,11 +62,13 @@ class Horizon(object):
     def submit(self, te):
         params = {'tx': te}
         url = self.horizon_uri + '/transactions/'
-        return self._session.post(url, data=params, timeout=self.request_timeout).json()
+        reply = self._session.post(url, data=params, timeout=self.request_timeout).json()
+        return check_horizon_reply(reply)
 
     def query(self, rel_url, params=None, sse=False):
         abs_url = self.horizon_uri + rel_url
-        return self._query(abs_url, params, sse)
+        reply = self._query(abs_url, params, sse)
+        return check_horizon_reply(reply) if not sse else reply
 
     def account(self, address):
         url = '/accounts/' + address
@@ -183,5 +186,3 @@ class Horizon(object):
     @staticmethod
     def livenet():
         return Horizon(horizon_uri=HORIZON_LIVE)
-
-

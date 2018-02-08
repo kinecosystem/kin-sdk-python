@@ -84,3 +84,25 @@ class TransactionData(Model):
     def __repr__(self):
         return self.__str__()
 
+
+class TransactionResultCodes(Model):
+    transaction = StringType()
+    operations = ListType(StringType, default=[])
+
+
+class FailedTransactionExtras(Model):
+    envelope_xdr = StringType()
+    result_xdr = StringType()
+    result_codes = ModelType(TransactionResultCodes)
+
+
+class HTTPProblemDetails(Model):
+    """HTTP Problem Details object.
+    See https://tools.ietf.org/html/rfc7807
+    """
+    type = StringType()
+    title = StringType()
+    status = IntType()
+    detail = StringType()
+    instance = StringType()
+    extras = ModelType(FailedTransactionExtras)

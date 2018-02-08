@@ -32,8 +32,3 @@ def validate_seed(seed):
     if len(decoded) != 32:
         raise ValueError('invalid seed')
 
-
-def check_horizon_reply(reply):
-    if 'status' not in reply:
-        return reply
-    raise SdkHorizonError(reply)

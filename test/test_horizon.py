@@ -2,7 +2,31 @@ import pytest
 from requests.adapters import DEFAULT_POOLSIZE
 from stellar_base.horizon import HORIZON_TEST, HORIZON_LIVE
 from kin.exceptions import SdkHorizonError
-from kin.horizon import Horizon, DEFAULT_REQUEST_TIMEOUT, DEFAULT_NUM_RETRIES, DEFAULT_BACKOFF_FACTOR, USER_AGENT
+from kin.horizon import (
+    Horizon,
+    check_horizon_reply,
+    DEFAULT_REQUEST_TIMEOUT,
+    DEFAULT_NUM_RETRIES,
+    DEFAULT_BACKOFF_FACTOR,
+    USER_AGENT,
+)
+
+
+def test_check_horizon_reply():
+    reply = {
+        'status': 400,
+        'title': 'title',
+        'extras': {
+            'result_codes': {
+                'operations': ['op_no_trust'],
+                'transaction': 'tx_failed'
+            }
+        }
+    }
+    with pytest.raises(SdkHorizonError, match='op_no_trust'):
+        check_horizon_reply(reply)
+    reply = "{'a':'b'}"
+    check_horizon_reply(reply)
 
 
 def test_defaults():

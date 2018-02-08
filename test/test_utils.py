@@ -1,7 +1,6 @@
 import pytest
 
-from kin.exceptions import SdkHorizonError
-from kin.utils import validate_address, validate_seed, check_horizon_reply
+from kin.utils import validate_address, validate_seed
 
 
 def test_validate_address():
@@ -25,19 +24,3 @@ def test_validate_seed():
         validate_seed(seed.replace('M', 'N'))
     validate_seed(seed)
 
-
-def test_check_horizon_reply():
-    reply = {
-        'status': 400,
-        'title': 'title',
-        'extras': {
-            'result_codes': {
-                'operations': ['op_no_trust'],
-                'transaction': 'tx_failed'
-            }
-        }
-    }
-    with pytest.raises(SdkHorizonError, match='op_no_trust'):
-        check_horizon_reply(reply)
-    reply = "{'a':'b'}"
-    check_horizon_reply(reply)

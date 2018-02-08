@@ -461,7 +461,6 @@ def fund_asset(setup, address, amount, memo_text=None):
         builder.add_text_memo(memo_text[:28])  # max memo length is 28
     builder.sign()
     reply = builder.submit()
-    kin.check_horizon_reply(reply)
     return reply.get('hash')
 
 
@@ -472,5 +471,4 @@ def trust_asset(setup, test_sdk, seed, memo_text=None):
         builder.add_text_memo(memo_text[:28])  # max memo length is 28
     builder.sign()
     reply = builder.submit()
-    kin.check_horizon_reply(reply)
     return reply.get('hash')

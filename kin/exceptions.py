@@ -2,6 +2,8 @@
 
 # Copyright (C) 2018 Kin Foundation
 
+from .models import HTTPProblemDetails
+
 
 # All exceptions should subclass from SdkError in this module.
 class SdkError(Exception):
@@ -18,31 +20,13 @@ class SdkNotConfiguredError(SdkError):
     pass
 
 
-class SdkHorizonError(SdkError):  # TODO: schematics model
-    #def __init__(self, j):
-    #    self.__dict__ = json.loads(j)
-
-    def __init__(self, err_obj):
-        print('\n------ ', err_obj)
-        # parse HTTP Problem Details object
-        # see https://tools.ietf.org/html/rfc7807
-        self.type = err_obj.get('type')
-        self.title = err_obj.get('title')
-        self.status = err_obj.get('status')
-        self.detail = err_obj.get('detail')
-        self.instance = err_obj.get('instance')
-        self.transaction_result_code = None
-        self.operation_result_codes = []
-        extras = err_obj.get('extras')
-        if extras:
-            result_codes = extras.get('result_codes')
-            if result_codes:
-                self.transaction_result_code = result_codes.get('transaction')
-                self.operation_result_codes = result_codes.get('operations')
+class SdkHorizonError(SdkError, HTTPProblemDetails):
+    def __init__(self, dict):
+        super(HTTPProblemDetails, self).__init__(dict, strict=False)
 
     def __str__(self):
-        if self.operation_result_codes:
-            return repr(self.operation_result_codes[0])
+        if self.extras and self.extras.result_codes and self.extras.result_codes.operations:
+            return repr(self.extras.result_codes.operations[0])
         return repr(self.title)
 
 

@@ -23,9 +23,9 @@ class AccountData(Model):
         asset_code = StringType()
         asset_issuer = StringType()
         balance = DecimalType(default=0)
-        limit = DecimalType()  # TODO: max value?
+        limit = DecimalType()
 
-    id = StringType()  # TODO: min, max length?
+    id = StringType()
     sequence = StringType()
     data = DictType(StringType, default={})
     thresholds = ModelType(Thresholds)
@@ -43,8 +43,8 @@ class TransactionData(Model):
         type = StringType()
         created_at = UTCDateTimeType()
         transaction_hash = StringType()
-        asset_type = StringType()  # TODO: enums?
-        asset_code = StringType()  # TODO: min, max length?
+        asset_type = StringType()
+        asset_code = StringType()
         asset_issuer = StringType()
         limit = DecimalType()
         trustor = StringType()
@@ -53,9 +53,9 @@ class TransactionData(Model):
         to_address = StringType()
         amount = DecimalType()
 
-    hash = StringType()  # TODO: min, max length?
+    hash = StringType()
     created_at = UTCDateTimeType()
-    source_account = StringType()  # TODO: min, max length?
+    source_account = StringType()
     source_account_sequence = StringType()
     operations = ListType(ModelType(OperationData), default=[])
     memo_type = StringType()

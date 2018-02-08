@@ -50,17 +50,17 @@ class SDK(object):
             - get_transaction_data
             - monitor_address_transactions
 
-        :param str seed: a seed to initialize the sdk wallet account with. If not provided, the wallet will not be
-            initialized and methods needing the wallet will raise exception.
+        :param str seed: (optional) a seed to initialize the sdk wallet account with. If not provided, the wallet will
+            not be initialized and methods needing the wallet will raise exception.
 
-        :param str horizon_endpoint_uri: a Horizon endpoint. If not provided, a default endpoint will be used,
-            either a testnet or pubnet, depending on the `network` parameter.
+        :param str horizon_endpoint_uri: (optional) a Horizon endpoint. If not provided, a default endpoint will be
+            used, either a testnet or pubnet, depending on the `network` parameter.
 
-        :param str network: either PUBLIC or TESTNET, will set the Horizon endpoint in the absence of
-            `horizon_endpoint_uri`.
+        :param str network: (optional) either PUBLIC or TESTNET, will set the Horizon endpoint in the absence of
+            `horizon_endpoint_uri`. Defaults to PUBLIC if not specified.
 
-        :param list channel_seeds: a list of channels to sign transactions with. More channels means less blocking
-            on transactions and better response time.
+        :param list channel_seeds: (optional) a list of channels to sign transactions with. More channels means less
+            blocking on transactions and better response time.
 
         :return: An instance of the SDK.
         :rtype: :class:`~kin.SDK`
@@ -195,10 +195,10 @@ class SDK(object):
 
         :param str address: the address of the account to create.
 
-        :param number starting_balance: the starting balance of the account. If not provided, a default
+        :param number starting_balance: (optional) the starting balance of the account. If not provided, a default
             MIN_ACCOUNT_BALANCE will be used.
 
-        :param str memo_text: a text to put into transaction memo.
+        :param str memo_text: (optional) a text to put into transaction memo.
 
         :return: transaction hash
         :rtype: str
@@ -219,11 +219,11 @@ class SDK(object):
         """Establish a trustline from the SDK wallet to the asset issuer.
 
         :param asset: the asset to establish a trustline to.
-        :rtype: :class:`~stellar_base.asset.Asset`
+        :type: :class:`~stellar_base.asset.Asset`
 
         :param number limit: trustline limit.
 
-        :param str memo_text: a text to put into transaction memo.
+        :param str memo_text: (optional) a text to put into transaction memo.
 
         :return: transaction hash
         :rtype: str
@@ -304,7 +304,7 @@ class SDK(object):
 
         :param number amount: the number of lumens to send.
 
-        :param str memo_text: a text to put into transaction memo.
+        :param str memo_text: (optional) a text to put into transaction memo.
 
         :return: transaction hash
         :rtype: str
@@ -322,7 +322,7 @@ class SDK(object):
 
         :param number amount: the number of KIN to send.
 
-        :param str memo_text: a text to put into transaction memo.
+        :param str memo_text: (optional) a text to put into transaction memo.
 
         :return: transaction hash
         :rtype: str
@@ -340,7 +340,7 @@ class SDK(object):
 
         :param number amount: the asset amount to send.
 
-        :param str memo_text: a text to put into transaction memo.
+        :param str memo_text: (optional) a text to put into transaction memo.
 
         :return: transaction hash
         :rtype: str

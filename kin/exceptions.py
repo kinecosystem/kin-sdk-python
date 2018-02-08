@@ -32,7 +32,6 @@ class SdkHorizonError(SdkError, HTTPProblemDetails):
 
 # result codes from github.com/stellar/horizon/codes/main.go
 
-
 # noinspection PyClassHasNoInit
 class TransactionResultCode:
     SUCCESS = 'tx_success'

@@ -31,7 +31,7 @@ class ChannelManager(object):
         :param add_ops_fn: a function to call, that will add operations to the transaction. The function should be
             `partial`, because a `source` parameter will be added.
 
-        :param str memo_text: an optional text to add as transaction memo.
+        :param str memo_text: (optional) an optional text to add as transaction memo.
 
         :return: transaction hash
         :rtype: str

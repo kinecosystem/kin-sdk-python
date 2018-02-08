@@ -2,9 +2,7 @@
 
 # Copyright (C) 2018 Kin Foundation
 
-
 from stellar_base.utils import decode_check
-from .exceptions import SdkHorizonError
 
 
 def validate_address(address):

@@ -168,7 +168,7 @@ class Horizon(object):
 
     def _query(self, url, params=None, sse=False):
         if not sse:
-            return self._session.get(url, params=params, timeout=self.request_timeout).json()  # TODO: custom exception?
+            return self._session.get(url, params=params, timeout=self.request_timeout).json()
 
         # SSE connection
         if SSEClient is None:

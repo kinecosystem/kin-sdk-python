@@ -424,7 +424,6 @@ class SDK(object):
 
         # make the SSE request synchronous (will throw errors in the current thread)
         events = self.horizon.account_transactions(address, sse=True)  # TODO: last_id support
-        # check_horizon_reply(events)  # NOTE: not a Horizon reply!  # TODO: why not consistent
 
         # asynchronous event processor
         def event_processor():

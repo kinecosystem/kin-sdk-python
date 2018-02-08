@@ -19,7 +19,7 @@ else:
 
 from stellar_base.horizon import HORIZON_LIVE, HORIZON_TEST
 
-from .utils import check_horizon_reply
+from .exceptions import SdkHorizonError
 from .version import __version__ as sdk_version
 
 import logging
@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_REQUEST_TIMEOUT = 60  # one minute, see github.com/stellar/horizon/txsub/system.go#L223
-DEFAULT_NUM_RETRIES = 3
-DEFAULT_BACKOFF_FACTOR = 0.3
+DEFAULT_NUM_RETRIES = 5
+DEFAULT_BACKOFF_FACTOR = 0.5
 USER_AGENT = 'kin-stellar-python/{}'.format(sdk_version)
 
 
@@ -175,9 +175,7 @@ class Horizon(object):
             raise ValueError('SSE not supported, missing sseclient module')
         if params:
             url = url + '?' + urlencode(params)
-        messages = SSEClient(url, session=self._session)
-        return messages
-        # TODO: reonnect on connection failure
+        return SSEClient(url, session=self._session)
 
     @staticmethod
     def testnet():
@@ -186,3 +184,9 @@ class Horizon(object):
     @staticmethod
     def livenet():
         return Horizon(horizon_uri=HORIZON_LIVE)
+
+
+def check_horizon_reply(reply):
+    if 'status' not in reply:
+        return reply
+    raise SdkHorizonError(reply)

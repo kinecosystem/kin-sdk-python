@@ -7,7 +7,6 @@ import sys
 from stellar_base.keypair import Keypair
 
 from .builder import Builder
-from .utils import check_horizon_reply
 
 if sys.version[0] == '2':
     import Queue as queue
@@ -49,7 +48,6 @@ class ChannelManager(object):
             if source:
                 builder.sign(secret=self.base_seed)  # sign with base key too
             reply = builder.submit()
-            check_horizon_reply(reply)
             return reply.get('hash')
         finally:
             # clean the builder and return it to the queue

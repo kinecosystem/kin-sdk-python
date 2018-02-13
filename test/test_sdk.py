@@ -190,6 +190,22 @@ def test_send_lumens(test_sdk):
     assert op.to_address is None
     assert op.amount == Decimal('10.123')
 
+    # check several payments in a row
+    tx_hash1 = test_sdk.send_lumens(address, 1)
+    assert tx_hash1
+    tx_hash2 = test_sdk.send_lumens(address, 1)
+    assert tx_hash2
+    tx_hash3 = test_sdk.send_lumens(address, 1)
+    assert tx_hash3
+
+    sleep(1)
+    tx_data = test_sdk.get_transaction_data(tx_hash1)
+    assert tx_data.hash == tx_hash1
+    tx_data = test_sdk.get_transaction_data(tx_hash2)
+    assert tx_data.hash == tx_hash2
+    tx_data = test_sdk.get_transaction_data(tx_hash3)
+    assert tx_data.hash == tx_hash3
+
 
 def test_trust_asset(setup, test_sdk):
     # failures
@@ -426,14 +442,33 @@ def test_channels(setup, helpers):
         try:
             # create an account using a channel
             address = Keypair.random().address().decode()
-            tx_hash = sdk.create_account(address, starting_balance=100)
-            assert tx_hash
+            tx_hash1 = sdk.create_account(address, starting_balance=100)
+            assert tx_hash1
+            # send lumens
+            tx_hash2 = sdk.send_lumens(address, 1)
+            assert tx_hash2
+            # send more lumens
+            tx_hash3 = sdk.send_lumens(address, 1)
+            assert tx_hash3
+
             sleep(1)
-            tx_data = sdk.get_transaction_data(tx_hash)
+
+            # check transactions
+            tx_data = sdk.get_transaction_data(tx_hash1)
             assert tx_data
             # transaction envelope source is some channel account
             assert tx_data.source_account in channel_addresses
             # operation source is the base account
+            assert tx_data.operations[0].source_account == sdk.get_address()
+
+            tx_data = sdk.get_transaction_data(tx_hash2)
+            assert tx_data
+            assert tx_data.source_account in channel_addresses
+            assert tx_data.operations[0].source_account == sdk.get_address()
+
+            tx_data = sdk.get_transaction_data(tx_hash3)
+            assert tx_data
+            assert tx_data.source_account in channel_addresses
             assert tx_data.operations[0].source_account == sdk.get_address()
         except:
             assert False

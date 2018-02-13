@@ -47,6 +47,12 @@ class Builder(stellar_base.builder.Builder):
         self.tx = None
         self.te = None
 
+    def get_sequence(self):
+        """Alternative implementation to expose exceptions"""
+        if not self.address:
+            raise Exception('no address provided')
+        return self.horizon.account(self.address).get('sequence')
+
     def next(self):
         """
         Alternative implementation that does not create a new builder but clears the current one and increments

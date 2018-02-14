@@ -1,7 +1,5 @@
-# kin-sdk-stellar-python
+# KIN Python SDK for Stellar Blockchain
 [![Build Status](https://travis-ci.org/kinfoundation/kin-sdk-stellar-python.svg?branch=master)](https://travis-ci.org/kinfoundation/kin-sdk-stellar-python) [![Coverage Status](https://codecov.io/gh/kinfoundation/kin-sdk-stellar-python/branch/master/graph/badge.svg)](https://codecov.io/gh/kinfoundation/kin-sdk-stellar-python)
-
-KIN Python SDK for Stellar Blockchain
 
 ## Disclaimer
 
@@ -14,7 +12,7 @@ Make sure you have Python 2 >=2.7.9.
 ## Installation 
 
 ```bash
-pip install git+https://github.com/kinfoundation/kin-sdk-stellar-python.git
+pip install git+https://github.com/kinfoundation/kin-core-python.git
 ```
 
 ## Usage

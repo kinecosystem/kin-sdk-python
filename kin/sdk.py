@@ -394,7 +394,7 @@ class SDK(object):
         tx = self.horizon.transaction(tx_hash)
 
         # get transaction operations
-        tx_ops = self.horizon.transaction_operations(tx['hash'])  # TODO: max 50, paged?
+        tx_ops = self.horizon.transaction_operations(tx['hash'], params={'limit': 100})
 
         tx['operations'] = tx_ops['_embedded']['records']
 
@@ -411,7 +411,7 @@ class SDK(object):
             raise SdkNotConfiguredError('address not configured')
         self.monitor_address_transactions(self.get_address(), callback_fn)
 
-    def monitor_address_transactions(self, address, callback_fn):
+    def monitor_address_transactions(self, address, callback_fn, last_id=None):
         """Monitor transactions related to the account identified by a provided address.
         NOTE: the functions starts a background thread.
 
@@ -423,7 +423,8 @@ class SDK(object):
         validate_address(address)
 
         # make the SSE request synchronous (will throw errors in the current thread)
-        events = self.horizon.account_transactions(address, sse=True)  # TODO: last_id support
+        params = {'last_id': last_id} if last_id else None
+        events = self.horizon.account_transactions(address, params=params, sse=True)
 
         # asynchronous event processor
         def event_processor():
@@ -434,12 +435,12 @@ class SDK(object):
                         tx = json.loads(event.data)
 
                         # get transaction operations
-                        tx_ops = self.horizon.transaction_operations(tx['hash'])  # TODO: max 50, paged?
+                        tx_ops = self.horizon.transaction_operations(tx['hash'], params={'limit': 100})
 
                         tx['operations'] = tx_ops['_embedded']['records']
 
                         tx_data = TransactionData(tx, strict=False)
-                        callback_fn(tx_data)
+                        callback_fn(event.id, tx_data)
 
                     except Exception as e:
                         logger.exception(e)

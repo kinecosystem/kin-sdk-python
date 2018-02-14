@@ -173,9 +173,14 @@ class Horizon(object):
         # SSE connection
         if SSEClient is None:
             raise ValueError('SSE not supported, missing sseclient module')
+
+        last_id = None
         if params:
+            if 'last_id' in params:
+                last_id = params['last_id']
+                del params['last_id']
             url = url + '?' + urlencode(params)
-        return SSEClient(url, session=self._session)
+        return SSEClient(url, last_id=last_id, session=self._session)
 
     @staticmethod
     def testnet():

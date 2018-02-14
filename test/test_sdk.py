@@ -386,9 +386,11 @@ def test_monitor_address_transactions(setup, test_sdk):
     import threading
     ev = threading.Event()
 
+    ids = []
     tx_datas = []
 
-    def account_tx_callback(tx_data):
+    def account_tx_callback(id, tx_data):
+        ids.append(id)
         tx_datas.append(tx_data)
         if len(tx_datas) == 3:  # create/trust/send_asset
             ev.set()
@@ -422,6 +424,18 @@ def test_monitor_address_transactions(setup, test_sdk):
     assert tx_datas[2].memo == 'send'
     assert tx_datas[2].operations[0].type == 'payment'
 
+    # check last_id parameter
+    tx_datas = []
+    ev.clear()
+
+    def account_tx_callback1(id, tx_data):
+        tx_datas.append(tx_data)
+        ev.set()
+
+    test_sdk.monitor_address_transactions(address, account_tx_callback1, last_id=ids[1])
+    assert ev.wait(3)
+    assert tx_datas[0].hash == tx_hash3
+
 
 def test_channels(setup, helpers):
     # prepare channel accounts
@@ -438,7 +452,9 @@ def test_channels(setup, helpers):
     assert sdk.channel_manager
     assert sdk.channel_manager.channel_builders.qsize() == len(channel_keypairs)
 
-    def channel_worker():
+    thread_ex = []
+
+    def channel_worker(thread_ex_holder):
         try:
             # create an account using a channel
             address = Keypair.random().address().decode()
@@ -470,13 +486,13 @@ def test_channels(setup, helpers):
             assert tx_data
             assert tx_data.source_account in channel_addresses
             assert tx_data.operations[0].source_account == sdk.get_address()
-        except:
-            assert False
+        except Exception as e:
+            thread_ex_holder.append(e)
 
     # now issue parallel transactions
     threads = []
     for channel_keypair in channel_keypairs:
-        t = threading.Thread(target=channel_worker)
+        t = threading.Thread(target=channel_worker, args=(thread_ex,))
         threads.append(t)
     for t in threads:
         t.start()
@@ -484,6 +500,9 @@ def test_channels(setup, helpers):
     # wait for all to finish
     for t in threads:
         t.join()
+
+    # check thread errors
+    assert not thread_ex
 
 
 # local helpers

@@ -206,17 +206,24 @@ def test_order_book(setup, test_sdk):
     assert reply
     assert reply['base']['asset_code'] == setup.test_asset.code
 
-    # trades
-    if setup.type == 'local':  # TODO: returns 404 on testnet for some reason
+
+def test_trades(setup, test_sdk):
+    if setup.type == 'testnet':  # TODO: returns 404 for local horizon
+        # all trades
+        reply = test_sdk.horizon.trades()
+        assert reply['_embedded']['records']
+
+        # specific trades (taken from tesnet horizon)
         params = {
             'base_asset_type': 'credit_alphanum4',
-            'base_asset_code': setup.test_asset.code,
-            'base_asset_issuer': setup.test_asset.issuer,
-            'counter_asset_type': 'native',
+            'base_asset_code': 'BTC',
+            'base_asset_issuer': 'GBB7JKBP5ZG7UUHAOYDOHQMIVDRKNMXTCDU3WUDVRV77NZJBEJNL4F2H',
+            'counter_asset_type': 'credit_alphanum4',
             'counter_asset_code': 'XLM',
+            'counter_asset_issuer': 'GBB7JKBP5ZG7UUHAOYDOHQMIVDRKNMXTCDU3WUDVRV77NZJBEJNL4F2H',
         }
-        reply = test_sdk.horizon.order_book_trades(params=params)
-        assert reply['_embedded']
+        reply = test_sdk.horizon.trades(params=params)
+        assert reply['_embedded']['records']
 
 
 def test_ledgers(test_sdk):

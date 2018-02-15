@@ -118,8 +118,8 @@ class Horizon(object):
         url = '/order_book/'
         return self.query(url, params)
 
-    def order_book_trades(self, params=None):
-        url = '/order_book/trades/'
+    def trades(self, params=None):
+        url = '/trades/'
         return self.query(url, params)
 
     def ledgers(self, params=None, sse=False):

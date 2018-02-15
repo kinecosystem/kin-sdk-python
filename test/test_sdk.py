@@ -62,18 +62,18 @@ def test_get_lumen_balance(test_sdk):
     assert test_sdk.get_lumen_balance() == 10000
 
 
-def test_get_address_asset_balance(test_sdk, setup):
+def test_get_account_asset_balance(test_sdk, setup):
     with pytest.raises(ValueError, match='invalid address'):
-        test_sdk.get_address_asset_balance('bad', setup.test_asset)
+        test_sdk.get_account_asset_balance('bad', setup.test_asset)
 
     keypair = Keypair.random()
     address = keypair.address().decode()
 
     with pytest.raises(ValueError, match='asset issuer invalid'):
-        test_sdk.get_address_asset_balance(address, Asset('TMP', 'bad'))
+        test_sdk.get_account_asset_balance(address, Asset('TMP', 'bad'))
 
     with pytest.raises(kin.SdkHorizonError, match='Resource Missing'):
-        test_sdk.get_address_asset_balance(address, setup.test_asset)
+        test_sdk.get_account_asset_balance(address, setup.test_asset)
 
     # success is tested below
 
@@ -107,7 +107,7 @@ def test_create_account(test_sdk):
     tx_hash = test_sdk.create_account(address, starting_balance=starting_balance, memo_text='foobar')
     assert tx_hash
     assert test_sdk.check_account_exists(address)
-    assert test_sdk.get_address_lumen_balance(address) == starting_balance
+    assert test_sdk.get_account_lumen_balance(address) == starting_balance
 
     # test get_transaction_data for this transaction
     sleep(1)
@@ -161,7 +161,7 @@ def test_send_lumens(test_sdk):
     tx_hash = test_sdk.send_lumens(address, 10.123, memo_text='foobar')
     assert tx_hash
 
-    assert test_sdk.get_address_lumen_balance(address) == Decimal('110.123')
+    assert test_sdk.get_account_lumen_balance(address) == Decimal('110.123')
 
     # test get_transaction_data for this transaction
     sleep(1)
@@ -255,7 +255,7 @@ def test_trust_asset(setup, test_sdk):
 
     # finally, fund the sdk account with asset
     assert fund_asset(setup, test_sdk.get_address(), 1000)
-    assert test_sdk.get_address_asset_balance(test_sdk.get_address(), setup.test_asset) == Decimal('1000')
+    assert test_sdk.get_account_asset_balance(test_sdk.get_address(), setup.test_asset) == Decimal('1000')
 
 
 def test_asset_trusted(setup, test_sdk):
@@ -307,7 +307,7 @@ def test_send_asset(setup, test_sdk):
     # send asset
     tx_hash = test_sdk.send_asset(address, setup.test_asset, 10.123, memo_text='foobar')
     assert tx_hash
-    assert test_sdk.get_address_asset_balance(address, setup.test_asset) == Decimal('10.123')
+    assert test_sdk.get_account_asset_balance(address, setup.test_asset) == Decimal('10.123')
 
     # test get_transaction_data for this transaction
     sleep(1)
@@ -373,12 +373,12 @@ def test_get_transaction_data(test_sdk):
         test_sdk.get_transaction_data('bad')
 
 
-def test_monitor_address_transactions(setup, test_sdk):
+def test_monitor_account_transactions(setup, test_sdk):
     keypair = Keypair.random()
     address = keypair.address().decode()
 
     with pytest.raises(Exception, match='404 Client Error: Not Found'):  # TODO: why not consistent?
-        test_sdk.monitor_address_transactions(address, None)
+        test_sdk.monitor_account_transactions(address, None)
 
     tx_hash1 = test_sdk.create_account(address, starting_balance=100, memo_text='create')
     assert tx_hash1
@@ -397,7 +397,7 @@ def test_monitor_address_transactions(setup, test_sdk):
 
     # start monitoring
     sleep(1)
-    test_sdk.monitor_address_transactions(address, account_tx_callback)
+    test_sdk.monitor_account_transactions(address, account_tx_callback)
 
     # issue the second and third transactions (the first is account creation)
     tx_hash2 = trust_asset(setup, test_sdk, keypair.seed(), memo_text='trust')
@@ -432,7 +432,7 @@ def test_monitor_address_transactions(setup, test_sdk):
         tx_datas.append(tx_data)
         ev.set()
 
-    test_sdk.monitor_address_transactions(address, account_tx_callback1, last_id=ids[1])
+    test_sdk.monitor_account_transactions(address, account_tx_callback1, last_id=ids[1])
     assert ev.wait(3)
     assert tx_datas[0].hash == tx_hash3
 

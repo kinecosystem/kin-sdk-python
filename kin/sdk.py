@@ -42,13 +42,13 @@ class SDK(object):
 
         If seed is not provided, the SDK can still be used in "anonymous" mode with only the following
         functions available:
-            - get_address_lumen_balance
-            - get_address_kin_balance
+            - get_account_lumen_balance
+            - get_account_kin_balance
             - check_kin_trusted
             - check_account_exists
             - get_account_data
             - get_transaction_data
-            - monitor_address_transactions
+            - monitor_account_transactions
 
         :param str seed: (optional) a seed to initialize the sdk wallet account with. If not provided, the wallet will
             not be initialized and methods needing the wallet will raise exception.
@@ -130,7 +130,7 @@ class SDK(object):
 
         :raises: :class:`~kin.SdkConfigurationError`: if the SDK wallet is not configured.
         """
-        return self.get_address_lumen_balance(self.get_address())
+        return self.get_account_lumen_balance(self.get_address())
 
     def get_kin_balance(self):
         """Get KIN balance of the SDK wallet.
@@ -141,9 +141,9 @@ class SDK(object):
 
         :raises: :class:`~kin.SdkConfigurationError`: if the SDK wallet is not configured.
         """
-        return self.get_address_kin_balance(self.get_address())
+        return self.get_account_kin_balance(self.get_address())
 
-    def get_address_lumen_balance(self, address):
+    def get_account_lumen_balance(self, address):
         """Get lumen balance of the account identified by the provided address.
 
         :param: str address: the address of the account to query.
@@ -153,9 +153,9 @@ class SDK(object):
 
         :raises: ValueError: if the supplied address has a wrong format.
         """
-        return self.get_address_asset_balance(address, Asset.native())
+        return self.get_account_asset_balance(address, Asset.native())
 
-    def get_address_kin_balance(self, address):
+    def get_account_kin_balance(self, address):
         """Get KIN balance of the account identified by the provided address.
 
         :param: str address: the address of the account to query.
@@ -165,9 +165,9 @@ class SDK(object):
 
         :raises: ValueError: if the supplied address has a wrong format.
         """
-        return self.get_address_asset_balance(address, KIN_ASSET)
+        return self.get_account_asset_balance(address, KIN_ASSET)
 
-    def get_address_asset_balance(self, address, asset):
+    def get_account_asset_balance(self, address, asset):
         """Get asset balance of the account identified by the provided address.
 
         :param: str address: the address of the account to query.
@@ -409,9 +409,9 @@ class SDK(object):
         """
         if not self.base_keypair:
             raise SdkNotConfiguredError('address not configured')
-        self.monitor_address_transactions(self.get_address(), callback_fn)
+        self.monitor_account_transactions(self.get_address(), callback_fn)
 
-    def monitor_address_transactions(self, address, callback_fn, last_id=None):
+    def monitor_account_transactions(self, address, callback_fn, last_id=None):
         """Monitor transactions related to the account identified by a provided address.
         NOTE: the functions starts a background thread.
 

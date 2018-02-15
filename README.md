@@ -66,16 +66,16 @@ lumen_balance = sdk.get_lumen_balance()
 # Get KIN balance of the SDK wallet
 kin_balance = sdk.get_kin_balance()
 
-# Get lumen balance of some address
-lumen_balance = sdk.get_address_lumen_balance('address')
+# Get lumen balance of some account
+lumen_balance = sdk.get_account_lumen_balance('address')
 
-# Get KIN balance of some address
-kin_balance = sdk.get_address_kin_balance('address')
+# Get KIN balance of some account
+kin_balance = sdk.get_account_kin_balance('address')
 
-# Get asset balance of some address
+# Get asset balance of some account
 from stellar_base.asset import Asset
 my_asset = Asset('XYZ', 'asset issuer address')
-asset_balance = sdk.get_address_asset_balance('address', my_asset)
+asset_balance = sdk.get_account_asset_balance('address', my_asset)
 ```
 
 ### Getting Account Data
@@ -146,7 +146,7 @@ def print_callback(tx_data):
 sdk.monitor_transactions(print_callback)
 
 # start monitoring transactions related to some account
-sdk.monitor_address_transactions('address', print_callback)
+sdk.monitor_account_transactions('address', print_callback)
 ```
 
 ## Limitations

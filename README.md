@@ -1,5 +1,5 @@
 # KIN Python SDK for Stellar Blockchain
-[![Build Status](https://travis-ci.org/kinfoundation/kin-sdk-stellar-python.svg?branch=master)](https://travis-ci.org/kinfoundation/kin-sdk-stellar-python) [![Coverage Status](https://codecov.io/gh/kinfoundation/kin-core-python/branch/master/graph/badge.svg)](https://codecov.io/gh/kinfoundation/kin-core-python)
+[![Build Status](https://travis-ci.org/kinfoundation/kin-core-python.svg?branch=master)](https://travis-ci.org/kinfoundation/kin-core-python) [![Coverage Status](https://codecov.io/gh/kinfoundation/kin-core-python/branch/master/graph/badge.svg)](https://codecov.io/gh/kinfoundation/kin-core-python)
 
 ## Disclaimer
 

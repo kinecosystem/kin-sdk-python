@@ -17,7 +17,7 @@ setup(
     author_email='david.bolshoy@kik.com',
     maintainer='David Bolshoy',
     maintainer_email='david.bolshoy@kik.com',
-    url='https://github.com/kinfoundation/kin-sdk-stellar-python',
+    url='https://github.com/kinfoundation/kin-core-python',
     license='MIT',
     packages=["kin"],
     long_description=open("README.md").read(),

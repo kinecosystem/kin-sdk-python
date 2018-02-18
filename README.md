@@ -21,8 +21,8 @@ pip install git+https://github.com/kinfoundation/kin-core-python.git
 
 To initialize the SDK, you need to provide the following parameters:
 - (optionally) the seed to init the internal SDK wallet with. If not provided, you will NOT be able to use the 
-  following functions: `get_address`, `get_lumen_balance`, `get_kin_balance`, `create_account`, `trust_asset`,
-  `send_asset`, `monitor_transactions`.
+  following functions: `get_address`, `get_native_balance`, `get_kin_balance`, `create_account`, `_trust_asset`,
+  `_send_asset`, `monitor_transactions`.
 - (optionally) the endpoint URI of your [Horizon](https://www.stellar.org/developers/horizon/reference/) node. 
   If not provided, a default Horizon endpoint will be used,either a testnet or pubnet, depending on the `network` 
   parameter below.
@@ -60,22 +60,17 @@ address = sdk.get_address()
 
 ### Getting Account Balance
 ```python
-# Get lumen balance of the SDK wallet
-lumen_balance = sdk.get_lumen_balance()
+# Get native (lumen) balance of the SDK wallet
+native_balance = sdk.get_native_balance()
 
 # Get KIN balance of the SDK wallet
 kin_balance = sdk.get_kin_balance()
 
-# Get lumen balance of some account
-lumen_balance = sdk.get_account_lumen_balance('address')
+# Get native (lumen) balance of some account
+native_balance = sdk.get_account_native_balance('address')
 
 # Get KIN balance of some account
 kin_balance = sdk.get_account_kin_balance('address')
-
-# Get asset balance of some account
-from stellar_base.asset import Asset
-my_asset = Asset('XYZ', 'asset issuer address')
-asset_balance = sdk.get_account_asset_balance('address', my_asset)
 ```
 
 ### Getting Account Data
@@ -83,7 +78,6 @@ asset_balance = sdk.get_account_asset_balance('address', my_asset)
 # returns kin.AccountData
 account_data = sdk.get_account_data('address')
 ```
-
 
 ### Checking If Account Exists
 ```python
@@ -95,51 +89,37 @@ account_exists = sdk.check_account_exists('address')
 # create a new account prefunded with MIN_ACCOUNT_BALANCE lumens
 tx_hash = sdk.create_account('address')
 
-# create a new account prefunded with a specified amount of lumens
+# create a new account prefunded with a specified amount of native currency (lumens).
 tx_hash = sdk.create_account('address', starting_balance=1000)
 ```
 
-### Establishing a Trustline from SDK wallet to some Asset
-```python
-my_asset = Asset('XYZ', 'asset issuer address')
-tx_hash = sdk.trust_asset(my_asset, limit=1000)
-```
-
-### Checking Asset Trustline
+### Checking if Account is Activated (Trustline established)
 ```python
 # check if KIN is trusted by some account
-kin_trusted = sdk.check_kin_trusted('address')
-
-# check if some asset is trusted by some account
-my_asset = Asset('XYZ', 'asset issuer address')
-asset_trusted = sdk.check_asset_trusted('address', my_asset)
+kin_trusted = sdk.check_account_activated('address')
 ```
 
-### Sending Assets
+### Sending Currency
 ```python
-# send lumens to some address
-tx_hash = sdk.send_lumens('address', 100, memo_text='order123')
+# send native currency (lumens) to some address
+tx_hash = sdk.send_native('address', 100, memo_text='order123')
 
 # send KIN to some address
 tx_hash = sdk.send_kin('address', 1000, memo_text='order123')
-
-# send some asset to some address
-my_asset = Asset('XYZ', 'asset issuer address')
-tx_hash = sdk.send_asset('address', my_asset, 100, memo_text='order123')
 ```
 
 ### Getting Transaction Data
 ```python
 # create a transaction, for example a new account
 tx_hash = sdk.create_account('address')
-# returns kin.TransactionData
+# get transaction data, returns kin.TransactionData
 tx_data = sdk.get_transaction_data(tx_hash)
 ```
 
 ### Transaction Monitoring
 ```python
 # define a callback function that receives a kin.TransactionData object
-def print_callback(tx_data):
+def print_callback(id, tx_data):
     print(tx_data)
     
 # start monitoring transactions related to the SDK wallet account
@@ -147,6 +127,27 @@ sdk.monitor_transactions(print_callback)
 
 # start monitoring transactions related to some account
 sdk.monitor_account_transactions('address', print_callback)
+```
+
+### Helpers
+The following functions are specific to Stellar and not part of the high-level API, but they can be handy in 
+application development and testing.
+
+```python
+from stellar_base.asset import Asset
+my_asset = Asset('XYZ', 'asset issuer address')
+
+# Get asset balance of some account
+asset_balance = sdk._get_account_asset_balance('address', my_asset)
+
+# check if the asset is trusted by some account
+asset_trusted = sdk._check_asset_trusted('address', my_asset)
+
+# establishing a Trustline from SDK wallet to the asset
+tx_hash = sdk._trust_asset(my_asset, limit=1000)
+
+# send asset to some address
+tx_hash = sdk._send_asset('address', my_asset, 100, memo_text='order123')
 ```
 
 ## Limitations

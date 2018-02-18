@@ -42,7 +42,7 @@ class SDK(object):
 
         If seed is not provided, the SDK can still be used in "anonymous" mode with only the following
         functions available:
-            - get_account_lumen_balance
+            - get_account_native_balance
             - get_account_kin_balance
             - check_kin_trusted
             - check_account_exists
@@ -121,8 +121,8 @@ class SDK(object):
             raise SdkNotConfiguredError('address not configured')
         return self.base_keypair.address().decode()
 
-    def get_lumen_balance(self):
-        """Get lumen balance of the SDK wallet.
+    def get_native_balance(self):
+        """Get native (lumen) balance of the SDK wallet.
         The wallet is configured by a seed supplied during SDK initialization.
 
         :return: : the balance in lumens.
@@ -130,7 +130,7 @@ class SDK(object):
 
         :raises: :class:`~kin.SdkConfigurationError`: if the SDK wallet is not configured.
         """
-        return self.get_account_lumen_balance(self.get_address())
+        return self.get_account_native_balance(self.get_address())
 
     def get_kin_balance(self):
         """Get KIN balance of the SDK wallet.
@@ -143,8 +143,8 @@ class SDK(object):
         """
         return self.get_account_kin_balance(self.get_address())
 
-    def get_account_lumen_balance(self, address):
-        """Get lumen balance of the account identified by the provided address.
+    def get_account_native_balance(self, address):
+        """Get native (lumen) balance of the account identified by the provided address.
 
         :param: str address: the address of the account to query.
 
@@ -153,7 +153,7 @@ class SDK(object):
 
         :raises: ValueError: if the supplied address has a wrong format.
         """
-        return self.get_account_asset_balance(address, Asset.native())
+        return self._get_account_asset_balance(address, Asset.native())
 
     def get_account_kin_balance(self, address):
         """Get KIN balance of the account identified by the provided address.
@@ -165,33 +165,10 @@ class SDK(object):
 
         :raises: ValueError: if the supplied address has a wrong format.
         """
-        return self.get_account_asset_balance(address, KIN_ASSET)
-
-    def get_account_asset_balance(self, address, asset):
-        """Get asset balance of the account identified by the provided address.
-
-        :param: str address: the address of the account to query.
-
-        :return: : the balance in asset units of the account.
-        :rtype: Decimal
-
-        :raises: ValueError: if the supplied address has a wrong format.
-        """
-        if not asset.is_native():
-            try:
-                validate_address(asset.issuer)
-            except ValueError:
-                raise ValueError('asset issuer invalid')
-
-        acc_data = self.get_account_data(address)
-        for balance in acc_data.balances:
-            if (balance.asset_type == 'native' and asset.code == 'XLM') \
-                    or (balance.asset_code == asset.code and balance.asset_issuer == asset.issuer):
-                return balance.balance
-        return 0
+        return self._get_account_asset_balance(address, KIN_ASSET)
 
     def create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, memo_text=None):
-        """Create a stellar account identified by the provided address.
+        """Create an account identified by the provided address.
 
         :param str address: the address of the account to create.
 
@@ -215,71 +192,6 @@ class SDK(object):
                                                              starting_balance),
                                                      memo_text=memo_text)
 
-    def trust_asset(self, asset, limit=None, memo_text=None):
-        """Establish a trustline from the SDK wallet to the asset issuer.
-
-        :param asset: the asset to establish a trustline to.
-        :type: :class:`~stellar_base.asset.Asset`
-
-        :param number limit: trustline limit.
-
-        :param str memo_text: (optional) a text to put into transaction memo.
-
-        :return: transaction hash
-        :rtype: str
-
-        :raises: :class:`~kin.SdkConfigurationError` if the SDK wallet is not configured.
-        :raises: ValueError: if the issuer address has a wrong format.
-        """
-        if not self.base_keypair:
-            raise SdkNotConfiguredError('address not configured')
-
-        if not asset.is_native():
-            try:
-                validate_address(asset.issuer)
-            except ValueError:
-                raise ValueError('asset issuer invalid')
-
-        return self.channel_manager.send_transaction(lambda builder:
-                                                     partial(builder.append_trust_op, asset.issuer, asset.code,
-                                                             limit=limit),
-                                                     memo_text=memo_text)
-
-    def check_kin_trusted(self, address):
-        """Check if the account has a trustline to KIN asset.
-
-        :param str address: the account address to query.
-
-        :return: True if the account has a trustline to KIN asset.
-        :rtype: boolean
-
-        :raises: ValueError: if the supplied address has a wrong format.
-        """
-        return self.check_asset_trusted(address, KIN_ASSET)
-
-    def check_asset_trusted(self, address, asset):
-        """Check if the account has a trustline to the provided asset.
-
-        :param str address: the account address to query.
-
-        :return: True if the account has a trustline to the asset.
-        :rtype: boolean
-
-        :raises: ValueError: if the supplied address has a wrong format.
-        :raises: ValueError: if the asset issuer address has a wrong format.
-        """
-        if not asset.is_native():
-            try:
-                validate_address(asset.issuer)
-            except ValueError:
-                raise ValueError('asset issuer invalid')
-
-        acc_data = self.get_account_data(address)
-        for balance in acc_data.balances:
-            if balance.asset_code == asset.code and balance.asset_issuer == asset.issuer:
-                return True
-        return False
-
     def check_account_exists(self, address):
         """Check whether the account identified by the provided address exists.
 
@@ -297,8 +209,20 @@ class SDK(object):
                 return False
             raise
 
-    def send_lumens(self, address, amount, memo_text=None):
-        """Send lumens to the account identified by the provided address.
+    def check_account_activated(self, address):
+        """Check if the account is activated (has a trustline to KIN asset).
+
+        :param str address: the account address to query.
+
+        :return: True if the account is activated.
+        :rtype: boolean
+
+        :raises: ValueError: if the supplied address has a wrong format.
+        """
+        return self._check_asset_trusted(address, KIN_ASSET)
+
+    def send_native(self, address, amount, memo_text=None):
+        """Send native currency (lumens) to the account identified by the provided address.
 
         :param str address: the account to send lumens to.
 
@@ -313,7 +237,7 @@ class SDK(object):
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
         """
-        return self.send_asset(address, Asset.native(), amount, memo_text)
+        return self._send_asset(address, Asset.native(), amount, memo_text)
 
     def send_kin(self, address, amount, memo_text=None):
         """Send KIN to the account identified by the provided address.
@@ -331,42 +255,7 @@ class SDK(object):
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
         """
-        return self.send_asset(address, KIN_ASSET, amount, memo_text)
-
-    def send_asset(self, address, asset, amount, memo_text=None):
-        """Send asset to the account identified by the provided address.
-
-        :param str address: the account to send asset to.
-
-        :param number amount: the asset amount to send.
-
-        :param str memo_text: (optional) a text to put into transaction memo.
-
-        :return: transaction hash
-        :rtype: str
-
-        :raises: :class:`~kin.SdkConfigurationError` if the SDK wallet is not configured.
-        :raises: ValueError: if the provided address has a wrong format.
-        :raises: ValueError: if the asset issuer address has a wrong format.
-        :raises: ValueError: if the amount is not positive.
-        """
-        if not self.base_keypair:
-            raise SdkNotConfiguredError('address not configured')
-        validate_address(address)
-
-        if amount <= 0:
-            raise ValueError('amount must be positive')
-
-        if not asset.is_native():
-            try:
-                validate_address(asset.issuer)
-            except ValueError:
-                raise ValueError('asset issuer invalid')
-
-        return self.channel_manager.send_transaction(lambda builder:
-                                                     partial(builder.append_payment_op, address, amount,
-                                                             asset_type=asset.code, asset_issuer=asset.issuer),
-                                                     memo_text=memo_text)
+        return self._send_asset(address, KIN_ASSET, amount, memo_text)
 
     def get_account_data(self, address):
         """Gets account data.
@@ -404,8 +293,8 @@ class SDK(object):
         """Monitor transactions related to the SDK wallet account.
         NOTE: the functions starts a background thread.
 
-        :param callback_fn: the function to call on each received transaction. The function has one parameter,
-            which is a transaction data object.
+        :param callback_fn: the function to call on each received transaction. The function has the following signature:
+           `callback_fn(id, tx_data)`.
         """
         if not self.base_keypair:
             raise SdkNotConfiguredError('address not configured')
@@ -415,8 +304,12 @@ class SDK(object):
         """Monitor transactions related to the account identified by a provided address.
         NOTE: the functions starts a background thread.
 
-        :param callback_fn: the function to call on each received transaction. The function has one parameter,
-            which is a transaction data object.
+        :param: str address: the address of the account to query.
+
+        :param callback_fn: the function to call on each received transaction. The function has the following signature:
+           `callback_fn(id, tx_data)`.
+
+        :param str last_id: the id to start querying from.
 
         :raises: ValueError: if the provided address has a wrong format.
         """
@@ -451,3 +344,116 @@ class SDK(object):
         t = threading.Thread(target=event_processor)
         t.daemon = True
         t.start()
+
+    # Helpers
+
+    def _get_account_asset_balance(self, address, asset):
+        """Get asset balance of the account identified by the provided address.
+
+        :param: str address: the address of the account to query.
+
+        :return: : the balance in asset units of the account.
+        :rtype: Decimal
+
+        :raises: ValueError: if the supplied address has a wrong format.
+        """
+        if not asset.is_native():
+            try:
+                validate_address(asset.issuer)
+            except ValueError:
+                raise ValueError('asset issuer invalid')
+
+        acc_data = self.get_account_data(address)
+        for balance in acc_data.balances:
+            if (balance.asset_type == 'native' and asset.code == 'XLM') \
+                    or (balance.asset_code == asset.code and balance.asset_issuer == asset.issuer):
+                return balance.balance
+        return 0
+
+    def _trust_asset(self, asset, limit=None, memo_text=None):
+        """Establish a trustline from the SDK wallet to the asset issuer.
+
+        :param asset: the asset to establish a trustline to.
+        :type: :class:`~stellar_base.asset.Asset`
+
+        :param number limit: trustline limit.
+
+        :param str memo_text: (optional) a text to put into transaction memo.
+
+        :return: transaction hash
+        :rtype: str
+
+        :raises: :class:`~kin.SdkConfigurationError` if the SDK wallet is not configured.
+        :raises: ValueError: if the issuer address has a wrong format.
+        """
+        if not self.base_keypair:
+            raise SdkNotConfiguredError('address not configured')
+
+        if not asset.is_native():
+            try:
+                validate_address(asset.issuer)
+            except ValueError:
+                raise ValueError('asset issuer invalid')
+
+        return self.channel_manager.send_transaction(lambda builder:
+                                                     partial(builder.append_trust_op, asset.issuer, asset.code,
+                                                             limit=limit),
+                                                     memo_text=memo_text)
+
+    def _check_asset_trusted(self, address, asset):
+        """Check if the account has a trustline to the provided asset.
+
+        :param str address: the account address to query.
+
+        :return: True if the account has a trustline to the asset.
+        :rtype: boolean
+
+        :raises: ValueError: if the supplied address has a wrong format.
+        :raises: ValueError: if the asset issuer address has a wrong format.
+        """
+        if not asset.is_native():
+            try:
+                validate_address(asset.issuer)
+            except ValueError:
+                raise ValueError('asset issuer invalid')
+
+        acc_data = self.get_account_data(address)
+        for balance in acc_data.balances:
+            if balance.asset_code == asset.code and balance.asset_issuer == asset.issuer:
+                return True
+        return False
+
+    def _send_asset(self, address, asset, amount, memo_text=None):
+        """Send asset to the account identified by the provided address.
+
+        :param str address: the account to send asset to.
+
+        :param number amount: the asset amount to send.
+
+        :param str memo_text: (optional) a text to put into transaction memo.
+
+        :return: transaction hash
+        :rtype: str
+
+        :raises: :class:`~kin.SdkConfigurationError` if the SDK wallet is not configured.
+        :raises: ValueError: if the provided address has a wrong format.
+        :raises: ValueError: if the asset issuer address has a wrong format.
+        :raises: ValueError: if the amount is not positive.
+        """
+        if not self.base_keypair:
+            raise SdkNotConfiguredError('address not configured')
+        validate_address(address)
+
+        if amount <= 0:
+            raise ValueError('amount must be positive')
+
+        if not asset.is_native():
+            try:
+                validate_address(asset.issuer)
+            except ValueError:
+                raise ValueError('asset issuer invalid')
+
+        return self.channel_manager.send_transaction(lambda builder:
+                                                     partial(builder.append_payment_op, address, amount,
+                                                             asset_type=asset.code, asset_issuer=asset.issuer),
+                                                     memo_text=memo_text)

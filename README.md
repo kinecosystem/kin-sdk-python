@@ -20,14 +20,14 @@ pip install git+https://github.com/kinfoundation/kin-core-python.git
 ### Initialization
 
 To initialize the SDK, you need to provide the following parameters:
-- (optionally) the seed to init the internal SDK wallet with. If not provided, you will NOT be able to use the 
-  following functions: `get_address`, `get_native_balance`, `get_kin_balance`, `create_account`, `_trust_asset`,
-  `_send_asset`, `monitor_transactions`.
-- (optionally) the endpoint URI of your [Horizon](https://www.stellar.org/developers/horizon/reference/) node. 
+- (optional) the seed to init the internal SDK wallet with. If not provided, you will NOT be able to use the 
+  following functions: `get_address`, `get_native_balance`, `get_kin_balance`, `create_account`, `monitor_kin_payments`,
+  `_trust_asset`, `_send_asset`.
+- (optional) the endpoint URI of your [Horizon](https://www.stellar.org/developers/horizon/reference/) node. 
   If not provided, a default Horizon endpoint will be used,either a testnet or pubnet, depending on the `network` 
   parameter below.
-- (optionally) a network identifier, which is either `PUBLIC` or `TESTNET`, defaults to `PUBLIC`.
-- (optionally) a list of channel seeds. If provided, the channel accounts will be used to sign transactions instead 
+- (optional) a network identifier, which is either `PUBLIC` or `TESTNET`, defaults to `PUBLIC`.
+- (optional) a list of channel seeds. If provided, the channel accounts will be used to sign transactions instead 
   of the internal SDK wallet.
 
 
@@ -118,15 +118,18 @@ tx_data = sdk.get_transaction_data(tx_hash)
 
 ### Transaction Monitoring
 ```python
-# define a callback function that receives a kin.TransactionData object
-def print_callback(id, tx_data):
-    print(tx_data)
+# define a callback function that receives an address and a kin.TransactionData object
+def print_callback(address, tx_data):
+    print(address, tx_data)
     
-# start monitoring transactions related to the SDK wallet account
-sdk.monitor_transactions(print_callback)
+# start monitoring KIN payments related to the SDK wallet account
+sdk.monitor_kin_payments(print_callback)
 
-# start monitoring transactions related to some account
-sdk.monitor_account_transactions('address', print_callback)
+# start monitoring KIN payments related to a list of addresses
+sdk.monitor_accounts_kin_payments(['address1', 'address2'], print_callback)
+
+# start monitoring all transactions related to a list of addresses
+sdk.monitor_accounts_transactions(['address1', 'address2'], print_callback)
 ```
 
 ### Helpers
@@ -147,7 +150,10 @@ asset_trusted = sdk._check_asset_trusted('address', my_asset)
 tx_hash = sdk._trust_asset(my_asset, limit=1000)
 
 # send asset to some address
-tx_hash = sdk._send_asset('address', my_asset, 100, memo_text='order123')
+tx_hash = sdk._send_asset(my_asset, 'address', 100, memo_text='order123')
+
+# monitor asset payments related to a list of accounts
+sdk._monitor_accounts_transactions(my_asset, ['address1', 'address2'], print_callback, only_payments=True)
 ```
 
 ## Limitations

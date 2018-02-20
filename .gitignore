@@ -6,6 +6,7 @@
 *.log
 MANIFEST
 .cache/
+.pytest_cache/
 docs/build
 dist/
 virtualenv/

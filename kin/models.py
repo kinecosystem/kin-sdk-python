@@ -8,17 +8,29 @@ from schematics.types import IntType, BooleanType, DecimalType, StringType, UTCD
 from schematics.types.compound import ModelType, ListType, DictType
 
 
-class AccountData(Model):
-    class Thresholds(Model):
+class PModel(Model):
+    def __str__(self):
+        sb = []
+        for key in self.__dict__:
+            if not key.startswith('__'):
+                sb.append("\t{}='{}'".format(key, self.__dict__[key]))
+        return '\n'.join(sb)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class AccountData(PModel):
+    class Thresholds(PModel):
         low_threshold = IntType(default=0)
         medium_threshold = IntType(default=0)
         high_threshold = IntType(default=0)
 
-    class Flags(Model):
+    class Flags(PModel):
         auth_required = BooleanType(default=False)
         auth_revocable = BooleanType(default=False)
 
-    class Balance(Model):
+    class Balance(PModel):
         asset_type = StringType()
         asset_code = StringType()
         asset_issuer = StringType()
@@ -31,72 +43,61 @@ class AccountData(Model):
     thresholds = ModelType(Thresholds)
     balances = ListType(ModelType(Balance), default=[])
     flags = ModelType(Flags)
-    # subentry_count
     # paging_token
+    # subentry_count
     # signers
 
 
-class TransactionData(Model):
-    class OperationData(Model):
-        id = StringType()
-        source_account = StringType()
-        type = StringType()
-        created_at = UTCDateTimeType()
-        transaction_hash = StringType()
-        asset_type = StringType()
-        asset_code = StringType()
-        asset_issuer = StringType()
-        limit = DecimalType()
-        trustor = StringType()
-        trustee = StringType()
-        from_address = StringType()
-        to_address = StringType()
-        amount = DecimalType()
+class OperationData(PModel):
+    id = StringType()
+    source_account = StringType()
+    type = StringType()
+    created_at = UTCDateTimeType()
+    transaction_hash = StringType()
+    asset_type = StringType()
+    asset_code = StringType()
+    asset_issuer = StringType()
+    limit = DecimalType()
+    trustor = StringType()
+    trustee = StringType()
+    from_address = StringType(serialized_name='from')
+    to_address = StringType(serialized_name='to')
+    amount = DecimalType()
 
+
+class TransactionData(PModel):
+    id = StringType()
     hash = StringType()
     created_at = UTCDateTimeType()
     source_account = StringType()
     source_account_sequence = StringType()
     operations = ListType(ModelType(OperationData), default=[])
+    ledger = StringType()
     memo_type = StringType()
     memo = StringType()
     fee_paid = DecimalType()
     signatures = ListType(StringType, default=[])
-    # id
-    # paging_token
-    # envelope_xdr
+    paging_token = StringType()
     # time_bounds
-    # ledger
-    # _links
+    # operation_count
+    # envelope_xdr
     # result_xdr
     # result_meta_xdr
-    # operation_count
     # fee_meta_xdr
 
-    # TODO: do it properly
-    def __str__(self):
-        sb = []
-        for key in self.__dict__:
-            if not key.startswith('__'):
-                sb.append("\t{key}='{value}'".format(key=key, value=self.__dict__[key]))
-        return '\n'.join(sb)
 
-    def __repr__(self):
-        return self.__str__()
-
-
-class TransactionResultCodes(Model):
+class TransactionResultCodes(PModel):
     transaction = StringType()
     operations = ListType(StringType, default=[])
 
 
-class FailedTransactionExtras(Model):
+class FailedTransactionExtras(PModel):
     envelope_xdr = StringType()
     result_xdr = StringType()
     result_codes = ModelType(TransactionResultCodes)
 
 
-class HTTPProblemDetails(Model):
+class HTTPProblemDetails(PModel):
     """HTTP Problem Details object.
     See https://tools.ietf.org/html/rfc7807
     """

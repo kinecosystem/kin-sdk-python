@@ -14,10 +14,6 @@ def validate_address(address):
     except Exception:
         raise ValueError('invalid address')
 
-    if len(decoded) != 32:
-        raise ValueError('invalid address')
-
-
 def validate_seed(seed):
     if len(seed) != 56:
         raise ValueError('invalid seed')
@@ -26,7 +22,3 @@ def validate_seed(seed):
         decoded = decode_check('seed', seed)
     except Exception:
         raise ValueError('invalid seed')
-
-    if len(decoded) != 32:
-        raise ValueError('invalid seed')
-

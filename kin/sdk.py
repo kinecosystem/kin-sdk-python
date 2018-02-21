@@ -237,7 +237,7 @@ class SDK(object):
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
         """
-        return self._send_asset(address, Asset.native(), amount, memo_text)
+        return self._send_asset(Asset.native(), address, amount, memo_text)
 
     def send_kin(self, address, amount, memo_text=None):
         """Send KIN to the account identified by the provided address.
@@ -255,7 +255,7 @@ class SDK(object):
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
         """
-        return self._send_asset(address, KIN_ASSET, amount, memo_text)
+        return self._send_asset(KIN_ASSET, address, amount, memo_text)
 
     def get_account_data(self, address):
         """Gets account data.
@@ -289,61 +289,44 @@ class SDK(object):
 
         return TransactionData(tx, strict=False)
 
-    def monitor_transactions(self, callback_fn):
-        """Monitor transactions related to the SDK wallet account.
-        NOTE: the functions starts a background thread.
+    def monitor_kin_payments(self, callback_fn):
+        """Monitor KIN payment transactions related to the SDK wallet account.
+        NOTE: the function starts a background thread.
+
+        :param callback_fn: the function to call on each received payment. The function has the following signature:
+           `callback_fn(address, tx_data)`.
+
+        :raises: :class:`~kin.SdkConfigurationError` if the SDK wallet is not configured.
+        """
+        self.monitor_accounts_kin_payments([self.get_address()], callback_fn)
+
+    def monitor_accounts_kin_payments(self, addresses, callback_fn):
+        """Monitor KIN payment transactions related to the accounts identified by provided addresses.
+        NOTE: the function starts a background thread.
+
+        :param list of str addresses: the addresses of the accounts to query.
+
+        :param callback_fn: the function to call on each received payment. The function has the following signature:
+           `callback_fn(address, tx_data)`.
+
+        :raises: ValueError: when no addresses are given.
+        :raises: ValueError: if one of the provided addresses has a wrong format.
+        """
+        self._monitor_accounts_transactions(KIN_ASSET, addresses, callback_fn, only_payments=True)
+
+    def monitor_accounts_transactions(self, addresses, callback_fn):
+        """Monitor transactions related to the account identified by a provided addresses (all transaction types).
+        NOTE: the function starts a background thread.
+
+        :param list of str addresses: the addresses of the accounts to query.
 
         :param callback_fn: the function to call on each received transaction. The function has the following signature:
-           `callback_fn(id, tx_data)`.
+           `callback_fn(address, tx_data)`.
+
+        :raises: ValueError: when no addresses are given.
+        :raises: ValueError: if one of the provided addresses has a wrong format.
         """
-        if not self.base_keypair:
-            raise SdkNotConfiguredError('address not configured')
-        self.monitor_account_transactions(self.get_address(), callback_fn)
-
-    def monitor_account_transactions(self, address, callback_fn, last_id=None):
-        """Monitor transactions related to the account identified by a provided address.
-        NOTE: the functions starts a background thread.
-
-        :param: str address: the address of the account to query.
-
-        :param callback_fn: the function to call on each received transaction. The function has the following signature:
-           `callback_fn(id, tx_data)`.
-
-        :param str last_id: the id to start querying from.
-
-        :raises: ValueError: if the provided address has a wrong format.
-        """
-        validate_address(address)
-
-        # make the SSE request synchronous (will throw errors in the current thread)
-        params = {'last_id': last_id} if last_id else None
-        events = self.horizon.account_transactions(address, params=params, sse=True)
-
-        # asynchronous event processor
-        def event_processor():
-            import json
-            for event in events:
-                if event.event == 'message':
-                    try:
-                        tx = json.loads(event.data)
-
-                        # get transaction operations
-                        tx_ops = self.horizon.transaction_operations(tx['hash'], params={'limit': 100})
-
-                        tx['operations'] = tx_ops['_embedded']['records']
-
-                        tx_data = TransactionData(tx, strict=False)
-                        callback_fn(event.id, tx_data)
-
-                    except Exception as e:
-                        logger.exception(e)
-                        continue
-
-        # start monitoring thread
-        import threading
-        t = threading.Thread(target=event_processor)
-        t.daemon = True
-        t.start()
+        self._monitor_accounts_transactions(None, addresses, callback_fn)
 
     # Helpers
 
@@ -352,10 +335,14 @@ class SDK(object):
 
         :param: str address: the address of the account to query.
 
+        :param asset: the asset to get balance for.
+        :type: :class:`stellar_base.asset.Asset`
+
         :return: : the balance in asset units of the account.
         :rtype: Decimal
 
         :raises: ValueError: if the supplied address has a wrong format.
+        :raises: ValueError: when there is no trustline to the asset.
         """
         if not asset.is_native():
             try:
@@ -368,13 +355,14 @@ class SDK(object):
             if (balance.asset_type == 'native' and asset.code == 'XLM') \
                     or (balance.asset_code == asset.code and balance.asset_issuer == asset.issuer):
                 return balance.balance
-        return 0
+
+        raise ValueError('account not activated for the asset')
 
     def _trust_asset(self, asset, limit=None, memo_text=None):
         """Establish a trustline from the SDK wallet to the asset issuer.
 
         :param asset: the asset to establish a trustline to.
-        :type: :class:`~stellar_base.asset.Asset`
+        :type: :class:`stellar_base.asset.Asset`
 
         :param number limit: trustline limit.
 
@@ -405,6 +393,9 @@ class SDK(object):
 
         :param str address: the account address to query.
 
+        :param asset: the asset to check
+        :type: :class:`stellar_base.asset.Asset`
+
         :return: True if the account has a trustline to the asset.
         :rtype: boolean
 
@@ -423,10 +414,13 @@ class SDK(object):
                 return True
         return False
 
-    def _send_asset(self, address, asset, amount, memo_text=None):
+    def _send_asset(self, asset, address, amount, memo_text=None):
         """Send asset to the account identified by the provided address.
 
         :param str address: the account to send asset to.
+
+        :param asset: asset to send
+        :type: :class:`stellar_base.asset.Asset`
 
         :param number amount: the asset amount to send.
 
@@ -457,3 +451,96 @@ class SDK(object):
                                                      partial(builder.append_payment_op, address, amount,
                                                              asset_type=asset.code, asset_issuer=asset.issuer),
                                                      memo_text=memo_text)
+
+    def _monitor_accounts_transactions(self, asset, addresses, callback_fn, only_payments=False):
+        """Monitor transactions related to the accounts identified by provided addresses. If asset is given, only
+        the transactions for this asset will be returned.
+        NOTE: the functions starts a background thread.
+
+        :param: asset: (optional) the asset to query.
+        :type: :class:`stellar_base.asset.Asset`
+
+        :param: str addresses: the addresses of the accounts to query.
+
+        :param callback_fn: the function to call on each received transaction. The function has the following signature:
+           `callback_fn(address, tx_data)`.
+
+        :param boolean only_payments: whether to return payment transactions only.
+
+        :raises: ValueError: if asset issuer is invalid.
+        :raises: ValueError: when no addresses are given.
+        :raises: ValueError: if one of the provided addresses has a wrong format.
+        """
+        if asset and not asset.is_native():
+            try:
+                validate_address(asset.issuer)
+            except ValueError:
+                raise ValueError('asset issuer invalid')
+
+        if not addresses:
+            raise ValueError('no addresses to monitor')
+
+        for address in addresses:
+            validate_address(address)
+
+        # determine the last_id to start from
+        last_id = None
+        if len(addresses) == 1:
+            reply = self.horizon.account_transactions(addresses[0], params={'order': 'desc', 'limit': 2})
+        else:
+            reply = self.horizon.transactions(params={'order': 'desc', 'limit': 2})
+        if len(reply['_embedded']['records']) == 2:
+            tx = reply['_embedded']['records'][1]
+            last_id = TransactionData(tx, strict=False).paging_token
+
+        # start monitoring transactions from last_id
+        # make the SSE request synchronous (will raise errors in the current thread)
+        if len(addresses) == 1:
+            events = self.horizon.account_transactions(addresses[0], sse=True, params={'last_id': last_id})
+        else:
+            events = self.horizon.transactions(sse=True, params={'last_id': last_id})
+
+        # asynchronous event processor
+        def event_processor():
+            import json
+            for event in events:
+                if event.event != 'message':
+                    continue
+                try:
+                    tx = json.loads(event.data)
+
+                    # get transaction operations
+                    tx_ops = self.horizon.transaction_operations(tx['hash'], params={'limit': 100})
+                    tx['operations'] = tx_ops['_embedded']['records']
+
+                    # deserialize
+                    tx_data = TransactionData(tx, strict=False)
+
+                    # iterate over transaction operations and see if there's a match
+                    for op_data in tx_data.operations:
+                        if only_payments and op_data.type != 'payment':
+                            continue
+                        if asset:
+                            if op_data.asset_type == 'native' and not asset.is_native():
+                                continue
+                            if op_data.asset_code != asset.code or op_data.asset_issuer != asset.issuer:
+                                continue
+                        if len(addresses) == 1:
+                            callback_fn(addresses[0], tx_data)
+                            break
+                        elif op_data.from_address in addresses:
+                            callback_fn(op_data.from_address, tx_data)
+                            break
+                        elif op_data.to_address in addresses:
+                            callback_fn(op_data.to_address, tx_data)
+                            break
+
+                except Exception as e:
+                    logger.exception(e)
+                    continue
+
+        # start monitoring thread
+        import threading
+        t = threading.Thread(target=event_processor)
+        t.daemon = True
+        t.start()

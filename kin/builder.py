@@ -2,7 +2,8 @@
 
 # Copyright (C) 2018 Kin Foundation
 
-import stellar_base.builder
+from stellar_base.builder import Builder as BaseBuilder
+from stellar_base.keypair import Keypair
 from stellar_base.memo import NoneMemo
 
 from .horizon import HORIZON_LIVE, HORIZON_TEST
@@ -10,13 +11,14 @@ from .horizon import Horizon
 from .utils import validate_address, validate_seed
 
 
-class Builder(stellar_base.builder.Builder):
+class Builder(BaseBuilder):
     """
     This class overrides :class:`~stellar_base.builder` to provide additional functionality.
     """
     def __init__(self, secret=None, address=None, horizon=None, horizon_uri=None, network=None, sequence=None):
         if secret:
             validate_seed(secret)
+            address = Keypair.from_seed(secret).address().decode()
         elif address:
             validate_address(address)
         else:
@@ -49,8 +51,6 @@ class Builder(stellar_base.builder.Builder):
 
     def get_sequence(self):
         """Alternative implementation to expose exceptions"""
-        if not self.address:
-            raise Exception('no address provided')
         return self.horizon.account(self.address).get('sequence')
 
     def next(self):

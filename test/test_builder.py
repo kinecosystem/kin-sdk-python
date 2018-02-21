@@ -66,15 +66,38 @@ def test_create_custom(test_sdk):
     assert builder.sequence == builder.get_sequence()
 
 
-def test_clear(test_sdk):
+@pytest.fixture(scope='session')
+def test_builder(test_sdk):
     builder = Builder(secret=test_sdk.base_keypair.seed(), horizon=test_sdk.horizon, network=test_sdk.network)
-    builder.append_create_account_op(Keypair.random().address().decode(), 100)
-    builder.sign()
-    assert len(builder.ops) == 1
-    assert builder.te
-    assert builder.tx
+    assert builder
+    return builder
 
-    builder.clear()
-    assert len(builder.ops) == 0
-    assert not builder.te
-    assert not builder.tx
+
+def test_sign(test_builder):
+    test_builder.append_create_account_op(Keypair.random().address().decode(), 100)
+    assert len(test_builder.ops) == 1
+    test_builder.sign()
+    assert test_builder.te
+    assert test_builder.tx
+
+
+def test_clear(test_builder):
+    test_builder.clear()
+    assert len(test_builder.ops) == 0
+    assert not test_builder.te
+    assert not test_builder.tx
+
+
+def test_get_sequence(test_builder):
+    assert test_builder.sequence == test_builder.get_sequence()
+
+
+def test_next(test_builder):
+    sequence = test_builder.sequence
+    test_builder.append_create_account_op(Keypair.random().address().decode(), 100)
+    test_builder.sign()
+    test_builder.next()
+    assert not test_builder.tx
+    assert not test_builder.te
+    assert test_builder.sequence == str(int(sequence) + 1)
+

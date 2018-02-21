@@ -23,8 +23,11 @@ logger = logging.getLogger(__name__)
 
 getcontext().prec = 7  # IMPORTANT: XLM decimal precision
 
-KIN_ISSUER = 'GDVDKQFP665JAO7A2LSHNLQIUNYNAAIGJ6FYJVMG4DT3YJQQJSRBLQDG'  # TODO: real address
-KIN_ASSET = Asset('KIN', KIN_ISSUER)
+KIN_ISSUER_PROD = 'GDVDKQFP665JAO7A2LSHNLQIUNYNAAIGJ6FYJVMG4DT3YJQQJSRBLQDG'  # TODO: real address
+KIN_ASSET_PROD = Asset('KIN', KIN_ISSUER_PROD)
+
+KIN_ISSUER_TEST = 'GCKG5WGBIJP74UDNRIRDFGENNIH5Y3KBI5IHREFAJKV4MQXLELT7EX6V'
+KIN_ASSET_TEST = Asset('KIN', KIN_ISSUER_TEST)
 
 # https://www.stellar.org/developers/guides/concepts/fees.html
 BASE_RESERVE = 0.5  # in XLM
@@ -69,8 +72,11 @@ class SDK(object):
         """
 
         self.network = network or 'PUBLIC'
+        self.kin_asset = KIN_ASSET_PROD if self.network == 'PUBLIC' else KIN_ASSET_TEST
 
-        pool_size = max(1, len(channel_seeds)) + 2  # for monitoring connection + extra
+        # set connection pool size for channels, monitoring connection + extra
+        pool_size = max(1, len(channel_seeds)) + 2
+
         if horizon_endpoint_uri:
             self.horizon = Horizon(horizon_uri=horizon_endpoint_uri, pool_size=pool_size)
         else:
@@ -165,7 +171,7 @@ class SDK(object):
 
         :raises: ValueError: if the supplied address has a wrong format.
         """
-        return self._get_account_asset_balance(address, KIN_ASSET)
+        return self._get_account_asset_balance(address, self.kin_asset)
 
     def create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, memo_text=None):
         """Create an account identified by the provided address.
@@ -219,7 +225,7 @@ class SDK(object):
 
         :raises: ValueError: if the supplied address has a wrong format.
         """
-        return self._check_asset_trusted(address, KIN_ASSET)
+        return self._check_asset_trusted(address, self.kin_asset)
 
     def send_native(self, address, amount, memo_text=None):
         """Send native currency (lumens) to the account identified by the provided address.
@@ -255,7 +261,7 @@ class SDK(object):
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
         """
-        return self._send_asset(KIN_ASSET, address, amount, memo_text)
+        return self._send_asset(self.kin_asset, address, amount, memo_text)
 
     def get_account_data(self, address):
         """Gets account data.
@@ -312,7 +318,7 @@ class SDK(object):
         :raises: ValueError: when no addresses are given.
         :raises: ValueError: if one of the provided addresses has a wrong format.
         """
-        self._monitor_accounts_transactions(KIN_ASSET, addresses, callback_fn, only_payments=True)
+        self._monitor_accounts_transactions(self.kin_asset, addresses, callback_fn, only_payments=True)
 
     def monitor_accounts_transactions(self, addresses, callback_fn):
         """Monitor transactions related to the account identified by a provided addresses (all transaction types).

@@ -57,13 +57,13 @@ def test_sdk(setup):
     # create and fund issuer account
     Helpers.fund_account(setup, setup.issuer_keypair.address().decode())
 
-    # override KIN with our test asset
-    # TODO: does not work?
-    kin.KIN_ASSET = setup.test_asset
-
     # init sdk
     sdk = kin.SDK(base_seed=setup.sdk_keypair.seed(), horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network)
     assert sdk
+
+    # override KIN asset with our test asset
+    sdk.kin_asset = setup.test_asset
+
     return sdk
 
 

@@ -20,41 +20,41 @@ pip install git+https://github.com/kinfoundation/kin-core-python.git
 ### Initialization
 
 To initialize the SDK, you need to provide the following parameters:
-- (optional) the seed to init the internal SDK wallet with. If not provided, you will NOT be able to use the 
+- (optional) the secret key to init the internal SDK wallet with. If not provided, you will NOT be able to use the 
   following functions: `get_address`, `get_native_balance`, `get_kin_balance`, `create_account`, `monitor_kin_payments`,
   `_trust_asset`, `_send_asset`.
 - (optional) the endpoint URI of your [Horizon](https://www.stellar.org/developers/horizon/reference/) node. 
   If not provided, a default Horizon endpoint will be used,either a testnet or pubnet, depending on the `network` 
   parameter below.
 - (optional) a network identifier, which is either `PUBLIC` or `TESTNET`, defaults to `PUBLIC`.
-- (optional) a list of channel seeds. If provided, the channel accounts will be used to sign transactions instead 
+- (optional) a list of channel keys. If provided, the channel accounts will be used to sign transactions instead 
   of the internal SDK wallet.
 
 
 ```python
 import kin
 
-# Init SDK without a seed, in the public Stellar network (for generic blockchain queries)
+# Init SDK without a secret key, in the public Stellar network (for generic blockchain queries)
 sdk = kin.SDK()
 
-# Init SDK without a seed, for Stellar testnet
+# Init SDK without a secret key, for Stellar testnet
 sdk = kin.SDK(network='TESTNET')
 
-# Init SDK without a seed, with specific Horizon server, running on Stellar testnet
+# Init SDK without a secret key, with specific Horizon server, running on Stellar testnet
 sdk = kin.SDK(horizon_endpoint_uri='http://my.horizon.uri', network='TESTNET')
 
-# Init SDK with wallet seed, on public network
-sdk = kin.SDK(seed='my seed')
+# Init SDK with wallet secret key, on public network
+sdk = kin.SDK(secret_key='my key')
 
 # Init SDK with several channels, on public network
-sdk = kin.SDK(seed='my seed', channel_seeds=['seed1', 'seed2', ...])
+sdk = kin.SDK(secret_key='my key', channel_secret_keys=['key1', 'key2', ...])
 ```
 For more examples, see the [SDK test file](test/test_sdk.py).
 
 
 ### Getting Wallet Details
 ```python
-# Get the address of my wallet account. The address is derived from the seed the SDK was inited with.
+# Get the address of my wallet account. The address is derived from the secret key the SDK was inited with.
 address = sdk.get_address()
 ```
 
@@ -132,29 +132,6 @@ sdk.monitor_accounts_kin_payments(['address1', 'address2'], print_callback)
 sdk.monitor_accounts_transactions(['address1', 'address2'], print_callback)
 ```
 
-### Helpers
-The following functions are specific to Stellar and not part of the high-level API, but they can be handy in 
-application development and testing.
-
-```python
-from stellar_base.asset import Asset
-my_asset = Asset('XYZ', 'asset issuer address')
-
-# Get asset balance of some account
-asset_balance = sdk._get_account_asset_balance('address', my_asset)
-
-# check if the asset is trusted by some account
-asset_trusted = sdk._check_asset_trusted('address', my_asset)
-
-# establishing a Trustline from SDK wallet to the asset
-tx_hash = sdk._trust_asset(my_asset, limit=1000)
-
-# send asset to some address
-tx_hash = sdk._send_asset(my_asset, 'address', 100, memo_text='order123')
-
-# monitor asset payments related to a list of accounts
-sdk._monitor_accounts_transactions(my_asset, ['address1', 'address2'], print_callback, only_payments=True)
-```
 
 ## Limitations
 

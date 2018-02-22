@@ -10,15 +10,16 @@ def validate_address(address):
         raise ValueError('invalid address')
 
     try:
-        decoded = decode_check('account', address)
+        decode_check('account', address)
     except Exception:
         raise ValueError('invalid address')
 
-def validate_seed(seed):
-    if len(seed) != 56:
-        raise ValueError('invalid seed')
+
+def validate_secret_key(key):
+    if len(key) != 56:
+        raise ValueError('invalid secret key')
 
     try:
-        decoded = decode_check('seed', seed)
+        decode_check('seed', key)
     except Exception:
-        raise ValueError('invalid seed')
+        raise ValueError('invalid secret key')

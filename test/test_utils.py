@@ -1,6 +1,6 @@
 import pytest
 
-from kin.utils import validate_address, validate_seed
+from kin.utils import validate_address, validate_secret_key
 
 
 def test_validate_address():
@@ -14,13 +14,13 @@ def test_validate_address():
     validate_address(address)
 
 
-def test_validate_seed():
-    with pytest.raises(ValueError, match='invalid seed'):
-        validate_seed('bad')
-    with pytest.raises(ValueError, match='invalid seed'):
-        validate_seed('deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
-    seed = 'SBQBGUY2RKHDTW4QYH6366QO2U7BHY7F6HFMA42VQIM6QN5X7BGUIRS5'
-    with pytest.raises(ValueError, match='invalid seed'):
-        validate_seed(seed.replace('M', 'N'))
-    validate_seed(seed)
+def test_validate_secret_key():
+    with pytest.raises(ValueError, match='invalid secret key'):
+        validate_secret_key('bad')
+    with pytest.raises(ValueError, match='invalid secret key'):
+        validate_secret_key('deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+    key = 'SBQBGUY2RKHDTW4QYH6366QO2U7BHY7F6HFMA42VQIM6QN5X7BGUIRS5'
+    with pytest.raises(ValueError, match='invalid secret key'):
+        validate_secret_key(key.replace('M', 'N'))
+    validate_secret_key(key)
 

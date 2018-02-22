@@ -11,18 +11,19 @@ from .builder import Builder
 if sys.version[0] == '2':
     import Queue as queue
 else:
+    # noinspection PyUnresolvedReferences
     import queue as queue
 
 
 class ChannelManager(object):
     """ The class :class:`~kin.ChannelManager` wraps channel-related specifics of transaction sending."""
-    def __init__(self, base_seed, channel_seeds, network, horizon):
-        self.base_seed = base_seed
-        self.base_address = Keypair.from_seed(base_seed).address().decode()
-        self.channel_builders = queue.Queue(len(channel_seeds))
-        for channel_seed in channel_seeds:
+    def __init__(self, secret_key, channel_keys, network, horizon):
+        self.base_key = secret_key
+        self.base_address = Keypair.from_seed(secret_key).address().decode()
+        self.channel_builders = queue.Queue(len(channel_keys))
+        for channel_key in channel_keys:
             # create a channel transaction builder and load channel account sequence number.
-            builder = Builder(secret=channel_seed, network=network, horizon=horizon)
+            builder = Builder(secret=channel_key, network=network, horizon=horizon)
             self.channel_builders.put(builder)
 
     def send_transaction(self, add_ops_fn, memo_text=None):
@@ -30,6 +31,7 @@ class ChannelManager(object):
 
         :param add_ops_fn: a function to call, that will add operations to the transaction. The function should be
             `partial`, because a `source` parameter will be added.
+        :type add_ops_fn: callable[builder]
 
         :param str memo_text: (optional) an optional text to add as transaction memo.
 
@@ -46,7 +48,7 @@ class ChannelManager(object):
                 builder.add_text_memo(memo_text[:28])  # max memo length is 28
             builder.sign()  # always sign with a channel key
             if source:
-                builder.sign(secret=self.base_seed)  # sign with base key too
+                builder.sign(secret=self.base_key)  # sign with the base key too
             reply = builder.submit()
             return reply.get('hash')
         finally:

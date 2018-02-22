@@ -4,8 +4,13 @@
 
 import requests
 from requests.adapters import HTTPAdapter, DEFAULT_POOLSIZE
-from urllib3.util import Retry
 import sys
+from urllib3.util import Retry
+
+from stellar_base.horizon import HORIZON_LIVE, HORIZON_TEST
+
+from .exceptions import SdkHorizonError
+from .version import __version__ as sdk_version
 
 try:
     from sseclient import SSEClient
@@ -15,15 +20,8 @@ except ImportError:
 if sys.version[0] == '2':
     from urllib import urlencode
 else:
+    # noinspection PyUnresolvedReferences
     from urllib.parse import urlencode
-
-from stellar_base.horizon import HORIZON_LIVE, HORIZON_TEST
-
-from .exceptions import SdkHorizonError
-from .version import __version__ as sdk_version
-
-import logging
-logger = logging.getLogger(__name__)
 
 
 DEFAULT_REQUEST_TIMEOUT = 60  # one minute, see github.com/stellar/horizon/txsub/system.go#L223

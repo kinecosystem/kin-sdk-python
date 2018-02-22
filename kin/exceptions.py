@@ -8,7 +8,7 @@ from .models import HTTPProblemDetails
 # All exceptions should subclass from SdkError in this module.
 class SdkError(Exception):
     """Base class for all SDK errors."""
-    #def __init__(self, msg):
+    # def __init__(self, msg):
     #    super(SdkError, self).__init__(msg)
 
 
@@ -21,8 +21,8 @@ class SdkNotConfiguredError(SdkError):
 
 
 class SdkHorizonError(SdkError, HTTPProblemDetails):
-    def __init__(self, dict):
-        super(HTTPProblemDetails, self).__init__(dict, strict=False)
+    def __init__(self, err_dict):
+        super(HTTPProblemDetails, self).__init__(err_dict, strict=False)
 
     def __str__(self):
         if self.extras and self.extras.result_codes and self.extras.result_codes.operations:

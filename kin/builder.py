@@ -8,7 +8,7 @@ from stellar_base.memo import NoneMemo
 
 from .horizon import HORIZON_LIVE, HORIZON_TEST
 from .horizon import Horizon
-from .utils import validate_address, validate_seed
+from .utils import validate_address, validate_secret_key
 
 
 class Builder(BaseBuilder):
@@ -17,14 +17,14 @@ class Builder(BaseBuilder):
     """
     def __init__(self, secret=None, address=None, horizon=None, horizon_uri=None, network=None, sequence=None):
         if secret:
-            validate_seed(secret)
+            validate_secret_key(secret)
             address = Keypair.from_seed(secret).address().decode()
         elif address:
             validate_address(address)
         else:
             raise Exception('either secret or address must be provided')
 
-        # run baseclass constructor to init baseclass variables
+        # run baseclass constructor to init base class variables
         super(Builder, self).__init__(secret=secret, address=address, sequence=1)
 
         # custom overrides

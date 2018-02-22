@@ -16,7 +16,7 @@ from .exceptions import (
 )
 from .horizon import Horizon
 from .models import AccountData, TransactionData
-from .utils import validate_address, validate_seed
+from .utils import validate_address, validate_secret_key
 
 import logging
 logger = logging.getLogger(__name__)
@@ -40,21 +40,22 @@ class SDK(object):
     It maintains a connection context with a Horizon node and hides all the specifics of dealing with Stellar REST API.
     """
 
-    def __init__(self, base_seed='', horizon_endpoint_uri='', network='PUBLIC', channel_seeds=[]):
+    def __init__(self, secret_key='', horizon_endpoint_uri='', network='PUBLIC', channel_secret_keys=None):
         """Create a new instance of the KIN SDK for Stellar.
 
-        If seed is not provided, the SDK can still be used in "anonymous" mode with only the following
+        If secret key is not provided, the SDK can still be used in "anonymous" mode with only the following
         functions available:
             - get_account_native_balance
             - get_account_kin_balance
-            - check_kin_trusted
             - check_account_exists
+            - check_account_activated
             - get_account_data
             - get_transaction_data
-            - monitor_account_transactions
+            - monitor_accounts_kin_payments
+            - monitor_accounts_transactions
 
-        :param str seed: (optional) a seed to initialize the sdk wallet account with. If not provided, the wallet will
-            not be initialized and methods needing the wallet will raise exception.
+        :param str secret_key: (optional) a key to initialize the sdk wallet account with. If not provided, the wallet
+            not not be initialized and methods needing the wallet will raise exception.
 
         :param str horizon_endpoint_uri: (optional) a Horizon endpoint. If not provided, a default endpoint will be
             used, either a testnet or pubnet, depending on the `network` parameter.
@@ -62,8 +63,8 @@ class SDK(object):
         :param str network: (optional) either PUBLIC or TESTNET, will set the Horizon endpoint in the absence of
             `horizon_endpoint_uri`. Defaults to PUBLIC if not specified.
 
-        :param list channel_seeds: (optional) a list of channels to sign transactions with. More channels means less
-            blocking on transactions and better response time.
+        :param list of str channel_secret_keys: (optional) a list of channels to sign transactions with. More channels means
+            less blocking on transactions and better response time.
 
         :return: An instance of the SDK.
         :rtype: :class:`~kin.SDK`
@@ -71,11 +72,12 @@ class SDK(object):
         :raises: :class:`~kin.SdkConfigurationError` if some of the configuration parameters are invalid.
         """
 
+        channel_secret_keys = channel_secret_keys or []
         self.network = network or 'PUBLIC'
         self.kin_asset = KIN_ASSET_PROD if self.network == 'PUBLIC' else KIN_ASSET_TEST
 
         # set connection pool size for channels, monitoring connection + extra
-        pool_size = max(1, len(channel_seeds)) + 2
+        pool_size = max(1, len(channel_secret_keys)) + 2
 
         if horizon_endpoint_uri:
             self.horizon = Horizon(horizon_uri=horizon_endpoint_uri, pool_size=pool_size)
@@ -89,34 +91,36 @@ class SDK(object):
         # check Horizon connection
         try:
             self.horizon.query('')
-        except Exception as e:
+        except Exception:
             raise SdkConfigurationError('cannot connect to horizon')
 
-        # init sdk account base_keypair if a base_seed is supplied
+        # init sdk account base_keypair if a secret_key is supplied
         self.base_keypair = None
-        if base_seed:
+        if secret_key:
             try:
-                validate_seed(base_seed)
+                validate_secret_key(secret_key)
             except ValueError:
-                raise SdkConfigurationError('invalid base seed: {}'.format(base_seed))
-            self.base_keypair = Keypair.from_seed(base_seed)
+                raise SdkConfigurationError('invalid secret key: {}'.format(secret_key))
+            self.base_keypair = Keypair.from_seed(secret_key)
 
-            # check channel seeds
-            if channel_seeds:
-                for channel_seed in channel_seeds:
+            # check channel keys
+            if channel_secret_keys:
+                for channel_key in channel_secret_keys:
                     try:
-                        validate_seed(channel_seed)
+                        validate_secret_key(channel_key)
                     except ValueError:
-                        raise SdkConfigurationError('invalid channel seed: {}'.format(channel_seed))
+                        raise SdkConfigurationError('invalid channel key: {}'.format(channel_key))
             else:
-                channel_seeds = [base_seed]
+                channel_secret_keys = [secret_key]
 
             # init channel manager
-            self.channel_manager = ChannelManager(base_seed, channel_seeds, self.network, self.horizon)
+            self.channel_manager = ChannelManager(secret_key, channel_secret_keys, self.network, self.horizon)
+
+        logger.info('Kin SDK inited on network {}, horizon endpoint {}', self.network, self.horizon.horizon_uri)
 
     def get_address(self):
         """Get the address of the SDK wallet account.
-        The wallet is configured by a seed supplied during SDK initialization.
+        The wallet is configured by a secret key supplied during SDK initialization.
 
         :return: public address of the wallet.
         :rtype: str
@@ -129,7 +133,7 @@ class SDK(object):
 
     def get_native_balance(self):
         """Get native (lumen) balance of the SDK wallet.
-        The wallet is configured by a seed supplied during SDK initialization.
+        The wallet is configured by a secret key supplied during SDK initialization.
 
         :return: : the balance in lumens.
         :rtype: Decimal
@@ -140,7 +144,7 @@ class SDK(object):
 
     def get_kin_balance(self):
         """Get KIN balance of the SDK wallet.
-        The wallet is configured by a seed supplied during SDK initialization.
+        The wallet is configured by a secret key supplied during SDK initialization.
 
         :return: : the balance in KIN.
         :rtype: Decimal
@@ -204,6 +208,7 @@ class SDK(object):
         :param str address: the account address to query.
 
         :return: True if the account exists.
+        :rtype: boolean
 
         :raises: ValueError: if the supplied address has a wrong format.
         """
@@ -250,7 +255,7 @@ class SDK(object):
 
         :param str address: the account to send KIN to.
 
-        :param number amount: the number of KIN to send.
+        :param number amount: the amount of KIN to send.
 
         :param str memo_text: (optional) a text to put into transaction memo.
 
@@ -299,8 +304,8 @@ class SDK(object):
         """Monitor KIN payment transactions related to the SDK wallet account.
         NOTE: the function starts a background thread.
 
-        :param callback_fn: the function to call on each received payment. The function has the following signature:
-           `callback_fn(address, tx_data)`.
+        :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data)`.
+        :type: callable[[str, :class:`~kin.TransactionData`], None]
 
         :raises: :class:`~kin.SdkConfigurationError` if the SDK wallet is not configured.
         """
@@ -312,22 +317,23 @@ class SDK(object):
 
         :param list of str addresses: the addresses of the accounts to query.
 
-        :param callback_fn: the function to call on each received payment. The function has the following signature:
-           `callback_fn(address, tx_data)`.
+        :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data)`.
+        :type: callable[[str, :class:`~kin.TransactionData`], None]
 
         :raises: ValueError: when no addresses are given.
         :raises: ValueError: if one of the provided addresses has a wrong format.
         """
         self._monitor_accounts_transactions(self.kin_asset, addresses, callback_fn, only_payments=True)
 
+    # noinspection PyTypeChecker
     def monitor_accounts_transactions(self, addresses, callback_fn):
         """Monitor transactions related to the account identified by a provided addresses (all transaction types).
         NOTE: the function starts a background thread.
 
         :param list of str addresses: the addresses of the accounts to query.
 
-        :param callback_fn: the function to call on each received transaction. The function has the following signature:
-           `callback_fn(address, tx_data)`.
+        :param callback_fn: the function to call on each received transaction as `callback_fn(address, tx_data)`.
+        :type: callable[[str, :class:`~kin.TransactionData`], None]
 
         :raises: ValueError: when no addresses are given.
         :raises: ValueError: if one of the provided addresses has a wrong format.
@@ -348,7 +354,7 @@ class SDK(object):
         :rtype: Decimal
 
         :raises: ValueError: if the supplied address has a wrong format.
-        :raises: ValueError: when there is no trustline to the asset.
+        :raises: ValueError: when account is not activated (no trustline).
         """
         if not asset.is_native():
             try:
@@ -468,8 +474,8 @@ class SDK(object):
 
         :param: str addresses: the addresses of the accounts to query.
 
-        :param callback_fn: the function to call on each received transaction. The function has the following signature:
-           `callback_fn(address, tx_data)`.
+        :param callback_fn: the function to call on each received transaction as `callback_fn(address, tx_data)`.
+        :type: callable[[str, :class:`~kin.TransactionData`], None]
 
         :param boolean only_payments: whether to return payment transactions only.
 
@@ -496,10 +502,10 @@ class SDK(object):
         else:
             reply = self.horizon.transactions(params={'order': 'desc', 'limit': 2})
         if len(reply['_embedded']['records']) == 2:
-            tx = reply['_embedded']['records'][1]
-            last_id = TransactionData(tx, strict=False).paging_token
+            tt = reply['_embedded']['records'][1]
+            last_id = TransactionData(tt, strict=False).paging_token
 
-        # start monitoring transactions from last_id
+        # start monitoring transactions from last_id. TODO: use cursor=now instead
         # make the SSE request synchronous (will raise errors in the current thread)
         if len(addresses) == 1:
             events = self.horizon.account_transactions(addresses[0], sse=True, params={'last_id': last_id})

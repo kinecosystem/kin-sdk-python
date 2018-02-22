@@ -8,7 +8,7 @@ from kin.horizon import Horizon, HORIZON_LIVE, HORIZON_TEST
 def test_create_fail():
     with pytest.raises(Exception, match='either secret or address must be provided'):
         Builder()
-    with pytest.raises(Exception, match='invalid seed'):
+    with pytest.raises(Exception, match='invalid secret key'):
         Builder(secret='bad')
     with pytest.raises(Exception, match='invalid address'):
         Builder(address='bad')

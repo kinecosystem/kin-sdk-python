@@ -9,6 +9,7 @@ from stellar_base.utils import XdrLengthError
 
 import kin
 from kin.builder import Builder
+from kin.exceptions import *
 
 
 def test_sdk_create_fail():
@@ -19,12 +20,12 @@ def test_sdk_create_fail():
         kin.SDK(horizon_endpoint_uri='http://localhost:666')
 
     # bad seeds (without Nick Cave)
-    with pytest.raises(kin.SdkConfigurationError, match='invalid base seed'):
-        kin.SDK(base_seed='bad')
+    with pytest.raises(kin.SdkConfigurationError, match='invalid secret key'):
+        kin.SDK(secret_key='bad')
 
     keypair = Keypair.random()
-    with pytest.raises(kin.SdkConfigurationError, match='invalid channel seed'):
-        kin.SDK(base_seed=keypair.seed(), channel_seeds=['bad'])
+    with pytest.raises(kin.SdkConfigurationError, match='invalid channel key'):
+        kin.SDK(secret_key=keypair.seed(), channel_secret_keys=['bad'])
 
 
 def test_sdk_not_configured():
@@ -570,14 +571,14 @@ def test_monitor_asset_transactions_multiple(setup, test_sdk):
 def test_channels(setup, helpers):
     # prepare channel accounts
     channel_keypairs = [Keypair.random(), Keypair.random(), Keypair.random(), Keypair.random()]
-    channel_seeds = [channel_keypair.seed() for channel_keypair in channel_keypairs]
+    channel_keys = [channel_keypair.seed() for channel_keypair in channel_keypairs]
     channel_addresses = [channel_keypair.address().decode() for channel_keypair in channel_keypairs]
     for channel_address in channel_addresses:
         helpers.fund_account(setup, channel_address)
 
     # init sdk with these channels
-    sdk = kin.SDK(base_seed=setup.sdk_keypair.seed(), horizon_endpoint_uri=setup.horizon_endpoint_uri,
-                  network=setup.network, channel_seeds=channel_seeds)
+    sdk = kin.SDK(secret_key=setup.sdk_keypair.seed(), horizon_endpoint_uri=setup.horizon_endpoint_uri,
+                  network=setup.network, channel_secret_keys=channel_keys)
     assert sdk
     assert sdk.channel_manager
     assert sdk.channel_manager.channel_builders.qsize() == len(channel_keypairs)
@@ -649,9 +650,9 @@ def fund_asset(setup, address, amount, memo_text=None):
     return reply.get('hash')
 
 
-def trust_asset(setup, test_sdk, seed, memo_text=None):
+def trust_asset(setup, test_sdk, secret_key, memo_text=None):
     """A helper to establish a trustline"""
-    builder = Builder(secret=seed, horizon_uri=test_sdk.horizon.horizon_uri, network=test_sdk.network)
+    builder = Builder(secret=secret_key, horizon_uri=test_sdk.horizon.horizon_uri, network=test_sdk.network)
     builder.append_trust_op(setup.test_asset.issuer, setup.test_asset.code)
     if memo_text:
         builder.add_text_memo(memo_text[:28])  # max memo length is 28
@@ -660,9 +661,9 @@ def trust_asset(setup, test_sdk, seed, memo_text=None):
     return reply.get('hash')
 
 
-def send_asset(setup, seed, address, amount, memo_text=None):
+def send_asset(setup, secret_key, address, amount, memo_text=None):
     """A helper to send asset"""
-    builder = Builder(secret=seed, horizon_uri=setup.horizon_endpoint_uri, network=setup.network)
+    builder = Builder(secret=secret_key, horizon_uri=setup.horizon_endpoint_uri, network=setup.network)
     builder.append_payment_op(address, amount, asset_type=setup.test_asset.code, asset_issuer=setup.test_asset.issuer)
     if memo_text:
         builder.add_text_memo(memo_text[:28])  # max memo length is 28

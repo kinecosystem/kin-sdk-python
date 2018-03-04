@@ -132,6 +132,41 @@ sdk.monitor_accounts_kin_payments(['address1', 'address2'], print_callback)
 sdk.monitor_accounts_transactions(['address1', 'address2'], print_callback)
 ```
 
+### Checking Status
+The handy `get_status` method will return some parameters the SDK was configured with, along with Horizon status:
+```python
+status = sdk.get_status()
+print status
+#  {
+#     'channels': {
+#         'all': 1,  
+#         'free': 1  
+#     }, 
+#     'kin_asset': {
+#         'code': 'KIN', 
+#         'issuer': '<issuer address'
+#     }, 
+#     'network': 'TESTNET', 
+#     'horizon': {
+#         'uri': '<horizon uri>', 
+#         'online': True,
+#         'error': None 
+#     }, 
+#     'address': '<sdk wallet address>'
+#   }
+```
+- `address` - the SDK wallet address.
+- `channels`:
+  - `all` - the number of channels the SDK was configured with
+  - `free` - the number of currently free channels. If the number is consistently close to zero, it means the channels
+             are always busy, and you might consider adding more channels or more servers.
+- `kin_asset` - the KIN asset the SDK was configured with.
+- `network` - the network the SDK was configured with (PUBLIC/TESTNET/CUSTOM)
+- `horizon`:
+  - `uri` - the endpoint URI of the Horizon server.
+  - `online` - Horizon online status.
+  - `error` - Horizon error (when not `online`) 
+
 
 ## Limitations
 

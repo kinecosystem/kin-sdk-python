@@ -44,8 +44,8 @@ class Horizon(object):
         self.request_timeout = request_timeout
 
         # init transport adapter
-        adapter = HTTPAdapter(pool_connections=1, pool_maxsize=pool_size)
-        adapter.max_retries = Retry(total=num_retries, backoff_factor=backoff_factor, redirect=0)
+        retry = Retry(total=num_retries, backoff_factor=backoff_factor, redirect=0)
+        adapter = HTTPAdapter(pool_connections=1, pool_maxsize=pool_size, max_retries=retry)
 
         # init session
         session = requests.Session()
@@ -60,8 +60,12 @@ class Horizon(object):
     def submit(self, te):
         params = {'tx': te}
         url = self.horizon_uri + '/transactions/'
-        reply = self._session.post(url, data=params, timeout=self.request_timeout).json()
-        return check_horizon_reply(reply)
+        reply = self._session.post(url, data=params, timeout=self.request_timeout)
+        try:
+            reply_json = reply.json()
+        except ValueError:
+            raise Exception('invalid horizon reply: [{}] {}'.format(reply.status_code, reply.text))
+        return check_horizon_reply(reply_json)
 
     def query(self, rel_url, params=None, sse=False):
         abs_url = self.horizon_uri + rel_url

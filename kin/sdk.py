@@ -88,12 +88,6 @@ class SDK(object):
             else:
                 self.horizon = Horizon(horizon_uri=HORIZON_LIVE, pool_size=pool_size)
 
-        # check Horizon connection
-        try:
-            self.horizon.query('')
-        except Exception:
-            raise SdkConfigurationError('cannot connect to horizon')
-
         # init sdk account base_keypair if a secret_key is supplied
         self.base_keypair = None
         if secret_key:
@@ -117,6 +111,38 @@ class SDK(object):
             self.channel_manager = ChannelManager(secret_key, channel_secret_keys, self.network, self.horizon)
 
         logger.info('Kin SDK inited on network {}, horizon endpoint {}', self.network, self.horizon.horizon_uri)
+
+    def get_status(self):
+        """Get system status."""
+        status = {
+            'network': self.network,
+            'address': None,
+            'kin_asset': {
+                'code': self.kin_asset.code,
+                'issuer': self.kin_asset.issuer
+            },
+            'horizon': {
+                'uri': self.horizon.horizon_uri,
+                'online': False,
+                'error': None,
+            },
+            'channels': None,
+        }
+        if self.base_keypair:
+            status['address'] = self.get_address()
+            status['channels'] = {
+                'all': self.channel_manager.num_channels,
+                'free': self.channel_manager.channel_builders.qsize()
+            }
+
+        # now check Horizon connection
+        try:
+            self.horizon.query('')
+            status['horizon']['online'] = True
+        except Exception as e:
+            status['horizon']['error'] = str(e)
+
+        return status
 
     def get_address(self):
         """Get the address of the SDK wallet account.

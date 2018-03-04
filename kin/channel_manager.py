@@ -20,6 +20,7 @@ class ChannelManager(object):
     def __init__(self, secret_key, channel_keys, network, horizon):
         self.base_key = secret_key
         self.base_address = Keypair.from_seed(secret_key).address().decode()
+        self.num_channels = len(channel_keys)
         self.channel_builders = queue.Queue(len(channel_keys))
         for channel_key in channel_keys:
             # create a channel transaction builder and load channel account sequence number.

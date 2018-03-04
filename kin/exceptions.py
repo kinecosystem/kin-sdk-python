@@ -26,8 +26,8 @@ class SdkHorizonError(SdkError, HTTPProblemDetails):
 
     def __str__(self):
         if self.extras and self.extras.result_codes and self.extras.result_codes.operations:
-            return repr(self.extras.result_codes.operations[0])
-        return repr(self.title)
+            return self.extras.result_codes.operations[0]
+        return self.title
 
 
 # result codes from github.com/stellar/horizon/codes/main.go

@@ -13,12 +13,6 @@ from kin.exceptions import *
 
 
 def test_sdk_create_fail():
-    # bad endpoint
-    with pytest.raises(kin.SdkConfigurationError, match='cannot connect to horizon'):
-        kin.SDK(horizon_endpoint_uri='bad')
-    with pytest.raises(kin.SdkConfigurationError, match='cannot connect to horizon'):
-        kin.SDK(horizon_endpoint_uri='http://localhost:666')
-
     # bad seeds (without Nick Cave)
     with pytest.raises(kin.SdkConfigurationError, match='invalid secret key'):
         kin.SDK(secret_key='bad')
@@ -53,6 +47,37 @@ def test_sdk_create_success(setup, test_sdk):
     assert test_sdk.base_keypair.verifying_key == setup.sdk_keypair.verifying_key
     assert test_sdk.base_keypair.signing_key == setup.sdk_keypair.signing_key
     assert test_sdk.channel_manager
+
+
+def test_get_status(setup, test_sdk):
+    # bad endpoint
+    sdk = kin.SDK(horizon_endpoint_uri='bad')
+    status = sdk.get_status()
+    assert status['horizon']
+    assert status['horizon']['online'] is False
+    assert status['horizon']['error'].startswith("Invalid URL 'bad': No schema supplied")
+
+    # no horizon on endpoint
+    sdk = kin.SDK(horizon_endpoint_uri='http://localhost:666')
+    status = sdk.get_status()
+    assert status['horizon']
+    assert status['horizon']['online'] is False
+    assert status['horizon']['error'].find('Connection refused') > 0
+
+    # success
+    status = test_sdk.get_status()
+    assert status['network'] == setup.network
+    assert status['address'] == setup.sdk_keypair.address().decode()
+    assert status['kin_asset']
+    assert status['kin_asset']['code'] == setup.test_asset.code
+    assert status['kin_asset']['issuer'] == setup.test_asset.issuer
+    assert status['horizon']
+    assert status['horizon']['uri'] == setup.horizon_endpoint_uri
+    assert status['horizon']['online']
+    assert status['horizon']['error'] is None
+    assert status['channels']
+    assert status['channels']['all'] == 1
+    assert status['channels']['free'] == 1
 
 
 def test_get_address(setup, test_sdk):

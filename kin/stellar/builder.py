@@ -6,9 +6,9 @@ from stellar_base.builder import Builder as BaseBuilder
 from stellar_base.keypair import Keypair
 from stellar_base.memo import NoneMemo
 
-from .horizon import HORIZON_LIVE, HORIZON_TEST
-from .horizon import Horizon
-from .utils import validate_address, validate_secret_key
+from horizon import HORIZON_LIVE, HORIZON_TEST
+from horizon import Horizon
+from utils import validate_address, validate_secret_key
 
 
 class Builder(BaseBuilder):

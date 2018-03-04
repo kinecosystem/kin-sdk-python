@@ -8,8 +8,7 @@ from stellar_base.keypair import Keypair
 from stellar_base.utils import XdrLengthError
 
 import kin
-from kin.builder import Builder
-from kin.exceptions import *
+from stellar.builder import Builder
 
 
 def test_sdk_create_fail():
@@ -109,8 +108,9 @@ def test_create_account(test_sdk):
         test_sdk.create_account('bad')
 
     # underfunded
-    with pytest.raises(kin.SdkHorizonError, match=kin.CreateAccountResultCode.UNDERFUNDED):
+    with pytest.raises(kin.SdkHorizonError) as se:
         test_sdk.create_account(address, starting_balance=1000000)
+    assert se.inner_result_code == kin.CreateAccountResultCode.UNDERFUNDED
 
     # successful
     starting_balance = 100
@@ -146,6 +146,9 @@ def test_create_account(test_sdk):
     assert op.to_address is None
     assert op.amount is None
 
+    with pytest.raises(kin.AccountExistsError):
+        test_sdk.create_account(address)
+
 
 def test_get_account_asset_balance_fail(test_sdk, setup):
     with pytest.raises(ValueError, match='invalid address'):
@@ -158,12 +161,12 @@ def test_get_account_asset_balance_fail(test_sdk, setup):
         test_sdk._get_account_asset_balance(address, Asset('TMP', 'bad'))
 
     # account not created yet
-    with pytest.raises(kin.SdkHorizonError, match='Resource Missing'):
+    with pytest.raises(kin.NoSuchAccountError):
         test_sdk._get_account_asset_balance(address, setup.test_asset)
 
     assert test_sdk.create_account(address, starting_balance=10)
 
-    with pytest.raises(ValueError, match='account not activated for the asset'):
+    with pytest.raises(kin.AccountNotActivatedError):
         test_sdk._get_account_asset_balance(address, setup.test_asset)
 
 
@@ -298,7 +301,7 @@ def test_asset_trusted(setup, test_sdk):
     with pytest.raises(ValueError, match='asset issuer invalid'):
         test_sdk._check_asset_trusted(address, Asset('TMP', 'bad'))
 
-    with pytest.raises(kin.SdkHorizonError, match='Resource Missing'):
+    with pytest.raises(kin.NoSuchAccountError):
         test_sdk._check_asset_trusted(address, setup.test_asset)
 
     assert test_sdk.create_account(address, starting_balance=100)
@@ -368,6 +371,10 @@ def test_send_asset(setup, test_sdk):
 def test_get_account_data(setup, test_sdk):
     with pytest.raises(ValueError, match='invalid address'):
         test_sdk.get_account_data('bad')
+
+    address = Keypair.random().address().decode()
+    with pytest.raises(kin.NoSuchAccountError):
+        test_sdk.get_account_data(address)
 
     acc_data = test_sdk.get_account_data(test_sdk.get_address())
     assert acc_data

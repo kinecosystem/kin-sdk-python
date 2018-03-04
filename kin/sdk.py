@@ -8,15 +8,12 @@ from functools import partial
 from stellar_base.asset import Asset
 from stellar_base.keypair import Keypair
 
-from .channel_manager import ChannelManager
-from .exceptions import (
-    SdkConfigurationError,
-    SdkNotConfiguredError,
-    SdkHorizonError,
-)
-from .horizon import Horizon
-from .models import AccountData, TransactionData
-from .utils import validate_address, validate_secret_key
+from stellar.channel_manager import ChannelManager
+from stellar.horizon import Horizon, HORIZON_LIVE, HORIZON_TEST
+from stellar.horizon_models import AccountData, TransactionData
+from stellar.utils import validate_address, validate_secret_key
+
+from errors import *
 
 import logging
 logger = logging.getLogger(__name__)
@@ -82,7 +79,6 @@ class SDK(object):
         if horizon_endpoint_uri:
             self.horizon = Horizon(horizon_uri=horizon_endpoint_uri, pool_size=pool_size)
         else:
-            from stellar_base.horizon import HORIZON_LIVE, HORIZON_TEST
             if self.network == 'TESTNET':
                 self.horizon = Horizon(horizon_uri=HORIZON_TEST, pool_size=pool_size)
             else:
@@ -96,6 +92,7 @@ class SDK(object):
             except ValueError:
                 raise SdkConfigurationError('invalid secret key: {}'.format(secret_key))
             self.base_keypair = Keypair.from_seed(secret_key)
+            self.base_address = self.base_keypair.address().decode()
 
             # check channel keys
             if channel_secret_keys:
@@ -155,7 +152,7 @@ class SDK(object):
         """
         if not self.base_keypair:
             raise SdkNotConfiguredError('address not configured')
-        return self.base_keypair.address().decode()
+        return self.base_address
 
     def get_native_balance(self):
         """Get native (lumen) balance of the SDK wallet.
@@ -221,12 +218,16 @@ class SDK(object):
         """
         if not self.base_keypair:
             raise SdkNotConfiguredError('address not configured')
-        validate_address(address)
 
-        return self.channel_manager.send_transaction(lambda builder:
-                                                     partial(builder.append_create_account_op, address,
-                                                             starting_balance),
-                                                     memo_text=memo_text)
+        validate_address(address)
+        try:
+            reply = self.channel_manager.send_transaction(lambda builder:
+                                                          partial(builder.append_create_account_op, address,
+                                                                  starting_balance),
+                                                          memo_text=memo_text)
+            return reply['hash']
+        except Exception as e:
+            raise translate_error(e)
 
     def check_account_exists(self, address):
         """Check whether the account identified by the provided address exists.
@@ -241,10 +242,8 @@ class SDK(object):
         try:
             self.get_account_data(address)
             return True
-        except SdkHorizonError as se:
-            if se.status == 404:
-                return False
-            raise
+        except NoSuchAccountError:
+            return False
 
     def check_account_activated(self, address):
         """Check if the account is activated (has a trustline to KIN asset).
@@ -305,8 +304,14 @@ class SDK(object):
         :raises: ValueError: if the provided address has a wrong format.
         """
         validate_address(address)
-        acc = self.horizon.account(address)
-        return AccountData(acc, strict=False)
+        try:
+            acc = self.horizon.account(address)
+            return AccountData(acc, strict=False)
+        except Exception as e:
+            sdk_error = translate_error(e)
+            if sdk_error is ResourceMissingError:
+                raise NoSuchAccountError   # ResourceMissingError?
+            raise sdk_error
 
     def get_transaction_data(self, tx_hash):
         """Gets transaction data.
@@ -316,15 +321,21 @@ class SDK(object):
         :return: transaction data
         :rtype: :class:`~kin.TransactionData`
         """
-        # get transaction data
-        tx = self.horizon.transaction(tx_hash)
+        try:
+            # get transaction data
+            tx = self.horizon.transaction(tx_hash)
 
-        # get transaction operations
-        tx_ops = self.horizon.transaction_operations(tx['hash'], params={'limit': 100})
+            # get transaction operations
+            tx_ops = self.horizon.transaction_operations(tx['hash'], params={'limit': 100})
 
-        tx['operations'] = tx_ops['_embedded']['records']
+            tx['operations'] = tx_ops['_embedded']['records']
 
-        return TransactionData(tx, strict=False)
+            return TransactionData(tx, strict=False)
+        except Exception as e:
+            sdk_error = translate_error(e)
+            if sdk_error is ResourceMissingError:
+                raise NoSuchTransactionError  # ResourceMissingError?
+            raise sdk_error
 
     def monitor_kin_payments(self, callback_fn):
         """Monitor KIN payment transactions related to the SDK wallet account.
@@ -388,13 +399,20 @@ class SDK(object):
             except ValueError:
                 raise ValueError('asset issuer invalid')
 
-        acc_data = self.get_account_data(address)
+        try:
+            acc_data = self.get_account_data(address)
+        except Exception as e:
+            sdk_error = translate_error(e)
+            if sdk_error is ResourceMissingError:
+                raise NoSuchAccountError  # ResourceMissingError?
+            raise sdk_error
+
         for balance in acc_data.balances:
             if (balance.asset_type == 'native' and asset.code == 'XLM') \
                     or (balance.asset_code == asset.code and balance.asset_issuer == asset.issuer):
                 return balance.balance
 
-        raise ValueError('account not activated for the asset')
+        raise AccountNotActivatedError
 
     def _trust_asset(self, asset, limit=None, memo_text=None):
         """Establish a trustline from the SDK wallet to the asset issuer.
@@ -421,10 +439,14 @@ class SDK(object):
             except ValueError:
                 raise ValueError('asset issuer invalid')
 
-        return self.channel_manager.send_transaction(lambda builder:
-                                                     partial(builder.append_trust_op, asset.issuer, asset.code,
-                                                             limit=limit),
-                                                     memo_text=memo_text)
+        try:
+            reply = self.channel_manager.send_transaction(lambda builder:
+                                                          partial(builder.append_trust_op, asset.issuer, asset.code,
+                                                                  limit=limit),
+                                                          memo_text=memo_text)
+            return reply['hash']
+        except HorizonError as se:
+            raise translate_horizon_error(se)
 
     def _check_asset_trusted(self, address, asset):
         """Check if the account has a trustline to the provided asset.
@@ -440,17 +462,11 @@ class SDK(object):
         :raises: ValueError: if the supplied address has a wrong format.
         :raises: ValueError: if the asset issuer address has a wrong format.
         """
-        if not asset.is_native():
-            try:
-                validate_address(asset.issuer)
-            except ValueError:
-                raise ValueError('asset issuer invalid')
-
-        acc_data = self.get_account_data(address)
-        for balance in acc_data.balances:
-            if balance.asset_code == asset.code and balance.asset_issuer == asset.issuer:
-                return True
-        return False
+        try:
+            self._get_account_asset_balance(address, asset)
+            return True
+        except AccountNotActivatedError:
+            return False
 
     def _send_asset(self, asset, address, amount, memo_text=None):
         """Send asset to the account identified by the provided address.
@@ -485,10 +501,14 @@ class SDK(object):
             except ValueError:
                 raise ValueError('asset issuer invalid')
 
-        return self.channel_manager.send_transaction(lambda builder:
-                                                     partial(builder.append_payment_op, address, amount,
-                                                             asset_type=asset.code, asset_issuer=asset.issuer),
-                                                     memo_text=memo_text)
+        try:
+            reply = self.channel_manager.send_transaction(lambda builder:
+                                                          partial(builder.append_payment_op, address, amount,
+                                                                  asset_type=asset.code, asset_issuer=asset.issuer),
+                                                          memo_text=memo_text)
+            return reply['hash']
+        except HorizonError as se:
+            raise translate_horizon_error(se)
 
     def _monitor_accounts_transactions(self, asset, addresses, callback_fn, only_payments=False):
         """Monitor transactions related to the accounts identified by provided addresses. If asset is given, only

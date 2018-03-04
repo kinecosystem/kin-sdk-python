@@ -27,8 +27,13 @@ class AccountData(PModel):
         high_threshold = IntType(default=0)
 
     class Flags(PModel):
-        auth_required = BooleanType(default=False)
-        auth_revocable = BooleanType(default=False)
+        """Flags set on issuer accounts.
+           TrustLines are created with authorized set to "false" requiring
+           the issuer to set it for each TrustLine
+        """
+        auth_required = BooleanType(default=False)  # If set, the authorized flag in TrustLines can be cleared.
+        # Otherwise, authorization cannot be revoked
+        auth_revocable = BooleanType(default=False)  # Once set, causes all AUTH_* flags to be read-only
 
     class Balance(PModel):
         asset_type = StringType()

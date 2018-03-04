@@ -6,7 +6,7 @@ import sys
 
 from stellar_base.keypair import Keypair
 
-from .builder import Builder
+from stellar.builder import Builder
 
 if sys.version[0] == '2':
     import Queue as queue
@@ -36,8 +36,8 @@ class ChannelManager(object):
 
         :param str memo_text: (optional) an optional text to add as transaction memo.
 
-        :return: transaction hash
-        :rtype: str
+        :return: transaction object
+        :rtype: :class:`~kin.TransactionData`
         """
         # get an available channel builder first (blocking)
         builder = self.channel_builders.get(True)
@@ -50,8 +50,7 @@ class ChannelManager(object):
             builder.sign()  # always sign with a channel key
             if source:
                 builder.sign(secret=self.base_key)  # sign with the base key too
-            reply = builder.submit()
-            return reply.get('hash')
+            return builder.submit()
         finally:
             # clean the builder and return it to the queue
             builder.clear()

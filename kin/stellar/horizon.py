@@ -9,8 +9,8 @@ from urllib3.util import Retry
 
 from stellar_base.horizon import HORIZON_LIVE, HORIZON_TEST
 
-from .exceptions import SdkHorizonError
-from .version import __version__ as sdk_version
+from exceptions import SdkHorizonError
+from version import __version__ as sdk_version
 
 try:
     from sseclient import SSEClient

@@ -1,6 +1,6 @@
 import pytest
 
-from kin.utils import validate_address, validate_secret_key
+from stellar.utils import validate_address, validate_secret_key
 
 
 def test_validate_address():

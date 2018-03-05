@@ -110,7 +110,7 @@ class SDK(object):
             # init channel manager
             self.channel_manager = ChannelManager(secret_key, channel_secret_keys, self.network, self.horizon)
 
-        logger.info('Kin SDK inited on network {}, horizon endpoint {}', self.network, self.horizon.horizon_uri)
+        logger.info('Kin SDK inited on network {}, horizon endpoint {}'.format(self.network, self.horizon.horizon_uri))
 
     def get_status(self):
         """Get system status."""

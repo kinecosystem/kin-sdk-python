@@ -5,30 +5,19 @@
 from decimal import Decimal, getcontext
 from functools import partial
 
-from stellar_base.asset import Asset
 from stellar_base.keypair import Keypair
 
-from stellar.channel_manager import ChannelManager
-from stellar.horizon import Horizon, HORIZON_LIVE, HORIZON_TEST
-from stellar.horizon_models import AccountData, TransactionData
-from stellar.utils import validate_address, validate_secret_key
-
-from errors import *
+from .config import *
+from .errors import *
+from .stellar.channel_manager import ChannelManager
+from .stellar.horizon import Horizon, HORIZON_LIVE, HORIZON_TEST
+from .stellar.horizon_models import AccountData, TransactionData
+from .stellar.utils import *
 
 import logging
 logger = logging.getLogger(__name__)
 
 getcontext().prec = 7  # IMPORTANT: XLM decimal precision
-
-KIN_ISSUER_PROD = 'GDVDKQFP665JAO7A2LSHNLQIUNYNAAIGJ6FYJVMG4DT3YJQQJSRBLQDG'  # TODO: real address
-KIN_ASSET_PROD = Asset('KIN', KIN_ISSUER_PROD)
-
-KIN_ISSUER_TEST = 'GCKG5WGBIJP74UDNRIRDFGENNIH5Y3KBI5IHREFAJKV4MQXLELT7EX6V'
-KIN_ASSET_TEST = Asset('KIN', KIN_ISSUER_TEST)
-
-# https://www.stellar.org/developers/guides/concepts/fees.html
-BASE_RESERVE = 0.5  # in XLM
-MIN_ACCOUNT_BALANCE = (2 + 1) * BASE_RESERVE  # 1 additional trustline op
 
 
 class SDK(object):
@@ -37,7 +26,8 @@ class SDK(object):
     It maintains a connection context with a Horizon node and hides all the specifics of dealing with Stellar REST API.
     """
 
-    def __init__(self, secret_key='', horizon_endpoint_uri='', network='PUBLIC', channel_secret_keys=None):
+    def __init__(self, secret_key='', horizon_endpoint_uri='', network='PUBLIC',
+                 channel_secret_keys=None, kin_asset=None):
         """Create a new instance of the KIN SDK for Stellar.
 
         If secret key is not provided, the SDK can still be used in "anonymous" mode with only the following
@@ -54,53 +44,71 @@ class SDK(object):
         :param str secret_key: (optional) a key to initialize the sdk wallet account with. If not provided, the wallet
             not not be initialized and methods needing the wallet will raise exception.
 
-        :param str horizon_endpoint_uri: (optional) a Horizon endpoint. If not provided, a default endpoint will be
-            used, either a testnet or pubnet, depending on the `network` parameter.
+        :param str horizon_endpoint_uri: (optional) a Horizon endpoint. If not provided, a default global endpoint will
+            be used, either a TESTNET or PUBNET, depending on the `network` parameter.
 
         :param str network: (optional) either PUBLIC or TESTNET, will set the Horizon endpoint in the absence of
             `horizon_endpoint_uri`. Defaults to PUBLIC if not specified.
 
-        :param list of str channel_secret_keys: (optional) a list of channels to sign transactions with. More channels means
-            less blocking on transactions and better response time.
+        :param list of str channel_secret_keys: (optional) a list of channels to sign transactions with. More channels
+            means less blocking on transactions and better response time.
+
+        :param kin_asset: the KIN asset to work with. For testing purposes only.
+        :type: :class:`~stellar_base.asset.Asset`
 
         :return: An instance of the SDK.
         :rtype: :class:`~kin.SDK`
 
-        :raises: :class:`~kin.SdkConfigurationError` if some of the configuration parameters are invalid.
+        :raises: ValueError: if some of the configuration parameters are invalid.
+        :raises: :class:`~kin.AccountNotFoundError`: if SDK wallet or channel account is not yet created.
+        :raises: :class:`~kin.AccountNotActivatedError`: if SDK wallet account is not yet activated.
+        :raises: :class:`~kin.NetworkError`: if there is a problem connecting to Horizon.
         """
 
         channel_secret_keys = channel_secret_keys or []
         self.network = network or 'PUBLIC'
-        self.kin_asset = KIN_ASSET_PROD if self.network == 'PUBLIC' else KIN_ASSET_TEST
+
+        # init our asset
+        if kin_asset:
+            self.kin_asset = kin_asset
+        else:
+            self.kin_asset = KIN_ASSET_PROD if self.network == 'PUBLIC' else KIN_ASSET_TEST
 
         # set connection pool size for channels, monitoring connection + extra
         pool_size = max(1, len(channel_secret_keys)) + 2
 
         if horizon_endpoint_uri:
-            self.horizon = Horizon(horizon_uri=horizon_endpoint_uri, pool_size=pool_size)
+            self.horizon = Horizon(horizon_uri=horizon_endpoint_uri, pool_size=pool_size, user_agent=SDK_USER_AGENT)
         else:
             if self.network == 'TESTNET':
-                self.horizon = Horizon(horizon_uri=HORIZON_TEST, pool_size=pool_size)
+                self.horizon = Horizon(horizon_uri=HORIZON_TEST, pool_size=pool_size, user_agent=SDK_USER_AGENT)
             else:
-                self.horizon = Horizon(horizon_uri=HORIZON_LIVE, pool_size=pool_size)
+                self.horizon = Horizon(horizon_uri=HORIZON_LIVE, pool_size=pool_size, user_agent=SDK_USER_AGENT)
 
-        # init sdk account base_keypair if a secret_key is supplied
+        # init sdk wallet account if a secret key is supplied
         self.base_keypair = None
         if secret_key:
-            try:
-                validate_secret_key(secret_key)
-            except ValueError:
-                raise SdkConfigurationError('invalid secret key: {}'.format(secret_key))
-            self.base_keypair = Keypair.from_seed(secret_key)
-            self.base_address = self.base_keypair.address().decode()
+            # check wallet key
+            if not is_valid_secret_key(secret_key):
+                raise ValueError('invalid secret key: {}'.format(secret_key))
 
             # check channel keys
             if channel_secret_keys:
                 for channel_key in channel_secret_keys:
-                    try:
-                        validate_secret_key(channel_key)
-                    except ValueError:
-                        raise SdkConfigurationError('invalid channel key: {}'.format(channel_key))
+                    if not is_valid_secret_key(channel_key):
+                        raise ValueError('invalid channel key: {}'.format(channel_key))
+
+            self.base_keypair = Keypair.from_seed(secret_key)
+            self.base_address = self.base_keypair.address().decode()
+
+            # check that sdk wallet account exists and is activated
+            self._get_account_asset_balance(self.base_address, self.kin_asset)
+
+            # check that channel accounts exist (they do not have to be activated)
+            if channel_secret_keys:
+                for channel_key in channel_secret_keys:
+                    channel_address = Keypair.from_seed(channel_key).address().decode()
+                    self.get_account_data(channel_address)
             else:
                 channel_secret_keys = [secret_key]
 
@@ -110,7 +118,7 @@ class SDK(object):
         logger.info('Kin SDK inited on network {}, horizon endpoint {}'.format(self.network, self.horizon.horizon_uri))
 
     def get_status(self):
-        """Get system status."""
+        """Get system configuration data and online status."""
         status = {
             'network': self.network,
             'address': None,
@@ -148,10 +156,10 @@ class SDK(object):
         :return: public address of the wallet.
         :rtype: str
 
-        :raises: :class:`~kin.SdkConfigurationError`: if the SDK wallet is not configured.
+        :raises: :class:`~kin.SdkError`: if the SDK wallet is not configured.
         """
         if not self.base_keypair:
-            raise SdkNotConfiguredError('address not configured')
+            raise SdkError('address not configured')
         return self.base_address
 
     def get_native_balance(self):
@@ -161,7 +169,7 @@ class SDK(object):
         :return: : the balance in lumens.
         :rtype: Decimal
 
-        :raises: :class:`~kin.SdkConfigurationError`: if the SDK wallet is not configured.
+        :raises: :class:`~kin.SdkError`: if the SDK wallet is not configured.
         """
         return self.get_account_native_balance(self.get_address())
 
@@ -172,7 +180,7 @@ class SDK(object):
         :return: : the balance in KIN.
         :rtype: Decimal
 
-        :raises: :class:`~kin.SdkConfigurationError`: if the SDK wallet is not configured.
+        :raises: :class:`~kin.SdkError`: if the SDK wallet is not configured.
         """
         return self.get_account_kin_balance(self.get_address())
 
@@ -185,6 +193,7 @@ class SDK(object):
         :rtype: Decimal
 
         :raises: ValueError: if the supplied address has a wrong format.
+        :raises: :class:`~kin.AccountNotFoundError`: if the account does not exist.
         """
         return self._get_account_asset_balance(address, Asset.native())
 
@@ -197,6 +206,8 @@ class SDK(object):
         :rtype: Decimal
 
         :raises: ValueError: if the supplied address has a wrong format.
+        :raises: :class:`~kin.AccountNotFoundError`: if the account does not exist.
+        :raises: :class:`~kin.AccountNotActivatedError`: if the account is not activated.
         """
         return self._get_account_asset_balance(address, self.kin_asset)
 
@@ -213,13 +224,16 @@ class SDK(object):
         :return: transaction hash
         :rtype: str
 
-        :raises: :class:`~kin.SdkConfigurationError` if the SDK wallet is not configured.
+        :raises: :class:`~kin.SdkError` if the SDK wallet is not configured.
         :raises: ValueError: if the supplied address has a wrong format.
+        :raises: :class:`~kin.AccountExistsError`: if the account already exists.
         """
         if not self.base_keypair:
-            raise SdkNotConfiguredError('address not configured')
+            raise SdkError('address not configured')
 
-        validate_address(address)
+        if not is_valid_address(address):
+            raise ValueError('invalid address: {}'.format(address))
+
         try:
             reply = self.channel_manager.send_transaction(lambda builder:
                                                           partial(builder.append_create_account_op, address,
@@ -242,7 +256,7 @@ class SDK(object):
         try:
             self.get_account_data(address)
             return True
-        except NoSuchAccountError:
+        except AccountNotFoundError:
             return False
 
     def check_account_activated(self, address):
@@ -254,6 +268,7 @@ class SDK(object):
         :rtype: boolean
 
         :raises: ValueError: if the supplied address has a wrong format.
+        :raises: :class:`~kin.AccountNotFoundError`: if the account is not yet created.
         """
         return self._check_asset_trusted(address, self.kin_asset)
 
@@ -269,9 +284,11 @@ class SDK(object):
         :return: transaction hash
         :rtype: str
 
-        :raises: :class:`~kin.SdkConfigurationError` if the SDK wallet is not configured.
+        :raises: :class:`~kin.SdkError` if the SDK wallet is not configured.
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
+        :raises: :class:`~kin.AccountNotFoundError`: if the account does not exist.
+        :raises: :class:`~kin.LowBalanceError`: if there is not enough money to send and pay transaction fee.
         """
         return self._send_asset(Asset.native(), address, amount, memo_text)
 
@@ -287,9 +304,12 @@ class SDK(object):
         :return: transaction hash
         :rtype: str
 
-        :raises: :class:`~kin.SdkConfigurationError` if the SDK wallet is not configured.
+        :raises: :class:`~kin.SdkError` if the SDK wallet is not configured.
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
+        :raises: :class:`~kin.AccountNotFoundError`: if the account does not exist.
+        :raises: :class:`~kin.AccountNotActivatedError`: if the account is not activated.
+        :raises: :class:`~kin.LowBalanceError`: if there is not enough money to send and pay transaction fee.
         """
         return self._send_asset(self.kin_asset, address, amount, memo_text)
 
@@ -302,16 +322,17 @@ class SDK(object):
         :rtype: :class:`~kin.AccountData`
 
         :raises: ValueError: if the provided address has a wrong format.
+        :raises: :class:`~kin.AccountNotFoundError`: if the account does not exist.
         """
-        validate_address(address)
+        if not is_valid_address(address):
+            raise ValueError('invalid address: {}'.format(address))
+
         try:
             acc = self.horizon.account(address)
             return AccountData(acc, strict=False)
         except Exception as e:
-            sdk_error = translate_error(e)
-            if sdk_error is ResourceMissingError:
-                raise NoSuchAccountError   # ResourceMissingError?
-            raise sdk_error
+            err = translate_error(e)
+            raise AccountNotFoundError(address) if isinstance(err, ResourceNotFoundError) else err
 
     def get_transaction_data(self, tx_hash):
         """Gets transaction data.
@@ -320,22 +341,23 @@ class SDK(object):
 
         :return: transaction data
         :rtype: :class:`~kin.TransactionData`
+
+        :raises: ValueError: if the provided hash is invalid.
+        :raises: :class:`~kin.ResourceNotFoundError`: if the transaction does not exist.
         """
+        if not is_valid_transaction_hash(tx_hash):
+            raise ValueError('invalid transaction hash: {}'.format(tx_hash))
+
         try:
-            # get transaction data
             tx = self.horizon.transaction(tx_hash)
 
             # get transaction operations
             tx_ops = self.horizon.transaction_operations(tx['hash'], params={'limit': 100})
-
             tx['operations'] = tx_ops['_embedded']['records']
 
             return TransactionData(tx, strict=False)
         except Exception as e:
-            sdk_error = translate_error(e)
-            if sdk_error is ResourceMissingError:
-                raise NoSuchTransactionError  # ResourceMissingError?
-            raise sdk_error
+            raise translate_error(e)
 
     def monitor_kin_payments(self, callback_fn):
         """Monitor KIN payment transactions related to the SDK wallet account.
@@ -344,7 +366,7 @@ class SDK(object):
         :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data)`.
         :type: callable[[str, :class:`~kin.TransactionData`], None]
 
-        :raises: :class:`~kin.SdkConfigurationError` if the SDK wallet is not configured.
+        :raises: :class:`~kin.SdkError` if the SDK wallet is not configured.
         """
         self.monitor_accounts_kin_payments([self.get_address()], callback_fn)
 
@@ -359,6 +381,7 @@ class SDK(object):
 
         :raises: ValueError: when no addresses are given.
         :raises: ValueError: if one of the provided addresses has a wrong format.
+        :raises: :class:`~kin.AccountNotFoundError`: if one of the provided accounts is not yet created.
         """
         self._monitor_accounts_transactions(self.kin_asset, addresses, callback_fn, only_payments=True)
 
@@ -374,6 +397,7 @@ class SDK(object):
 
         :raises: ValueError: when no addresses are given.
         :raises: ValueError: if one of the provided addresses has a wrong format.
+        :raises: :class:`~kin.AccountNotFoundError`: if one of the provided accounts is not yet created.
         """
         self._monitor_accounts_transactions(None, addresses, callback_fn)
 
@@ -392,27 +416,20 @@ class SDK(object):
 
         :raises: ValueError: if the supplied address has a wrong format.
         :raises: ValueError: when account is not activated (no trustline).
+        :raises: :class:`~kin.AccountNotFoundError`: if the account does not exist.
+        :raises: :class:`~kin.AccountNotActivatedError`: if the account is not activated for the asset.
         """
-        if not asset.is_native():
-            try:
-                validate_address(asset.issuer)
-            except ValueError:
-                raise ValueError('asset issuer invalid')
+        if not asset.is_native() and not is_valid_address(asset.issuer):
+            raise ValueError('invalid asset issuer: {}'.format(asset.issuer))
 
-        try:
-            acc_data = self.get_account_data(address)
-        except Exception as e:
-            sdk_error = translate_error(e)
-            if sdk_error is ResourceMissingError:
-                raise NoSuchAccountError  # ResourceMissingError?
-            raise sdk_error
+        acc_data = self.get_account_data(address)
 
         for balance in acc_data.balances:
             if (balance.asset_type == 'native' and asset.code == 'XLM') \
                     or (balance.asset_code == asset.code and balance.asset_issuer == asset.issuer):
                 return balance.balance
 
-        raise AccountNotActivatedError
+        raise AccountNotActivatedError(address)
 
     def _trust_asset(self, asset, limit=None, memo_text=None):
         """Establish a trustline from the SDK wallet to the asset issuer.
@@ -427,17 +444,15 @@ class SDK(object):
         :return: transaction hash
         :rtype: str
 
-        :raises: :class:`~kin.SdkConfigurationError` if the SDK wallet is not configured.
+        :raises: :class:`~kin.SdkError` if the SDK wallet is not configured.
         :raises: ValueError: if the issuer address has a wrong format.
+        :raises: :class:`~kin.LowBalanceError`: if there is not enough money to pay transaction fee.
         """
         if not self.base_keypair:
-            raise SdkNotConfiguredError('address not configured')
+            raise SdkError('address not configured')
 
-        if not asset.is_native():
-            try:
-                validate_address(asset.issuer)
-            except ValueError:
-                raise ValueError('asset issuer invalid')
+        if not asset.is_native() and not is_valid_address(asset.issuer):
+            raise ValueError('invalid asset issuer: {}'.format(asset.issuer))
 
         try:
             reply = self.channel_manager.send_transaction(lambda builder:
@@ -445,8 +460,8 @@ class SDK(object):
                                                                   limit=limit),
                                                           memo_text=memo_text)
             return reply['hash']
-        except HorizonError as se:
-            raise translate_horizon_error(se)
+        except Exception as e:
+            raise translate_error(e)
 
     def _check_asset_trusted(self, address, asset):
         """Check if the account has a trustline to the provided asset.
@@ -461,6 +476,7 @@ class SDK(object):
 
         :raises: ValueError: if the supplied address has a wrong format.
         :raises: ValueError: if the asset issuer address has a wrong format.
+        :raises: :class:`~kin.AccountNotFoundError`: if the account does not exist.
         """
         try:
             self._get_account_asset_balance(address, asset)
@@ -483,23 +499,25 @@ class SDK(object):
         :return: transaction hash
         :rtype: str
 
-        :raises: :class:`~kin.SdkConfigurationError` if the SDK wallet is not configured.
+        :raises: :class:`~kin.SdkError` if the SDK wallet is not configured.
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the asset issuer address has a wrong format.
         :raises: ValueError: if the amount is not positive.
+        :raises: :class:`~kin.AccountNotFoundError`: if the account does not exist.
+        :raises: :class:`~kin.AccountNotActivatedError`: if the account is not activated for the asset.
+        :raises: :class:`~kin.LowBalanceError`: if there is not enough money to send and pay transaction fee.
         """
         if not self.base_keypair:
-            raise SdkNotConfiguredError('address not configured')
-        validate_address(address)
+            raise SdkError('address not configured')
+
+        if not is_valid_address(address):
+            raise ValueError('invalid address: {}'.format(address))
 
         if amount <= 0:
             raise ValueError('amount must be positive')
 
-        if not asset.is_native():
-            try:
-                validate_address(asset.issuer)
-            except ValueError:
-                raise ValueError('asset issuer invalid')
+        if not asset.is_native() and not is_valid_address(asset.issuer):
+            raise ValueError('invalid asset issuer: {}'.format(asset.issuer))
 
         try:
             reply = self.channel_manager.send_transaction(lambda builder:
@@ -507,8 +525,8 @@ class SDK(object):
                                                                   asset_type=asset.code, asset_issuer=asset.issuer),
                                                           memo_text=memo_text)
             return reply['hash']
-        except HorizonError as se:
-            raise translate_horizon_error(se)
+        except Exception as e:
+            raise translate_error(e)
 
     def _monitor_accounts_transactions(self, asset, addresses, callback_fn, only_payments=False):
         """Monitor transactions related to the accounts identified by provided addresses. If asset is given, only
@@ -528,18 +546,21 @@ class SDK(object):
         :raises: ValueError: if asset issuer is invalid.
         :raises: ValueError: when no addresses are given.
         :raises: ValueError: if one of the provided addresses has a wrong format.
+        :raises: :class:`~kin.AccountNotFoundError`: if one of the provided accounts is not yet created.
         """
-        if asset and not asset.is_native():
-            try:
-                validate_address(asset.issuer)
-            except ValueError:
-                raise ValueError('asset issuer invalid')
+        if asset and not asset.is_native() and not is_valid_address(asset.issuer):
+            raise ValueError('invalid asset issuer: {}'.format(asset.issuer))
 
         if not addresses:
             raise ValueError('no addresses to monitor')
 
         for address in addresses:
-            validate_address(address)
+            if not is_valid_address(address):
+                raise ValueError('invalid address: {}'.format(address))
+
+        for address in addresses:
+            if not self.check_account_exists(address):
+                raise AccountNotFoundError(addresses)
 
         # determine the last_id to start from
         last_id = None
@@ -593,8 +614,8 @@ class SDK(object):
                             callback_fn(op_data.to_address, tx_data)
                             break
 
-                except Exception as e:
-                    logger.exception(e)
+                except Exception as ex:
+                    logger.exception(ex)
                     continue
 
         # start monitoring thread

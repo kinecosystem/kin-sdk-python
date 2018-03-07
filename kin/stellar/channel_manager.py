@@ -6,7 +6,7 @@ import sys
 
 from stellar_base.keypair import Keypair
 
-from stellar.builder import Builder
+from .builder import Builder
 
 if sys.version[0] == '2':
     import Queue as queue

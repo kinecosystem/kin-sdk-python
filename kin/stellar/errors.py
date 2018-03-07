@@ -2,25 +2,43 @@
 
 # Copyright (C) 2018 Kin Foundation
 
-from stellar.horizon_models import HTTPProblemDetails
+from .horizon_models import HTTPProblemDetails
+
+
+HORIZON_NS_PREFIX = 'https://stellar.org/horizon-errors/'
 
 
 class HorizonError(HTTPProblemDetails, Exception):
     def __init__(self, err_dict):
         super(HTTPProblemDetails, self).__init__(err_dict, strict=False)
         super(Exception, self).__init__(self.title)
-        self.result_code = None
-        self.inner_result_code = None
-        if self.extras and self.extras.result_codes:
-            self.result_code = self.extras.result_codes.transaction
-            if self.extras.result_codes.operations:
-                self.inner_result_code = self.extras.result_codes.operations[0]
+        if len(self.type) > len(HORIZON_NS_PREFIX):
+            self.type = self.type[len(HORIZON_NS_PREFIX):]
+
+
+# noinspection PyClassHasNoInit
+class HorizonErrorType:
+    BAD_REQUEST = 'bad_request'                        # cannot understand the request due to invalid parameters
+    BEFORE_HISTORY = 'before_history'                  # outside the range of recorded history
+    FORBIDDEN = 'forbidden'                            # not authorized to see
+    NOT_ACCEPTABLE = 'not_acceptable'                  # cannot reply with the requested data format
+    NOT_FOUND = 'not_found'                            # resource not found
+    NOT_IMPLEMENTED = 'not_implemented'                # request method is not supported
+    RATE_LIMIT_EXCEEDED = 'rate_limit_exceeded'        # too many requests in a one hour time frame
+    SERVER_OVER_CAPACITY = 'server_over_capacity'      # server is currently overloaded
+    STALE_HISTORY = 'stale_history'                    # historical request out of date than the configured threshold
+    TIMEOUT = 'timeout'                                # request timed out before completing
+    TRANSACTION_MALFORMED = 'transaction_malformed'
+    TRANSACTION_FAILED = 'transaction_failed'          # transaction well-formed but failed
+    UNSUPPORTED_MEDIA_TYPE = 'unsupported_media_type'  # unsupported content type
+    INTERNAL_SERVER_ERROR = 'server_error'
 
 
 # references:
-# - https://github.com/stellar/go-stellar-base/blob/master/xdr/xdr_generated.go,
-# - github.com/stellar/horizon/codes/main.go
-# - https://github.com/stellar/go/services/horizon/internal/actions_transaction.go
+# - github.com/stellar/go/blob/master/xdr/xdr_generated.go
+# - github.com/stellar/go/blob/master/services/horizon/internal/actions_transaction.go
+# - github.com/stellar/go/blob/master/services/horizon/internal/render/problem/main.go
+# - github.com/stellar/horizon/blob/master/src/github.com/stellar/horizon/codes/main.go
 
 # noinspection PyClassHasNoInit
 class TransactionResultCode:
@@ -111,8 +129,8 @@ class ChangeTrustResultCode:
     SUCCESS = 'op_success'              # operation successful
     MALFORMED = 'op_malformed'          # bad input
     NO_ISSUER = 'op_no_issuer'          # could not find issuer
-    LOW_RESERVE = 'op_low_reserve'      # cannot drop limit below balance, cannot create with a limit of 0
-    INVALID_LIMIT = 'op_invalid_limit'  # not enough funds to create a new trust line
+    LOW_RESERVE = 'op_low_reserve'      # not enough funds to create a new trust line
+    INVALID_LIMIT = 'op_invalid_limit'  # cannot drop limit below balance, cannot create with a limit of 0
 
 
 # noinspection PyClassHasNoInit

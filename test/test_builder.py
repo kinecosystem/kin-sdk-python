@@ -1,8 +1,8 @@
 import pytest
 
 from stellar_base.keypair import Keypair
-from stellar.builder import Builder
-from stellar.horizon import Horizon, HORIZON_LIVE, HORIZON_TEST
+from kin.stellar.builder import Builder
+from kin.stellar.horizon import Horizon, HORIZON_LIVE, HORIZON_TEST
 
 
 def test_create_fail():

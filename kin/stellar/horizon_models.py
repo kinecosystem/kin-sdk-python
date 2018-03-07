@@ -96,19 +96,19 @@ class TransactionResultCodes(PModel):
     operations = ListType(StringType, default=[])
 
 
-class FailedTransactionExtras(PModel):
-    envelope_xdr = StringType()
-    result_xdr = StringType()
-    result_codes = ModelType(TransactionResultCodes)
-
-
 class HTTPProblemDetails(PModel):
     """HTTP Problem Details object.
     See https://tools.ietf.org/html/rfc7807
     """
+    class Extras(PModel):
+        invalid_field = StringType()
+        envelope_xdr = StringType()
+        result_xdr = StringType()
+        result_codes = ModelType(TransactionResultCodes)
+
     type = StringType()
     title = StringType()
     status = IntType()
     detail = StringType()
     instance = StringType()
-    extras = ModelType(FailedTransactionExtras)
+    extras = ModelType(Extras)

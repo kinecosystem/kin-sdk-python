@@ -1,8 +1,9 @@
 import pytest
 from requests.adapters import DEFAULT_POOLSIZE
+
 from stellar_base.horizon import HORIZON_TEST, HORIZON_LIVE
-from stellar.errors import HorizonError
-from stellar.horizon import (
+from kin.stellar.errors import *
+from kin.stellar.horizon import (
     Horizon,
     check_horizon_reply,
     DEFAULT_REQUEST_TIMEOUT,
@@ -14,17 +15,20 @@ from stellar.horizon import (
 
 def test_check_horizon_reply():
     reply = {
+        'type': HORIZON_NS_PREFIX + HorizonErrorType.TRANSACTION_FAILED,
         'status': 400,
         'title': 'title',
         'extras': {
             'result_codes': {
-                'operations': ['op_no_trust'],
-                'transaction': 'tx_failed'
+                'operations': [PaymentResultCode.NO_TRUST],
+                'transaction': TransactionResultCode.FAILED
             }
         }
     }
-    with pytest.raises(HorizonError, match='op_no_trust'):
+    with pytest.raises(HorizonError) as exc_info:
         check_horizon_reply(reply)
+    assert exc_info.value.type == HorizonErrorType.TRANSACTION_FAILED
+
     reply = "{'a':'b'}"
     check_horizon_reply(reply)
 
@@ -78,8 +82,9 @@ def test_create_custom():
 
 
 def test_account(test_sdk):
-    with pytest.raises(HorizonError, match='Resource Missing'):
+    with pytest.raises(HorizonError) as exc_info:
         test_sdk.horizon.account('bad')
+    assert exc_info.value.type == HorizonErrorType.NOT_FOUND
 
     address = test_sdk.get_address()
     reply = test_sdk.horizon.account(address)
@@ -88,8 +93,9 @@ def test_account(test_sdk):
 
 
 def test_account_effects(test_sdk):
-    with pytest.raises(HorizonError, match='Resource Missing'):
+    with pytest.raises(HorizonError) as exc_info:
         test_sdk.horizon.account_effects('bad')
+    assert exc_info.value.type == HorizonErrorType.NOT_FOUND
 
     address = test_sdk.get_address()
     reply = test_sdk.horizon.account_effects(address)
@@ -107,8 +113,9 @@ def test_account_offers(test_sdk):
 
 
 def test_account_operations(test_sdk):
-    with pytest.raises(HorizonError, match='Resource Missing'):
+    with pytest.raises(HorizonError) as exc_info:
         test_sdk.horizon.account_operations('bad')
+    assert exc_info.value.type == HorizonErrorType.NOT_FOUND
 
     address = test_sdk.get_address()
     reply = test_sdk.horizon.account_operations(address)
@@ -117,8 +124,9 @@ def test_account_operations(test_sdk):
 
 
 def test_account_transactions(test_sdk):
-    with pytest.raises(HorizonError, match='Resource Missing'):
+    with pytest.raises(HorizonError) as exc_info:
         test_sdk.horizon.account_transactions('bad')
+    assert exc_info.value.type == HorizonErrorType.NOT_FOUND
 
     address = test_sdk.get_address()
     reply = test_sdk.horizon.account_transactions(address)
@@ -127,8 +135,9 @@ def test_account_transactions(test_sdk):
 
 
 def test_account_payments(test_sdk):
-    with pytest.raises(HorizonError, match='Resource Missing'):
+    with pytest.raises(HorizonError) as exc_info:
         test_sdk.horizon.account_payments('bad')
+    assert exc_info.value.type == HorizonErrorType.NOT_FOUND
 
     address = test_sdk.get_address()
     reply = test_sdk.horizon.account_payments(address)
@@ -153,8 +162,9 @@ def get_first_tx_hash(test_sdk):
 
 
 def test_transaction(test_sdk):
-    with pytest.raises(HorizonError, match='Resource Missing'):
+    with pytest.raises(HorizonError) as exc_info:
         test_sdk.horizon.transaction('bad')
+    assert exc_info.value.type == HorizonErrorType.NOT_FOUND
 
     tx_id = get_first_tx_hash(test_sdk)
     reply = test_sdk.horizon.transaction(tx_id)
@@ -165,8 +175,9 @@ def test_transaction(test_sdk):
 
 
 def test_transaction_effects(test_sdk):
-    with pytest.raises(HorizonError, match='Resource Missing'):
+    with pytest.raises(HorizonError) as exc_info:
         test_sdk.horizon.transaction_effects('bad')
+    assert exc_info.value.type == HorizonErrorType.NOT_FOUND
 
     tx_id = get_first_tx_hash(test_sdk)
     reply = test_sdk.horizon.transaction_effects(tx_id)
@@ -175,8 +186,9 @@ def test_transaction_effects(test_sdk):
 
 
 def test_transaction_operations(test_sdk):
-    with pytest.raises(HorizonError, match='Resource Missing'):
+    with pytest.raises(HorizonError) as exc_info:
         test_sdk.horizon.transaction_operations('bad')
+    assert exc_info.value.type == HorizonErrorType.NOT_FOUND
 
     tx_id = get_first_tx_hash(test_sdk)
     reply = test_sdk.horizon.transaction_operations(tx_id)
@@ -185,8 +197,9 @@ def test_transaction_operations(test_sdk):
 
 
 def test_transaction_payments(test_sdk):
-    with pytest.raises(HorizonError, match='Resource Missing'):
+    with pytest.raises(HorizonError) as exc_info:
         test_sdk.horizon.transaction_payments('bad')
+    assert exc_info.value.type == HorizonErrorType.NOT_FOUND
 
     tx_id = get_first_tx_hash(test_sdk)
     reply = test_sdk.horizon.transaction_payments(tx_id)
@@ -233,8 +246,9 @@ def test_ledgers(test_sdk):
 
 
 def test_ledger(test_sdk):
-    with pytest.raises(HorizonError, match='Bad Request'):  # not 'Resource Missing'!
+    with pytest.raises(HorizonError) as exc_info:
         test_sdk.horizon.ledger('bad')
+    assert exc_info.value.type == HorizonErrorType.BAD_REQUEST  # not 'Resource Missing'!
 
     reply = test_sdk.horizon.ledger(2)
     assert reply
@@ -242,8 +256,9 @@ def test_ledger(test_sdk):
 
 
 def test_ledger_effects(test_sdk):
-    with pytest.raises(HorizonError, match='Bad Request'):  # not 'Resource Missing'!
+    with pytest.raises(HorizonError, match='Bad Request') as exc_info:
         test_sdk.horizon.ledger_effects('bad')
+    assert exc_info.value.type == HorizonErrorType.BAD_REQUEST  # not 'Resource Missing'!
 
     reply = test_sdk.horizon.ledger_effects(2)
     assert reply
@@ -251,8 +266,9 @@ def test_ledger_effects(test_sdk):
 
 
 def test_ledger_operations(test_sdk):
-    with pytest.raises(HorizonError, match='Bad Request'):  # not 'Resource Missing'!
+    with pytest.raises(HorizonError) as exc_info:
         test_sdk.horizon.ledger_operations('bad')
+    assert exc_info.value.type == HorizonErrorType.BAD_REQUEST  # not 'Resource Missing'!
 
     reply = test_sdk.horizon.ledger_operations(2)
     assert reply
@@ -260,8 +276,9 @@ def test_ledger_operations(test_sdk):
 
 
 def test_ledger_payments(test_sdk):
-    with pytest.raises(HorizonError, match='Bad Request'):  # not 'Resource Missing'!
+    with pytest.raises(HorizonError) as exc_info:
         test_sdk.horizon.ledger_payments('bad')
+    assert exc_info.value.type == HorizonErrorType.BAD_REQUEST  # not 'Resource Missing'!
 
     reply = test_sdk.horizon.ledger_payments(2)
     assert reply
@@ -281,8 +298,9 @@ def test_operations(test_sdk):
 
 
 def test_operation(test_sdk):
-    with pytest.raises(HorizonError, match='Bad Request'):  # not 'Resource Missing'!
+    with pytest.raises(HorizonError) as exc_info:
         test_sdk.horizon.operation('bad')
+    assert exc_info.value.type == HorizonErrorType.BAD_REQUEST  # not 'Resource Missing'!
 
     reply = test_sdk.horizon.operations()
     op_id = reply['_embedded']['records'][0]['id']
@@ -293,8 +311,9 @@ def test_operation(test_sdk):
 
 
 def test_operation_effects(test_sdk):
-    with pytest.raises(HorizonError, match='Bad Request'):  # not 'Resource Missing'!
+    with pytest.raises(HorizonError) as exc_info:
         test_sdk.horizon.operation_effects('bad')
+    assert exc_info.value.type == HorizonErrorType.BAD_REQUEST  # not 'Resource Missing'!
 
     reply = test_sdk.horizon.operations()
     op_id = reply['_embedded']['records'][0]['id']

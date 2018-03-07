@@ -8,34 +8,23 @@ from stellar_base.keypair import Keypair
 from stellar_base.utils import XdrLengthError
 
 import kin
-from stellar.builder import Builder
 
 
-def test_sdk_create_fail():
-    # bad seeds (without Nick Cave)
-    with pytest.raises(kin.SdkConfigurationError, match='invalid secret key'):
-        kin.SDK(secret_key='bad')
-
-    keypair = Keypair.random()
-    with pytest.raises(kin.SdkConfigurationError, match='invalid channel key'):
-        kin.SDK(secret_key=keypair.seed(), channel_secret_keys=['bad'])
-
-
-def test_sdk_not_configured():
-    sdk = kin.SDK()
-    with pytest.raises(kin.SdkNotConfiguredError, match='address not configured'):
+def test_sdk_not_configured(setup):
+    sdk = kin.SDK(horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network)
+    with pytest.raises(kin.SdkError, message='address not configured'):
         sdk.get_address()
-    with pytest.raises(kin.SdkNotConfiguredError, match='address not configured'):
+    with pytest.raises(kin.SdkError, message='address not configured'):
         sdk.get_native_balance()
-    with pytest.raises(kin.SdkNotConfiguredError, match='address not configured'):
+    with pytest.raises(kin.SdkError, message='address not configured'):
         sdk.get_kin_balance()
-    with pytest.raises(kin.SdkNotConfiguredError, match='address not configured'):
+    with pytest.raises(kin.SdkError, message='address not configured'):
         sdk.create_account('address')
-    with pytest.raises(kin.SdkNotConfiguredError, match='address not configured'):
-        sdk.monitor_kin_payments(None)    
-    with pytest.raises(kin.SdkNotConfiguredError, match='address not configured'):
+    with pytest.raises(kin.SdkError, message='address not configured'):
+        sdk.monitor_kin_payments(None)
+    with pytest.raises(kin.SdkError, message='address not configured'):
         sdk._trust_asset(Asset('TMP', 'tmp'))
-    with pytest.raises(kin.SdkNotConfiguredError, match='address not configured'):
+    with pytest.raises(kin.SdkError, message='address not configured'):
         sdk._send_asset(Asset('TMP', 'tmp'), 'address', 1)
 
 
@@ -48,15 +37,61 @@ def test_sdk_create_success(setup, test_sdk):
     assert test_sdk.channel_manager
 
 
+def test_sdk_create_fail(setup, helpers, test_sdk):
+    with pytest.raises(ValueError, message='invalid secret key: bad'):
+        kin.SDK(secret_key='bad',
+                horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
+
+    keypair = Keypair.random()
+    secret_key = keypair.seed()
+    address = keypair.address().decode()
+
+    with pytest.raises(ValueError, message='invalid channel key: bad'):
+        kin.SDK(secret_key=secret_key, channel_secret_keys=['bad'],
+                horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
+
+    # wallet account does not exist
+    with pytest.raises(kin.AccountNotFoundError):
+        kin.SDK(secret_key=secret_key,
+                horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
+
+    helpers.fund_account(setup, address)
+
+    # wallet account exists but not yet activated
+    with pytest.raises(kin.AccountNotActivatedError):
+        kin.SDK(secret_key=secret_key,
+                horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
+
+    helpers.trust_asset(setup, secret_key)
+
+    channel_keypair = Keypair.random()
+    channel_secret_key = channel_keypair.seed()
+
+    # channel account does not exist
+    with pytest.raises(kin.AccountNotFoundError):
+        kin.SDK(secret_key=secret_key, channel_secret_keys=[channel_secret_key],
+                horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
+
+    # bad Horizon endpoint
+    with pytest.raises(kin.NetworkError):
+        kin.SDK(secret_key=secret_key,
+                horizon_endpoint_uri='bad', network=setup.network, kin_asset=setup.test_asset)
+
+    # no Horizon on endpoint
+    with pytest.raises(kin.NetworkError):
+        kin.SDK(secret_key=secret_key,
+                horizon_endpoint_uri='http://localhost:666', network=setup.network, kin_asset=setup.test_asset)
+
+
 def test_get_status(setup, test_sdk):
-    # bad endpoint
+    # bad Horizon endpoint
     sdk = kin.SDK(horizon_endpoint_uri='bad')
     status = sdk.get_status()
     assert status['horizon']
     assert status['horizon']['online'] is False
     assert status['horizon']['error'].startswith("Invalid URL 'bad': No schema supplied")
 
-    # no horizon on endpoint
+    # no Horizon on endpoint
     sdk = kin.SDK(horizon_endpoint_uri='http://localhost:666')
     status = sdk.get_status()
     assert status['horizon']
@@ -84,11 +119,11 @@ def test_get_address(setup, test_sdk):
 
 
 def test_get_native_balance(test_sdk):
-    assert test_sdk.get_native_balance() == 10000
+    assert test_sdk.get_native_balance() > 9999
 
 
 def test_check_account_exists(setup, test_sdk):
-    with pytest.raises(ValueError, match='invalid address'):
+    with pytest.raises(ValueError, message='invalid address: bad'):
         test_sdk.check_account_exists('bad')
 
     keypair = Keypair.random()
@@ -104,13 +139,13 @@ def test_create_account(test_sdk):
     keypair = Keypair.random()
     address = keypair.address().decode()
 
-    with pytest.raises(ValueError, match='invalid address'):
+    with pytest.raises(ValueError, message='invalid address: bad'):
         test_sdk.create_account('bad')
 
     # underfunded
-    with pytest.raises(kin.SdkHorizonError) as se:
+    with pytest.raises(kin.LowBalanceError) as exc_info:
         test_sdk.create_account(address, starting_balance=1000000)
-    assert se.inner_result_code == kin.CreateAccountResultCode.UNDERFUNDED
+    assert exc_info.value.error_code == kin.CreateAccountResultCode.UNDERFUNDED
 
     # successful
     starting_balance = 100
@@ -146,49 +181,52 @@ def test_create_account(test_sdk):
     assert op.to_address is None
     assert op.amount is None
 
-    with pytest.raises(kin.AccountExistsError):
+    with pytest.raises(kin.AccountExistsError) as exc_info:
         test_sdk.create_account(address)
+    assert exc_info.value.error_code == kin.CreateAccountResultCode.ACCOUNT_EXISTS
 
 
 def test_get_account_asset_balance_fail(test_sdk, setup):
-    with pytest.raises(ValueError, match='invalid address'):
+    with pytest.raises(ValueError, message='invalid address: bad'):
         test_sdk._get_account_asset_balance('bad', setup.test_asset)
 
     keypair = Keypair.random()
     address = keypair.address().decode()
 
-    with pytest.raises(ValueError, match='asset issuer invalid'):
+    with pytest.raises(ValueError, message='invalid asset issuer: bad'):
         test_sdk._get_account_asset_balance(address, Asset('TMP', 'bad'))
 
     # account not created yet
-    with pytest.raises(kin.NoSuchAccountError):
+    with pytest.raises(kin.AccountNotFoundError) as exc_info:
         test_sdk._get_account_asset_balance(address, setup.test_asset)
 
     assert test_sdk.create_account(address, starting_balance=10)
 
-    with pytest.raises(kin.AccountNotActivatedError):
+    with pytest.raises(kin.AccountNotActivatedError) as exc_info:
         test_sdk._get_account_asset_balance(address, setup.test_asset)
 
 
 def test_send_native(test_sdk):
-    with pytest.raises(ValueError, match='invalid address'):
+    with pytest.raises(ValueError, message='invalid address: bad'):
         test_sdk.send_native('bad', 100)
 
     keypair = Keypair.random()
     address = keypair.address().decode()
 
-    with pytest.raises(ValueError, match='amount must be positive'):
+    with pytest.raises(ValueError, message='amount must be positive'):
         test_sdk.send_native(address, 0)
 
     # account does not exist yet
-    with pytest.raises(kin.SdkHorizonError, match=kin.PaymentResultCode.NO_DESTINATION):
+    with pytest.raises(kin.AccountNotFoundError) as exc_info:
         test_sdk.send_native(address, 100)
+    assert exc_info.value.error_code == kin.PaymentResultCode.NO_DESTINATION
 
     assert test_sdk.create_account(address, starting_balance=100)
 
     # check underfunded
-    with pytest.raises(kin.SdkHorizonError, match=kin.PaymentResultCode.UNDERFUNDED):
+    with pytest.raises(kin.LowBalanceError) as exc_info:
         test_sdk.send_native(address, 1000000)
+    assert exc_info.value.error_code == kin.PaymentResultCode.UNDERFUNDED
 
     # send and check the resulting balance
     tx_hash = test_sdk.send_native(address, 10.123, memo_text='foobar')
@@ -240,15 +278,15 @@ def test_send_native(test_sdk):
     assert tx_data.hash == tx_hash3
 
 
-def test_trust_asset(setup, test_sdk):
+def test_trust_asset(setup, test_sdk, helpers):
     # failures
-    with pytest.raises(Exception, match='Issuer cannot be null'):
+    with pytest.raises(Exception, message='Issuer cannot be null'):
         test_sdk._trust_asset(Asset(''))
-    with pytest.raises(XdrLengthError, match='Asset code must be 12 characters at max.'):
+    with pytest.raises(XdrLengthError, message='Asset code must be 12 characters at max.'):
         test_sdk._trust_asset(Asset('abcdefghijklmnopqr'))
-    with pytest.raises(Exception, match='Issuer cannot be null'):
+    with pytest.raises(Exception, message='Issuer cannot be null'):
         test_sdk._trust_asset(Asset('TMP'))
-    with pytest.raises(ValueError, match='asset issuer invalid'):
+    with pytest.raises(ValueError, message='asset issuer invalid'):
         test_sdk._trust_asset(Asset('TMP', 'tmp'))
 
     # success
@@ -287,21 +325,21 @@ def test_trust_asset(setup, test_sdk):
     assert op.amount is None
 
     # finally, fund the sdk account with asset
-    assert fund_asset(setup, test_sdk.get_address(), 1000)
+    assert helpers.fund_asset(setup, test_sdk.get_address(), 1000)
     assert test_sdk._get_account_asset_balance(test_sdk.get_address(), setup.test_asset) == Decimal('1000')
 
 
 def test_asset_trusted(setup, test_sdk):
-    with pytest.raises(ValueError, match='invalid address'):
+    with pytest.raises(ValueError, message='invalid address: bad'):
         test_sdk._check_asset_trusted('bad', setup.test_asset)
 
     keypair = Keypair.random()
     address = keypair.address().decode()
 
-    with pytest.raises(ValueError, match='asset issuer invalid'):
+    with pytest.raises(ValueError, message='invalid asset issuer: bad'):
         test_sdk._check_asset_trusted(address, Asset('TMP', 'bad'))
 
-    with pytest.raises(kin.NoSuchAccountError):
+    with pytest.raises(kin.AccountNotFoundError):
         test_sdk._check_asset_trusted(address, setup.test_asset)
 
     assert test_sdk.create_account(address, starting_balance=100)
@@ -309,31 +347,33 @@ def test_asset_trusted(setup, test_sdk):
     assert not test_sdk._check_asset_trusted(address, setup.test_asset)
 
 
-def test_send_asset(setup, test_sdk):
-    with pytest.raises(ValueError, match='invalid address'):
+def test_send_asset(setup, test_sdk, helpers):
+    with pytest.raises(ValueError, message='invalid address: bad'):
         test_sdk._send_asset(setup.test_asset, 'bad', 10)
 
     keypair = Keypair.random()
     address = keypair.address().decode()
 
-    with pytest.raises(ValueError, match='amount must be positive'):
+    with pytest.raises(ValueError, message='amount must be positive'):
         test_sdk._send_asset(setup.test_asset, address, 0)
 
-    with pytest.raises(ValueError, match='asset issuer invalid'):
+    with pytest.raises(ValueError, message='invalid asset issuer: bad'):
         test_sdk._send_asset(Asset('TMP', 'bad'), address, 10)
 
     # account does not exist yet
-    with pytest.raises(kin.SdkHorizonError, match=kin.PaymentResultCode.NO_DESTINATION):
+    with pytest.raises(kin.AccountNotFoundError) as exc_info:
         test_sdk._send_asset(setup.test_asset, address, 10)
+    assert exc_info.value.error_code == kin.PaymentResultCode.NO_DESTINATION
 
     assert test_sdk.create_account(address, starting_balance=100)
 
     # no trustline yet
-    with pytest.raises(kin.SdkHorizonError, match=kin.PaymentResultCode.NO_TRUST):
+    with pytest.raises(kin.AccountNotActivatedError) as exc_info:
         test_sdk._send_asset(setup.test_asset, address, 10)
+    assert exc_info.value.error_code == kin.PaymentResultCode.NO_TRUST
 
     # add trustline from the newly created account to the kin issuer
-    assert trust_asset(setup, test_sdk, keypair.seed())
+    assert helpers.trust_asset(setup, keypair.seed())
 
     # send and check the resulting balance
     tx_hash = test_sdk._send_asset(setup.test_asset, address, 10.123, memo_text='foobar')
@@ -369,11 +409,11 @@ def test_send_asset(setup, test_sdk):
 
 
 def test_get_account_data(setup, test_sdk):
-    with pytest.raises(ValueError, match='invalid address'):
+    with pytest.raises(ValueError, message='invalid address: bad'):
         test_sdk.get_account_data('bad')
 
     address = Keypair.random().address().decode()
-    with pytest.raises(kin.NoSuchAccountError):
+    with pytest.raises(kin.AccountNotFoundError):
         test_sdk.get_account_data(address)
 
     acc_data = test_sdk.get_account_data(test_sdk.get_address())
@@ -407,31 +447,34 @@ def test_get_account_data(setup, test_sdk):
 
 
 def test_get_transaction_data_fail(test_sdk):
-    with pytest.raises(kin.SdkHorizonError, match='Resource Missing'):
+    with pytest.raises(ValueError, message='invalid transaction hash: bad'):
         test_sdk.get_transaction_data('bad')
+
+    with pytest.raises(kin.ResourceNotFoundError):
+        test_sdk.get_transaction_data('c2a9d905a728ae918bf50058548f2421463ae09e1302be8e5b4b882c81c2edb8')
 
 
 def test_monitor_accounts_transactions_fail(setup, test_sdk):
-    with pytest.raises(ValueError, match='asset issuer invalid'):
+    with pytest.raises(ValueError, message='invalid asset issuer: bad'):
         test_sdk._monitor_accounts_transactions(Asset('TMP', 'bad'), None, None)
 
-    with pytest.raises(ValueError, match='no addresses to monitor'):
+    with pytest.raises(ValueError, message='no addresses to monitor'):
         test_sdk._monitor_accounts_transactions(setup.test_asset, [], None)
 
-    with pytest.raises(ValueError, match='invalid address'):
+    with pytest.raises(ValueError, message='invalid address: bad'):
         test_sdk._monitor_accounts_transactions(setup.test_asset, ['bad'], None)
 
     keypair = Keypair.random()
     address = keypair.address().decode()
 
-    with pytest.raises(Exception, match='Resource Missing'):
+    with pytest.raises(kin.AccountNotFoundError):
         test_sdk.monitor_accounts_transactions([address], None)
 
-    with pytest.raises(Exception, match='Resource Missing'):
+    with pytest.raises(kin.AccountNotFoundError):
         test_sdk._monitor_accounts_transactions(setup.test_asset, [address], None)
 
 
-def test_monitor_accounts_transactions(setup, test_sdk):
+def test_monitor_accounts_transactions(setup, test_sdk, helpers):
     keypair = Keypair.random()
     address = keypair.address().decode()
 
@@ -451,7 +494,7 @@ def test_monitor_accounts_transactions(setup, test_sdk):
     sleep(1)
     test_sdk.monitor_accounts_transactions([address], account_tx_callback)
 
-    tx_hash2 = trust_asset(setup, test_sdk, keypair.seed(), memo_text='trust')
+    tx_hash2 = helpers.trust_asset(setup, keypair.seed(), memo_text='trust')
     assert tx_hash2
 
     tx_hash3 = test_sdk._send_asset(setup.test_asset, address, 10, memo_text='send asset')
@@ -487,12 +530,12 @@ def test_monitor_accounts_transactions(setup, test_sdk):
     assert tx_datas[3].operations[0].asset_type == 'native'
 
 
-def test_monitor_asset_transactions_single(setup, test_sdk):
+def test_monitor_asset_transactions_single(setup, test_sdk, helpers):
     keypair = Keypair.random()
     address = keypair.address().decode()
 
     assert test_sdk.create_account(address, starting_balance=100, memo_text='create')
-    assert trust_asset(setup, test_sdk, keypair.seed(), memo_text='trust')
+    assert helpers.trust_asset(setup, keypair.seed(), memo_text='trust')
     
     ev = threading.Event()
     tx_datas = []
@@ -513,7 +556,7 @@ def test_monitor_asset_transactions_single(setup, test_sdk):
     assert tx_hash1
     
     # pay from the account back to the sdk
-    tx_hash2 = send_asset(setup, keypair.seed(), test_sdk.get_address(), 10)
+    tx_hash2 = helpers.send_asset(setup, keypair.seed(), test_sdk.get_address(), 10)
     assert tx_hash2
     
     # wait until the callback gets them all
@@ -539,7 +582,7 @@ def test_monitor_asset_transactions_single(setup, test_sdk):
     assert op_data.amount == Decimal('10')
 
 
-def test_monitor_asset_transactions_multiple(setup, test_sdk):
+def test_monitor_asset_transactions_multiple(setup, test_sdk, helpers):
     keypair1 = Keypair.random()
     address1 = keypair1.address().decode()
     keypair2 = Keypair.random()
@@ -547,8 +590,8 @@ def test_monitor_asset_transactions_multiple(setup, test_sdk):
 
     assert test_sdk.create_account(address1, starting_balance=100)
     assert test_sdk.create_account(address2, starting_balance=100)
-    assert trust_asset(setup, test_sdk, keypair1.seed())
-    assert trust_asset(setup, test_sdk, keypair2.seed())
+    assert helpers.trust_asset(setup, keypair1.seed())
+    assert helpers.trust_asset(setup, keypair2.seed())
 
     ev1 = threading.Event()
     ev2 = threading.Event()
@@ -609,8 +652,9 @@ def test_channels(setup, helpers):
         helpers.fund_account(setup, channel_address)
 
     # init sdk with these channels
-    sdk = kin.SDK(secret_key=setup.sdk_keypair.seed(), horizon_endpoint_uri=setup.horizon_endpoint_uri,
-                  network=setup.network, channel_secret_keys=channel_keys)
+    sdk = kin.SDK(secret_key=setup.sdk_keypair.seed(),channel_secret_keys=channel_keys,
+                  horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
+
     assert sdk
     assert sdk.channel_manager
     assert sdk.channel_manager.channel_builders.qsize() == len(channel_keypairs)
@@ -667,38 +711,3 @@ def test_channels(setup, helpers):
     # check thread errors
     assert not thread_ex
 
-
-# local helpers
-
-
-def fund_asset(setup, address, amount, memo_text=None):
-    """A helper to fund an account with asset"""
-    builder = Builder(secret=setup.issuer_keypair.seed(), horizon_uri=setup.horizon_endpoint_uri, network=setup.network)
-    builder.append_payment_op(address, amount, asset_type=setup.test_asset.code, asset_issuer=setup.test_asset.issuer)
-    if memo_text:
-        builder.add_text_memo(memo_text[:28])  # max memo length is 28
-    builder.sign()
-    reply = builder.submit()
-    return reply.get('hash')
-
-
-def trust_asset(setup, test_sdk, secret_key, memo_text=None):
-    """A helper to establish a trustline"""
-    builder = Builder(secret=secret_key, horizon_uri=test_sdk.horizon.horizon_uri, network=test_sdk.network)
-    builder.append_trust_op(setup.test_asset.issuer, setup.test_asset.code)
-    if memo_text:
-        builder.add_text_memo(memo_text[:28])  # max memo length is 28
-    builder.sign()
-    reply = builder.submit()
-    return reply.get('hash')
-
-
-def send_asset(setup, secret_key, address, amount, memo_text=None):
-    """A helper to send asset"""
-    builder = Builder(secret=secret_key, horizon_uri=setup.horizon_endpoint_uri, network=setup.network)
-    builder.append_payment_op(address, amount, asset_type=setup.test_asset.code, asset_issuer=setup.test_asset.issuer)
-    if memo_text:
-        builder.add_text_memo(memo_text[:28])  # max memo length is 28
-    builder.sign()
-    reply = builder.submit()
-    return reply.get('hash')

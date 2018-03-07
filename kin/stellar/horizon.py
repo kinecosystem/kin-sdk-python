@@ -9,8 +9,7 @@ from urllib3.util import Retry
 
 from stellar_base.horizon import HORIZON_LIVE, HORIZON_TEST
 
-from exceptions import SdkHorizonError
-from version import __version__ as sdk_version
+from .errors import HorizonError
 
 try:
     from sseclient import SSEClient
@@ -27,7 +26,7 @@ else:
 DEFAULT_REQUEST_TIMEOUT = 60  # one minute, see github.com/stellar/horizon/txsub/system.go#L223
 DEFAULT_NUM_RETRIES = 5
 DEFAULT_BACKOFF_FACTOR = 0.5
-USER_AGENT = 'kin-stellar-python/{}'.format(sdk_version)
+USER_AGENT = 'py-stellar-base'
 
 
 class Horizon(object):
@@ -35,7 +34,7 @@ class Horizon(object):
     This class redefines :class:`~stellar_base.horizon.Horizon` to provide additional functionality.
     """
     def __init__(self, horizon_uri=None, pool_size=DEFAULT_POOLSIZE, num_retries=DEFAULT_NUM_RETRIES,
-                 request_timeout=DEFAULT_REQUEST_TIMEOUT, backoff_factor=DEFAULT_BACKOFF_FACTOR):
+                 request_timeout=DEFAULT_REQUEST_TIMEOUT, backoff_factor=DEFAULT_BACKOFF_FACTOR, user_agent=USER_AGENT):
         if horizon_uri is None:
             self.horizon_uri = HORIZON_TEST
         else:
@@ -51,7 +50,7 @@ class Horizon(object):
         session = requests.Session()
 
         # set default headers
-        session.headers.update({'User-Agent': USER_AGENT})
+        session.headers.update({'User-Agent': user_agent})
 
         session.mount('http://', adapter)
         session.mount('https://', adapter)
@@ -196,4 +195,4 @@ class Horizon(object):
 def check_horizon_reply(reply):
     if 'status' not in reply:
         return reply
-    raise SdkHorizonError(reply)
+    raise HorizonError(reply)

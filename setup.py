@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 exec(open("kin/version.py").read())
 
@@ -19,7 +19,7 @@ setup(
     maintainer_email='david.bolshoy@kik.com',
     url='https://github.com/kinfoundation/kin-core-python',
     license='MIT',
-    packages=["kin"],
+    packages=find_packages(),
     long_description=open("README.md").read(),
     keywords=["kin", "stellar", "blockchain", "cryptocurrency"],
     classifiers=[

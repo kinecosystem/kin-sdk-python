@@ -57,7 +57,7 @@ def test_create_default():
     assert adapter.max_retries.total == DEFAULT_NUM_RETRIES
     assert adapter.max_retries.backoff_factor == DEFAULT_BACKOFF_FACTOR
     assert adapter.max_retries.redirect == 0
-    assert adapter._pool_connections == 1
+    assert adapter._pool_connections == DEFAULT_POOLSIZE
     assert adapter._pool_maxsize == DEFAULT_POOLSIZE
 
 
@@ -77,7 +77,7 @@ def test_create_custom():
     assert adapter.max_retries.total == num_retries
     assert adapter.max_retries.backoff_factor == backoff_factor
     assert adapter.max_retries.redirect == 0
-    assert adapter._pool_connections == 1
+    assert adapter._pool_connections == pool_size
     assert adapter._pool_maxsize == pool_size
 
 

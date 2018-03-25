@@ -42,9 +42,11 @@ class Horizon(object):
 
         self.request_timeout = request_timeout
 
+        # configure retry handler
+        retry = Retry(total=num_retries, backoff_factor=backoff_factor,
+                      redirect=0, status_forcelist=frozenset([413, 429, 503, 504]))
         # init transport adapter
-        retry = Retry(total=num_retries, backoff_factor=backoff_factor, redirect=0)
-        adapter = HTTPAdapter(pool_connections=1, pool_maxsize=pool_size, max_retries=retry)
+        adapter = HTTPAdapter(pool_connections=pool_size, pool_maxsize=pool_size, max_retries=retry)
 
         # init session
         session = requests.Session()

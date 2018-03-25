@@ -200,7 +200,7 @@ class SDK(object):
     def get_account_kin_balance(self, address):
         """Get KIN balance of the account identified by the provided address.
 
-        :param: str address: the address of the account to query.
+        :param str address: the address of the account to query.
 
         :return: : the balance in KIN of the account.
         :rtype: Decimal
@@ -406,7 +406,7 @@ class SDK(object):
     def _get_account_asset_balance(self, address, asset):
         """Get asset balance of the account identified by the provided address.
 
-        :param: str address: the address of the account to query.
+        :param str address: the address of the account to query.
 
         :param asset: the asset to get balance for.
         :type: :class:`stellar_base.asset.Asset`
@@ -533,10 +533,10 @@ class SDK(object):
         the transactions for this asset will be returned.
         NOTE: the functions starts a background thread.
 
-        :param: asset: (optional) the asset to query.
+        :param asset: (optional) the asset to query.
         :type: :class:`stellar_base.asset.Asset`
 
-        :param: str addresses: the addresses of the accounts to query.
+        :param str addresses: the addresses of the accounts to query.
 
         :param callback_fn: the function to call on each received transaction as `callback_fn(address, tx_data)`.
         :type: callable[[str, :class:`~kin.TransactionData`], None]
@@ -562,22 +562,23 @@ class SDK(object):
             if not self.check_account_exists(address):
                 raise AccountNotFoundError(addresses)
 
-        # determine the last_id to start from
-        last_id = None
+        # determine the cursor to start from
+        # TODO: use cursor=now instead. Currently, due to the older Horizon version in docker, this will hang.
+        params = {}
         if len(addresses) == 1:
             reply = self.horizon.account_transactions(addresses[0], params={'order': 'desc', 'limit': 2})
         else:
             reply = self.horizon.transactions(params={'order': 'desc', 'limit': 2})
-        if len(reply['_embedded']['records']) == 2:
-            tt = reply['_embedded']['records'][1]
-            last_id = TransactionData(tt, strict=False).paging_token
 
-        # start monitoring transactions from last_id. TODO: use cursor=now instead
-        # make the SSE request synchronous (will raise errors in the current thread)
+        if len(reply['_embedded']['records']) == 2:
+            cursor = TransactionData(reply['_embedded']['records'][1], strict=False).paging_token
+            params = {'cursor': cursor}
+
+        # make synchronous SSE request (will raise errors in the current thread)
         if len(addresses) == 1:
-            events = self.horizon.account_transactions(addresses[0], sse=True, params={'last_id': last_id})
+            events = self.horizon.account_transactions(addresses[0], sse=True, params=params)
         else:
-            events = self.horizon.transactions(sse=True, params={'last_id': last_id})
+            events = self.horizon.transactions(sse=True, params=params)
 
         # asynchronous event processor
         def event_processor():

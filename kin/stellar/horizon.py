@@ -171,19 +171,17 @@ class Horizon(object):
 
     def _query(self, url, params=None, sse=False):
         if not sse:
-            return self._session.get(url, params=params, timeout=self.request_timeout).json()
+            reply = self._session.get(url, params=params, timeout=self.request_timeout)
+            try:
+                return reply.json()
+            except ValueError:
+                raise Exception('invalid horizon reply: [{}] {}'.format(reply.status_code, reply.text))
 
         # SSE connection
         if SSEClient is None:
             raise ValueError('SSE not supported, missing sseclient module')
 
-        last_id = None
-        if params:
-            if 'last_id' in params:
-                last_id = params['last_id']
-                del params['last_id']
-            url = url + '?' + urlencode(params)
-        return SSEClient(url, last_id=last_id, session=self._session)
+        return SSEClient(url, session=self._session, params=params)
 
     @staticmethod
     def testnet():

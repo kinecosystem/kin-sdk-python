@@ -42,6 +42,8 @@ class Horizon(object):
 
         self.request_timeout = request_timeout
 
+        # configure standard session
+
         # configure retry handler
         retry = Retry(total=num_retries, backoff_factor=backoff_factor,
                       redirect=0, status_forcelist=frozenset([413, 429, 503, 504]))
@@ -57,6 +59,16 @@ class Horizon(object):
         session.mount('http://', adapter)
         session.mount('https://', adapter)
         self._session = session
+
+        # configure SSE session (differs from our standard session)
+
+        retry = Retry(total=1000000, redirect=0, status_forcelist=frozenset([413, 429, 503, 504]))
+        adapter = HTTPAdapter(pool_connections=pool_size, pool_maxsize=pool_size, max_retries=retry)
+        session = requests.Session()
+        session.headers.update({'User-Agent': user_agent})
+        session.mount('http://', adapter)
+        session.mount('https://', adapter)
+        self._sse_session = session
 
     def submit(self, te):
         params = {'tx': te}
@@ -181,7 +193,7 @@ class Horizon(object):
         if SSEClient is None:
             raise ValueError('SSE not supported, missing sseclient module')
 
-        return SSEClient(url, session=self._session, params=params)
+        return SSEClient(url, session=self._sse_session, params=params)
 
     @staticmethod
     def testnet():

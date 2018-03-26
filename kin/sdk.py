@@ -562,17 +562,20 @@ class SDK(object):
             if not self.check_account_exists(address):
                 raise AccountNotFoundError(addresses)
 
-        # determine the cursor to start from
-        # TODO: use cursor=now instead. Currently, due to the older Horizon version in docker, this will hang.
-        params = {}
-        if len(addresses) == 1:
-            reply = self.horizon.account_transactions(addresses[0], params={'order': 'desc', 'limit': 2})
+        # Currently, due to the older Horizon version in docker and faulty SSE implementation,
+        # using cursor=now will hang. So for the custom Horizon we determine the cursor ourselves.
+        if self.horizon.horizon_uri == HORIZON_LIVE or self.horizon.horizon_uri == HORIZON_TEST:
+            params = {'cursor': 'now'}
         else:
-            reply = self.horizon.transactions(params={'order': 'desc', 'limit': 2})
+            params = {}
+            if len(addresses) == 1:
+                reply = self.horizon.account_transactions(addresses[0], params={'order': 'desc', 'limit': 2})
+            else:
+                reply = self.horizon.transactions(params={'order': 'desc', 'limit': 2})
 
-        if len(reply['_embedded']['records']) == 2:
-            cursor = TransactionData(reply['_embedded']['records'][1], strict=False).paging_token
-            params = {'cursor': cursor}
+            if len(reply['_embedded']['records']) == 2:
+                cursor = TransactionData(reply['_embedded']['records'][1], strict=False).paging_token
+                params = {'cursor': cursor}
 
         # make synchronous SSE request (will raise errors in the current thread)
         if len(addresses) == 1:

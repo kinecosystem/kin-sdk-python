@@ -138,13 +138,14 @@ The handy `get_status` method will return some parameters the SDK was configured
 status = sdk.get_status()
 print status
 #  {
+#     'sdk_version': '0.2.0',
 #     'channels': {
-#         'all': 1,  
-#         'free': 1  
+#         'all': 5,  
+#         'free': 5  
 #     }, 
 #     'kin_asset': {
 #         'code': 'KIN', 
-#         'issuer': '<issuer address'
+#         'issuer': '<issuer address>'
 #     }, 
 #     'network': 'TESTNET', 
 #     'horizon': {
@@ -152,20 +153,34 @@ print status
 #         'online': True,
 #         'error': None 
 #     }, 
-#     'address': '<sdk wallet address>'
+#     'address': '<sdk wallet address>',
+#     'transport': {
+#         'pool_size': 7,
+#         'num_retries': 5,
+#         'request_timeout': 11,
+#         'retry_statuses': [413, 429, 503, 504],
+#         'backoff_factor': 0.5
+#     }
 #   }
 ```
+- `sdk_version` - the version of this SDK.
 - `address` - the SDK wallet address.
 - `channels`:
-  - `all` - the number of channels the SDK was configured with
+  - `all` - the number of channels the SDK was configured with.
   - `free` - the number of currently free channels. If the number is consistently close to zero, it means the channels
              are always busy, and you might consider adding more channels or more servers.
 - `kin_asset` - the KIN asset the SDK was configured with.
-- `network` - the network the SDK was configured with (PUBLIC/TESTNET/CUSTOM)
+- `network` - the network the SDK was configured with (PUBLIC/TESTNET/CUSTOM).
 - `horizon`:
   - `uri` - the endpoint URI of the Horizon server.
   - `online` - Horizon online status.
-  - `error` - Horizon error (when not `online`) 
+  - `error` - Horizon error (when not `online`) .
+- `transport`:
+  - `pool_size` - number of pooled connections to Horizon.
+  - `num_retries` - number of retries on failed request.
+  - `request_timeout` - single request timeout.
+  - `retry_statuses` - a list of statuses to retry on.
+  - `backoff_factor` - a backoff factor to apply between retry attempts.
 
 
 ## Limitations

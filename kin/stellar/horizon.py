@@ -46,6 +46,7 @@ class Horizon(object):
         else:
             self.horizon_uri = horizon_uri
 
+        self.pool_size = pool_size
         self.num_retries = num_retries
         self.request_timeout = request_timeout
         self.backoff_factor = backoff_factor
@@ -57,10 +58,10 @@ class Horizon(object):
         # configure standard session
 
         # configure retry handler
-        retry = Retry(total=num_retries, backoff_factor=self.backoff_factor, redirect=0,
+        retry = Retry(total=self.num_retries, backoff_factor=self.backoff_factor, redirect=0,
                       status_forcelist=self.status_forcelist)
         # init transport adapter
-        adapter = HTTPAdapter(pool_connections=pool_size, pool_maxsize=pool_size, max_retries=retry)
+        adapter = HTTPAdapter(pool_connections=self.pool_size, pool_maxsize=self.pool_size, max_retries=retry)
 
         # init session
         session = requests.Session()
@@ -75,7 +76,7 @@ class Horizon(object):
         # configure SSE session (differs from our standard session)
 
         sse_retry = Retry(total=1000000, redirect=0, status_forcelist=self.status_forcelist)
-        sse_adapter = HTTPAdapter(pool_connections=pool_size, pool_maxsize=pool_size, max_retries=sse_retry)
+        sse_adapter = HTTPAdapter(pool_connections=self.pool_size, pool_maxsize=self.pool_size, max_retries=sse_retry)
         sse_session = requests.Session()
         sse_session.headers.update({'User-Agent': user_agent})
         sse_session.mount('http://', sse_adapter)

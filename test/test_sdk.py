@@ -112,6 +112,12 @@ def test_get_status(setup, test_sdk):
     assert status['channels']
     assert status['channels']['all'] == 1
     assert status['channels']['free'] == 1
+    assert status['transport']
+    assert status['transport']['pool_size'] == sdk.horizon.pool_size
+    assert status['transport']['num_retries'] == sdk.horizon.num_retries
+    assert status['transport']['request_timeout'] == sdk.horizon.request_timeout
+    assert status['transport']['retry_statuses'] == sdk.horizon.status_forcelist
+    assert status['transport']['backoff_factor'] == sdk.horizon.backoff_factor
 
 
 def test_get_address(setup, test_sdk):

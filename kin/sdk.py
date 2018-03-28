@@ -13,6 +13,7 @@ from .stellar.channel_manager import ChannelManager
 from .stellar.horizon import Horizon, HORIZON_LIVE, HORIZON_TEST
 from .stellar.horizon_models import AccountData, TransactionData
 from .stellar.utils import *
+from .version import __version__
 
 import logging
 logger = logging.getLogger(__name__)
@@ -74,7 +75,7 @@ class SDK(object):
         else:
             self.kin_asset = KIN_ASSET_PROD if self.network == 'PUBLIC' else KIN_ASSET_TEST
 
-        # set connection pool size for channels, monitoring connection + extra
+        # set connection pool size for channels + monitoring connection + extra
         pool_size = max(1, len(channel_secret_keys)) + 2
 
         if horizon_endpoint_uri:
@@ -120,6 +121,7 @@ class SDK(object):
     def get_status(self):
         """Get system configuration data and online status."""
         status = {
+            'sdk_version': __version__,
             'network': self.network,
             'address': None,
             'kin_asset': {
@@ -130,6 +132,13 @@ class SDK(object):
                 'uri': self.horizon.horizon_uri,
                 'online': False,
                 'error': None,
+            },
+            'transport': {
+                'pool_size': self.horizon.pool_size,
+                'num_retries': self.horizon.num_retries,
+                'request_timeout': self.horizon.request_timeout,
+                'retry_statuses': self.horizon.status_forcelist,
+                'backoff_factor': self.horizon.backoff_factor,
             },
             'channels': None,
         }

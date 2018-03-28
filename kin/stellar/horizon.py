@@ -4,12 +4,17 @@
 
 import requests
 from requests.adapters import HTTPAdapter, DEFAULT_POOLSIZE
+from requests.exceptions import RequestException
 import sys
+from time import sleep
 from urllib3.util import Retry
 
 from stellar_base.horizon import HORIZON_LIVE, HORIZON_TEST
 
 from .errors import HorizonError
+
+import logging
+logger = logging.getLogger(__name__)
 
 try:
     from sseclient import SSEClient
@@ -17,13 +22,14 @@ except ImportError:
     SSEClient = None
 
 if sys.version[0] == '2':
+    # noinspection PyUnresolvedReferences
     from urllib import urlencode
 else:
     # noinspection PyUnresolvedReferences
     from urllib.parse import urlencode
 
 
-DEFAULT_REQUEST_TIMEOUT = 60  # one minute, see github.com/stellar/horizon/txsub/system.go#L223
+DEFAULT_REQUEST_TIMEOUT = 11  # two ledgers + 1 sec, let's retry faster and not wait 60 secs.
 DEFAULT_NUM_RETRIES = 5
 DEFAULT_BACKOFF_FACTOR = 0.5
 USER_AGENT = 'py-stellar-base'
@@ -40,13 +46,19 @@ class Horizon(object):
         else:
             self.horizon_uri = horizon_uri
 
+        self.num_retries = num_retries
         self.request_timeout = request_timeout
+        self.backoff_factor = backoff_factor
+
+        # adding 504 to the list of statuses to retry
+        self.status_forcelist = set(Retry.RETRY_AFTER_STATUS_CODES)
+        self.status_forcelist.update([504])
 
         # configure standard session
 
         # configure retry handler
-        retry = Retry(total=num_retries, backoff_factor=backoff_factor,
-                      redirect=0, status_forcelist=frozenset([413, 429, 503, 504]))
+        retry = Retry(total=num_retries, backoff_factor=self.backoff_factor, redirect=0,
+                      status_forcelist=self.status_forcelist)
         # init transport adapter
         adapter = HTTPAdapter(pool_connections=pool_size, pool_maxsize=pool_size, max_retries=retry)
 
@@ -62,23 +74,35 @@ class Horizon(object):
 
         # configure SSE session (differs from our standard session)
 
-        retry = Retry(total=1000000, redirect=0, status_forcelist=frozenset([413, 429, 503, 504]))
-        adapter = HTTPAdapter(pool_connections=pool_size, pool_maxsize=pool_size, max_retries=retry)
-        session = requests.Session()
-        session.headers.update({'User-Agent': user_agent})
-        session.mount('http://', adapter)
-        session.mount('https://', adapter)
-        self._sse_session = session
+        sse_retry = Retry(total=1000000, redirect=0, status_forcelist=self.status_forcelist)
+        sse_adapter = HTTPAdapter(pool_connections=pool_size, pool_maxsize=pool_size, max_retries=sse_retry)
+        sse_session = requests.Session()
+        sse_session.headers.update({'User-Agent': user_agent})
+        sse_session.mount('http://', sse_adapter)
+        sse_session.mount('https://', sse_adapter)
+        self._sse_session = sse_session
 
     def submit(self, te):
         params = {'tx': te}
         url = self.horizon_uri + '/transactions/'
-        reply = self._session.post(url, data=params, timeout=self.request_timeout)
-        try:
-            reply_json = reply.json()
-        except ValueError:
-            raise Exception('invalid horizon reply: [{}] {}'.format(reply.status_code, reply.text))
-        return check_horizon_reply(reply_json)
+
+        # POST is not included in Retry's method_whitelist for a good reason.
+        # our custom retry mechanism follows
+        reply = None
+        retry_count = self.num_retries
+        while True:
+            try:
+                reply = self._session.post(url, data=params, timeout=self.request_timeout)
+                return check_horizon_reply(reply.json())
+            except (RequestException, ValueError) as e:
+                logging.warning('horizon submit exception: {}'.format(str(e)))
+                if reply and reply.status_code not in self.status_forcelist:
+                    raise Exception('invalid horizon reply: [{}] {}'.format(reply.status_code, reply.text))
+                if retry_count <= 0:
+                    raise
+                retry_count -= 1
+                logging.warning('submit retry attempt {}'.format(retry_count))
+                sleep(self.backoff_factor)
 
     def query(self, rel_url, params=None, sse=False):
         abs_url = self.horizon_uri + rel_url

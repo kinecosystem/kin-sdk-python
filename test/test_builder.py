@@ -18,26 +18,24 @@ def test_create_default():
     keypair = Keypair.random()
 
     # with secret
-    builder = Builder(secret=keypair.seed(), sequence=7)
+    builder = Builder(secret=keypair.seed())
     assert builder
     assert builder.key_pair.seed() == keypair.seed()
     assert builder.address == keypair.address().decode()
     assert builder.network == 'PUBLIC'
     assert builder.horizon
     assert builder.horizon.horizon_uri == HORIZON_LIVE
-    assert builder.sequence == 7
 
     # with address
-    builder = Builder(address=keypair.address().decode(), sequence=7)
+    builder = Builder(address=keypair.address().decode())
     assert builder
     assert builder.address == keypair.address().decode()
     assert builder.network == 'PUBLIC'
     assert builder.horizon
     assert builder.horizon.horizon_uri == HORIZON_LIVE
-    assert builder.sequence == 7
 
     # on testnet
-    builder = Builder(secret=keypair.seed(), network='TESTNET', sequence=7)
+    builder = Builder(secret=keypair.seed(), network='TESTNET')
     assert builder
     assert builder.network == 'TESTNET'
     assert builder.horizon
@@ -47,23 +45,21 @@ def test_create_default():
 def test_create_custom(test_sdk):
     keypair = Keypair.random()
 
-    builder = Builder(secret=keypair.seed(), horizon_uri='custom', network='custom', sequence=7)
+    builder = Builder(secret=keypair.seed(), horizon_uri='custom', network='custom')
     assert builder
     assert builder.horizon
     assert builder.horizon.horizon_uri == 'custom'
     assert builder.network == 'CUSTOM'
-    assert builder.sequence == 7
 
     # with custom horizon
     horizon = Horizon()
-    builder = Builder(secret=keypair.seed(), horizon=horizon, sequence=7)
+    builder = Builder(secret=keypair.seed(), horizon=horizon)
     assert builder
     assert builder.horizon == horizon
 
     # with horizon fixture
     builder = Builder(secret=test_sdk.base_keypair.seed(), horizon=test_sdk.horizon, network=test_sdk.network)
     assert builder
-    assert builder.sequence == builder.get_sequence()
 
 
 @pytest.fixture(scope='session')
@@ -89,11 +85,11 @@ def test_clear(test_builder):
 
 
 def test_get_sequence(test_builder):
-    assert test_builder.sequence == test_builder.get_sequence()
+    assert test_builder.get_sequence()
 
 
 def test_next(test_builder):
-    sequence = test_builder.sequence
+    sequence = test_builder.get_sequence()
     test_builder.append_create_account_op(Keypair.random().address().decode(), 100)
     test_builder.sign()
     test_builder.next()

@@ -186,9 +186,9 @@ def test_create_account(test_sdk):
     assert exc_info.value.error_code == kin.CreateAccountResultCode.ACCOUNT_EXISTS
 
 
-def test_get_account_asset_balance_fail(test_sdk, setup):
+def test_get_account_kin_balance_fail(test_sdk, setup):
     with pytest.raises(ValueError, message='invalid address: bad'):
-        test_sdk._get_account_asset_balance('bad', setup.test_asset)
+        test_sdk.get_account_kin_balance('bad')
 
     keypair = Keypair.random()
     address = keypair.address().decode()
@@ -198,12 +198,12 @@ def test_get_account_asset_balance_fail(test_sdk, setup):
 
     # account not created yet
     with pytest.raises(kin.AccountNotFoundError) as exc_info:
-        test_sdk._get_account_asset_balance(address, setup.test_asset)
+        test_sdk.get_account_kin_balance(address)
 
     assert test_sdk.create_account(address, starting_balance=10)
 
     with pytest.raises(kin.AccountNotActivatedError) as exc_info:
-        test_sdk._get_account_asset_balance(address, setup.test_asset)
+        test_sdk.get_account_kin_balance(address)
 
 
 def test_send_native(test_sdk):
@@ -326,12 +326,12 @@ def test_trust_asset(setup, test_sdk, helpers):
 
     # finally, fund the sdk account with asset
     assert helpers.fund_asset(setup, test_sdk.get_address(), 1000)
-    assert test_sdk._get_account_asset_balance(test_sdk.get_address(), setup.test_asset) == Decimal('1000')
+    assert test_sdk.get_account_kin_balance(test_sdk.get_address()) == Decimal('1000')
 
 
-def test_asset_trusted(setup, test_sdk):
+def test_check_account_activated(setup, test_sdk, helpers):
     with pytest.raises(ValueError, message='invalid address: bad'):
-        test_sdk._check_asset_trusted('bad', setup.test_asset)
+        test_sdk.check_account_activated('bad')
 
     keypair = Keypair.random()
     address = keypair.address().decode()
@@ -340,45 +340,47 @@ def test_asset_trusted(setup, test_sdk):
         test_sdk._check_asset_trusted(address, Asset('TMP', 'bad'))
 
     with pytest.raises(kin.AccountNotFoundError):
-        test_sdk._check_asset_trusted(address, setup.test_asset)
+        test_sdk.check_account_activated(address)
 
     assert test_sdk.create_account(address, starting_balance=100)
+    assert not test_sdk.check_account_activated(address)
 
-    assert not test_sdk._check_asset_trusted(address, setup.test_asset)
+    assert helpers.trust_asset(setup, keypair.seed())
+    assert test_sdk.check_account_activated(address)
 
 
-def test_send_asset(setup, test_sdk, helpers):
+def test_send_kin(setup, test_sdk, helpers):
     with pytest.raises(ValueError, message='invalid address: bad'):
-        test_sdk._send_asset(setup.test_asset, 'bad', 10)
+        test_sdk.send_kin('bad', 10)
 
     keypair = Keypair.random()
     address = keypair.address().decode()
 
     with pytest.raises(ValueError, message='amount must be positive'):
-        test_sdk._send_asset(setup.test_asset, address, 0)
+        test_sdk.send_kin(address, 0)
 
     with pytest.raises(ValueError, message='invalid asset issuer: bad'):
         test_sdk._send_asset(Asset('TMP', 'bad'), address, 10)
 
     # account does not exist yet
     with pytest.raises(kin.AccountNotFoundError) as exc_info:
-        test_sdk._send_asset(setup.test_asset, address, 10)
+        test_sdk.send_kin(address, 10)
     assert exc_info.value.error_code == kin.PaymentResultCode.NO_DESTINATION
 
     assert test_sdk.create_account(address, starting_balance=100)
 
     # no trustline yet
     with pytest.raises(kin.AccountNotActivatedError) as exc_info:
-        test_sdk._send_asset(setup.test_asset, address, 10)
+        test_sdk.send_kin(address, 10)
     assert exc_info.value.error_code == kin.PaymentResultCode.NO_TRUST
 
     # add trustline from the newly created account to the kin issuer
     assert helpers.trust_asset(setup, keypair.seed())
 
     # send and check the resulting balance
-    tx_hash = test_sdk._send_asset(setup.test_asset, address, 10.123, memo_text='foobar')
+    tx_hash = test_sdk.send_kin(address, 10.123, memo_text='foobar')
     assert tx_hash
-    assert test_sdk._get_account_asset_balance(address, setup.test_asset) == Decimal('10.123')
+    assert test_sdk.get_account_kin_balance(address) == Decimal('10.123')
 
     # test get_transaction_data for this transaction
     sleep(1)
@@ -451,18 +453,18 @@ def test_get_transaction_data_fail(test_sdk):
         test_sdk.get_transaction_data('bad')
 
     with pytest.raises(kin.ResourceNotFoundError):
-        test_sdk.get_transaction_data('c2a9d905a728ae918bf50058548f2421463ae09e1302be8e5b4b882c81c2edb8')
+        test_sdk.get_transaction_data('deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
 
 
 def test_monitor_accounts_transactions_fail(setup, test_sdk):
     with pytest.raises(ValueError, message='invalid asset issuer: bad'):
-        test_sdk._monitor_accounts_transactions(Asset('TMP', 'bad'), None, None)
+        test_sdk._monitor_accounts_asset_transactions(Asset('TMP', 'bad'), None, None)
 
     with pytest.raises(ValueError, message='no addresses to monitor'):
-        test_sdk._monitor_accounts_transactions(setup.test_asset, [], None)
+        test_sdk.monitor_accounts_transactions([], None)
 
     with pytest.raises(ValueError, message='invalid address: bad'):
-        test_sdk._monitor_accounts_transactions(setup.test_asset, ['bad'], None)
+        test_sdk.monitor_accounts_transactions(['bad'], None)
 
     keypair = Keypair.random()
     address = keypair.address().decode()
@@ -471,7 +473,7 @@ def test_monitor_accounts_transactions_fail(setup, test_sdk):
         test_sdk.monitor_accounts_transactions([address], None)
 
     with pytest.raises(kin.AccountNotFoundError):
-        test_sdk._monitor_accounts_transactions(setup.test_asset, [address], None)
+        test_sdk.monitor_accounts_transactions([address], None)
 
 
 def test_monitor_accounts_transactions(setup, test_sdk, helpers):
@@ -497,7 +499,7 @@ def test_monitor_accounts_transactions(setup, test_sdk, helpers):
     tx_hash2 = helpers.trust_asset(setup, keypair.seed(), memo_text='trust')
     assert tx_hash2
 
-    tx_hash3 = test_sdk._send_asset(setup.test_asset, address, 10, memo_text='send asset')
+    tx_hash3 = test_sdk.send_kin(address, 10, memo_text='send asset')
     assert tx_hash3
 
     tx_hash4 = test_sdk.send_native(address, 1, memo_text='send native')
@@ -530,7 +532,7 @@ def test_monitor_accounts_transactions(setup, test_sdk, helpers):
     assert tx_datas[3].operations[0].asset_type == 'native'
 
 
-def test_monitor_asset_transactions_single(setup, test_sdk, helpers):
+def test_monitor_accounts_kin_payments_single(setup, test_sdk, helpers):
     keypair = Keypair.random()
     address = keypair.address().decode()
 
@@ -548,11 +550,10 @@ def test_monitor_asset_transactions_single(setup, test_sdk, helpers):
 
     # start monitoring
     sleep(1)
-    test_sdk._monitor_accounts_transactions(setup.test_asset, [address],
-                                            account_tx_callback, only_payments=True)
+    test_sdk.monitor_accounts_kin_payments([address], account_tx_callback)
 
     # pay from sdk to the account
-    tx_hash1 = test_sdk._send_asset(setup.test_asset, address, 10)
+    tx_hash1 = test_sdk.send_kin(address, 10)
     assert tx_hash1
     
     # pay from the account back to the sdk
@@ -582,7 +583,7 @@ def test_monitor_asset_transactions_single(setup, test_sdk, helpers):
     assert op_data.amount == Decimal('10')
 
 
-def test_monitor_asset_transactions_multiple(setup, test_sdk, helpers):
+def test_monitor_accounts_kin_payments_multiple(setup, test_sdk, helpers):
     keypair1 = Keypair.random()
     address1 = keypair1.address().decode()
     keypair2 = Keypair.random()
@@ -610,13 +611,12 @@ def test_monitor_asset_transactions_multiple(setup, test_sdk, helpers):
 
     # start monitoring
     sleep(1)
-    test_sdk._monitor_accounts_transactions(setup.test_asset, [address1, address2],
-                                            account_tx_callback, only_payments=True)
+    test_sdk.monitor_accounts_kin_payments([address1, address2], account_tx_callback)
 
     # send payments
-    tx_hash12 = test_sdk._send_asset(setup.test_asset, address1, 10)
+    tx_hash12 = test_sdk.send_kin(address1, 10)
     assert tx_hash12
-    tx_hash22 = test_sdk._send_asset(setup.test_asset, address2, 10)
+    tx_hash22 = test_sdk.send_kin(address2, 10)
     assert tx_hash22
 
     # wait until callback gets them all

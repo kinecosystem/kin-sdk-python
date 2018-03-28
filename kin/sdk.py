@@ -383,7 +383,7 @@ class SDK(object):
         :raises: ValueError: if one of the provided addresses has a wrong format.
         :raises: :class:`~kin.AccountNotFoundError`: if one of the provided accounts is not yet created.
         """
-        self._monitor_accounts_transactions(self.kin_asset, addresses, callback_fn, only_payments=True)
+        self._monitor_accounts_asset_transactions(self.kin_asset, addresses, callback_fn, only_payments=True)
 
     # noinspection PyTypeChecker
     def monitor_accounts_transactions(self, addresses, callback_fn):
@@ -399,7 +399,7 @@ class SDK(object):
         :raises: ValueError: if one of the provided addresses has a wrong format.
         :raises: :class:`~kin.AccountNotFoundError`: if one of the provided accounts is not yet created.
         """
-        self._monitor_accounts_transactions(None, addresses, callback_fn)
+        self._monitor_accounts_asset_transactions(None, addresses, callback_fn)
 
     # Helpers
 
@@ -528,7 +528,7 @@ class SDK(object):
         except Exception as e:
             raise translate_error(e)
 
-    def _monitor_accounts_transactions(self, asset, addresses, callback_fn, only_payments=False):
+    def _monitor_accounts_asset_transactions(self, asset, addresses, callback_fn, only_payments=False):
         """Monitor transactions related to the accounts identified by provided addresses. If asset is given, only
         the transactions for this asset will be returned.
         NOTE: the functions starts a background thread.
@@ -536,7 +536,7 @@ class SDK(object):
         :param asset: (optional) the asset to query.
         :type: :class:`stellar_base.asset.Asset`
 
-        :param str addresses: the addresses of the accounts to query.
+        :param list of str addresses: the list of account addresses to query.
 
         :param callback_fn: the function to call on each received transaction as `callback_fn(address, tx_data)`.
         :type: callable[[str, :class:`~kin.TransactionData`], None]
@@ -562,20 +562,17 @@ class SDK(object):
             if not self.check_account_exists(address):
                 raise AccountNotFoundError(addresses)
 
-        # Currently, due to the older Horizon version in docker and faulty SSE implementation,
-        # using cursor=now will hang. So for the custom Horizon we determine the cursor ourselves.
-        if self.horizon.horizon_uri == HORIZON_LIVE or self.horizon.horizon_uri == HORIZON_TEST:
-            params = {'cursor': 'now'}
+        # Currently, due to nonstandard SSE implementation in Horizon, using cursor=now will hang.
+        # Instead, we determine the cursor ourselves.
+        params = {}
+        if len(addresses) == 1:
+            reply = self.horizon.account_transactions(addresses[0], params={'order': 'desc', 'limit': 2})
         else:
-            params = {}
-            if len(addresses) == 1:
-                reply = self.horizon.account_transactions(addresses[0], params={'order': 'desc', 'limit': 2})
-            else:
-                reply = self.horizon.transactions(params={'order': 'desc', 'limit': 2})
+            reply = self.horizon.transactions(params={'order': 'desc', 'limit': 2})
 
-            if len(reply['_embedded']['records']) == 2:
-                cursor = TransactionData(reply['_embedded']['records'][1], strict=False).paging_token
-                params = {'cursor': cursor}
+        if len(reply['_embedded']['records']) == 2:
+            cursor = TransactionData(reply['_embedded']['records'][1], strict=False).paging_token
+            params = {'cursor': cursor}
 
         # make synchronous SSE request (will raise errors in the current thread)
         if len(addresses) == 1:

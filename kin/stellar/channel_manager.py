@@ -3,10 +3,15 @@
 # Copyright (C) 2018 Kin Foundation
 
 import sys
+from time import sleep
 
 from stellar_base.keypair import Keypair
 
 from .builder import Builder
+from .errors import HorizonError, HorizonErrorType, TransactionResultCode
+
+import logging
+logger = logging.getLogger(__name__)
 
 if sys.version[0] == '2':
     import Queue as queue
@@ -23,7 +28,7 @@ class ChannelManager(object):
         self.num_channels = len(channel_keys)
         self.channel_builders = queue.Queue(len(channel_keys))
         for channel_key in channel_keys:
-            # create a channel transaction builder and load channel account sequence number.
+            # create a channel transaction builder.
             builder = Builder(secret=channel_key, network=network, horizon=horizon)
             self.channel_builders.put(builder)
 
@@ -44,13 +49,29 @@ class ChannelManager(object):
         try:
             # operation source is always the base account
             source = self.base_address if builder.address != self.base_address else None
-            add_ops_fn(builder)(source=source)
-            if memo_text:
-                builder.add_text_memo(memo_text[:28])  # max memo length is 28
-            builder.sign()  # always sign with a channel key
-            if source:
-                builder.sign(secret=self.base_key)  # sign with the base key too
-            return builder.submit()
+
+            # send and retry bad sequence errors
+            retry_count = builder.horizon.num_retries
+            while True:
+                try:
+                    add_ops_fn(builder)(source=source)
+                    if memo_text:
+                        builder.add_text_memo(memo_text[:28])  # max memo length is 28
+                    builder.sign()  # always sign with a channel key
+                    if source:
+                        builder.sign(secret=self.base_key)  # sign with the base key if needed
+                    return builder.submit()
+                except HorizonError as e:
+                    logging.warning('send transaction error: {}'.format(str(e)))
+                    if e.type == HorizonErrorType.TRANSACTION_FAILED \
+                            and e.extras.result_codes.transaction == TransactionResultCode.BAD_SEQUENCE:
+                        if retry_count > 0:
+                            retry_count -= 1
+                            logging.warning('send transaction retry attempt {}'.format(retry_count))
+                            builder.clear()
+                            sleep(builder.horizon.backoff_factor)
+                            continue
+                    raise
         finally:
             # clean the builder and return it to the queue
             builder.clear()

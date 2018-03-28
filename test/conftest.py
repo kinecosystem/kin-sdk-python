@@ -69,6 +69,18 @@ def test_sdk(setup):
     sdk = kin.SDK(secret_key=setup.sdk_keypair.seed(), horizon_endpoint_uri=setup.horizon_endpoint_uri,
                   network=setup.network, kin_asset=setup.test_asset)
     assert sdk
+    print("""test_sdk fixture created with the following setup:
+            type: {}
+            network: {}
+            sdk keypair: {} {}
+            issuer keypair: {} {}
+            asset: {} {}
+            horizon uri: {}
+          """.format(setup.type, setup.network,
+                     setup.sdk_keypair.seed(), setup.sdk_keypair.address().decode(),
+                     setup.issuer_keypair.seed(), setup.issuer_keypair.address().decode(),
+                     setup.test_asset.code, setup.test_asset.issuer,
+                     setup.horizon_endpoint_uri))
     return sdk
 
 
@@ -77,15 +89,17 @@ class Helpers:
     @staticmethod
     def fund_account(setup, address):
         for attempt in range(3):
-            r = requests.get(setup.horizon_endpoint_uri + '/friendbot?addr=' + address)  # Get 10000 lumens
-            j = json.loads(r.text)
-            if 'hash' in j:
-                print('\naccount {} funded successfully'.format(address))
-                return
-            elif 'op_already_exists' in j:
-                print('\naccount {} already exists, not funded'.format(address))
-                return
-            print('\naccount {} funding error: {}'.format(address, r.text))
+            try:
+                r = requests.get(setup.horizon_endpoint_uri + '/friendbot?addr=' + address)  # Get 10000 lumens
+                j = json.loads(r.text)
+                if 'hash' in j:
+                    print('\naccount {} funded successfully'.format(address))
+                    return
+                elif 'op_already_exists' in j:
+                    print('\naccount {} already exists, not funded'.format(address))
+                    return
+            except Exception as e:
+                print('\naccount {} funding error: {} {}'.format(address, r.status_code, r.text))
         raise Exception('account {} funding failed'.format(address))
 
     @staticmethod

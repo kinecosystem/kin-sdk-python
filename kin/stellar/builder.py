@@ -15,7 +15,7 @@ class Builder(BaseBuilder):
     """
     This class overrides :class:`~stellar_base.builder` to provide additional functionality.
     """
-    def __init__(self, secret=None, address=None, horizon=None, horizon_uri=None, network=None, sequence=None):
+    def __init__(self, secret=None, address=None, horizon=None, horizon_uri=None, network=None):
         if secret:
             if not is_valid_secret_key(secret):
                 raise ValueError('invalid secret key')
@@ -39,8 +39,6 @@ class Builder(BaseBuilder):
             self.horizon = Horizon(horizon_uri)
         else:
             self.horizon = Horizon(HORIZON_LIVE) if self.network == 'PUBLIC' else Horizon(HORIZON_TEST)
-
-        self.sequence = sequence if sequence else self.get_sequence()
 
     def clear(self):
         """"Clears the builder so it can be reused."""

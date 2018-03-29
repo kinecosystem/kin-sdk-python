@@ -26,7 +26,7 @@ class Builder(BaseBuilder):
         else:
             raise Exception('either secret or address must be provided')
 
-        # run baseclass constructor to init base class variables
+        # call baseclass constructor to init base class variables
         super(Builder, self).__init__(secret=secret, address=address, sequence=1)
 
         # custom overrides
@@ -65,5 +65,6 @@ class Builder(BaseBuilder):
         """
         Alternative implementation that does not use the self-managed sequence, but always fetches it from Horizon.
         """
-        self.sequence = self.get_sequence()
+        if not secret:  # only get the new sequence for my own account
+            self.sequence = self.get_sequence()
         super(Builder, self).sign(secret)

@@ -90,7 +90,10 @@ class Helpers:
     def fund_account(setup, address):
         for attempt in range(3):
             try:
-                r = requests.get(setup.horizon_endpoint_uri + '/friendbot?addr=' + address)  # Get 10000 lumens
+                if setup.type == 'local':
+                    r = requests.get(setup.horizon_endpoint_uri + '/friendbot?addr=' + address)  
+                else:
+                    r = requests.get('https://friendbot.stellar.org/?addr=' + address)
                 j = json.loads(r.text)
                 if 'hash' in j:
                     print('\naccount {} funded successfully'.format(address))

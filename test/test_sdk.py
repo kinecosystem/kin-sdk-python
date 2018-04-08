@@ -28,15 +28,6 @@ def test_sdk_not_configured(setup):
         sdk._send_asset(Asset('TMP', 'tmp'), 'address', 1)
 
 
-def test_sdk_create_success(setup, test_sdk):
-    assert test_sdk.horizon
-    assert test_sdk.horizon.horizon_uri == setup.horizon_endpoint_uri
-    assert test_sdk.network == setup.network
-    assert test_sdk.base_keypair.verifying_key == setup.sdk_keypair.verifying_key
-    assert test_sdk.base_keypair.signing_key == setup.sdk_keypair.signing_key
-    assert test_sdk.channel_manager
-
-
 def test_sdk_create_fail(setup, helpers, test_sdk):
     with pytest.raises(ValueError, message='invalid secret key: bad'):
         kin.SDK(secret_key='bad',
@@ -81,6 +72,23 @@ def test_sdk_create_fail(setup, helpers, test_sdk):
     with pytest.raises(kin.NetworkError):
         kin.SDK(secret_key=secret_key,
                 horizon_endpoint_uri='http://localhost:666', network=setup.network, kin_asset=setup.test_asset)
+
+
+def test_sdk_create_success(setup, test_sdk):
+    # test defaults
+    from stellar_base.horizon import HORIZON_LIVE, HORIZON_TEST
+    sdk = kin.SDK()
+    assert sdk.horizon.horizon_uri == HORIZON_LIVE
+    sdk = kin.SDK(network='TESTNET')
+    assert sdk.horizon.horizon_uri == HORIZON_TEST
+
+    # test test_sdk fixture
+    assert test_sdk.horizon
+    assert test_sdk.horizon.horizon_uri == setup.horizon_endpoint_uri
+    assert test_sdk.network == setup.network
+    assert test_sdk.base_keypair.verifying_key == setup.sdk_keypair.verifying_key
+    assert test_sdk.base_keypair.signing_key == setup.sdk_keypair.signing_key
+    assert test_sdk.channel_manager
 
 
 def test_get_status(setup, test_sdk):
@@ -294,6 +302,11 @@ def test_trust_asset(setup, test_sdk, helpers):
         test_sdk._trust_asset(Asset('TMP'))
     with pytest.raises(ValueError, message='asset issuer invalid'):
         test_sdk._trust_asset(Asset('TMP', 'tmp'))
+
+    address = Keypair.random().address().decode()
+    with pytest.raises(kin.RequestError) as exc_info:
+        test_sdk._trust_asset(Asset('TMP', address))
+    assert exc_info.value.error_code == kin.ChangeTrustResultCode.NO_ISSUER
 
     # success
     tx_hash = test_sdk._trust_asset(setup.test_asset, limit=1000, memo_text='foobar')

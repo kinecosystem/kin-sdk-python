@@ -91,7 +91,7 @@ class Helpers:
         for attempt in range(3):
             try:
                 if setup.type == 'local':
-                    r = requests.get(setup.horizon_endpoint_uri + '/friendbot?addr=' + address)  
+                    r = requests.get(setup.horizon_endpoint_uri + '/friendbot?addr=' + address)
                 else:
                     r = requests.get('https://friendbot.stellar.org/?addr=' + address)
                 j = json.loads(r.text)

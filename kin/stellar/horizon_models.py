@@ -9,6 +9,7 @@ from schematics.types.compound import ModelType, ListType, DictType
 
 
 class PModel(Model):
+    """Base class for our models that provides printout capabilities"""
     def __str__(self):
         sb = []
         for key in self.__dict__:
@@ -42,15 +43,22 @@ class AccountData(PModel):
         balance = DecimalType(default=0)
         limit = DecimalType()
 
+    class Signer(PModel):
+        public_key = StringType()
+        key = StringType()
+        weight = IntType()
+        signature_type = StringType(serialized_name='type')
+
     id = StringType()
+    account_id = StringType()
     sequence = StringType()
     data = DictType(StringType, default={})
     thresholds = ModelType(Thresholds)
     balances = ListType(ModelType(Balance), default=[])
     flags = ModelType(Flags)
-    # paging_token
-    # subentry_count
-    # signers
+    paging_token = StringType()
+    subentry_count = IntType()
+    signers = ListType(ModelType(Signer), default=[])
 
 
 class OperationData(PModel):
@@ -77,18 +85,18 @@ class TransactionData(PModel):
     source_account = StringType()
     source_account_sequence = StringType()
     operations = ListType(ModelType(OperationData), default=[])
+    operation_count = IntType()
     ledger = StringType()
     memo_type = StringType()
     memo = StringType()
     fee_paid = DecimalType()
     signatures = ListType(StringType, default=[])
     paging_token = StringType()
-    # time_bounds
-    # operation_count
-    # envelope_xdr
-    # result_xdr
-    # result_meta_xdr
-    # fee_meta_xdr
+    envelope_xdr = StringType()
+    result_xdr = StringType()
+    result_meta_xdr = StringType()
+    fee_meta_xdr = StringType()
+    time_bounds = ListType(IntType, default=[])
 
 
 class TransactionResultCodes(PModel):

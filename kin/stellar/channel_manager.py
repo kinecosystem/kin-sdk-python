@@ -21,7 +21,7 @@ else:
 
 
 class ChannelManager(object):
-    """ The class :class:`~kin.ChannelManager` wraps channel-related specifics of transaction sending."""
+    """ The class :class:`kin.ChannelManager` wraps channel-related specifics of transaction sending."""
     def __init__(self, secret_key, channel_keys, network, horizon):
         self.base_key = secret_key
         self.base_address = Keypair.from_seed(secret_key).address().decode()
@@ -40,10 +40,10 @@ class ChannelManager(object):
             `partial`, because a `source` parameter will be added.
         :type add_ops_fn: callable[builder]
 
-        :param str memo_text: (optional) an optional text to add as transaction memo.
+        :param str memo_text: (optional) a text to add as transaction memo.
 
         :return: transaction object
-        :rtype: :class:`~kin.TransactionData`
+        :rtype: dict
         """
         # send and retry bad sequence errors
         retry_count = self.horizon.num_retries

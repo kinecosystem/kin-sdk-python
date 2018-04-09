@@ -23,14 +23,13 @@ pip install git+https://github.com/kinfoundation/kin-core-python.git
 
 To initialize the SDK, you need to provide the following parameters:
 - (optional) the secret key to init the internal SDK wallet with. If not provided, you will NOT be able to use the 
-  following functions: `get_address`, `get_native_balance`, `get_kin_balance`, `create_account`, `monitor_kin_payments`,
-  `_trust_asset`, `_send_asset`.
+  following functions: `get_address`, `get_native_balance`, `get_kin_balance`, `create_account`, `monitor_kin_payments`.
 - (optional) the endpoint URI of your [Horizon](https://www.stellar.org/developers/horizon/reference/) node. 
-  If not provided, a default Horizon endpoint will be used,either a testnet or pubnet, depending on the `network` 
+  If not provided, a default Horizon endpoint will be used, either a testnet or pubnet, depending on the `network` 
   parameter below.
 - (optional) a network identifier, which is either `PUBLIC` or `TESTNET`, defaults to `PUBLIC`.
 - (optional) a list of channel keys. If provided, the channel accounts will be used to sign transactions instead 
-  of the internal SDK wallet.
+  of the internal SDK wallet. Use it to insure higher concurrency.
 
 
 ```python

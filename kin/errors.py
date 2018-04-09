@@ -33,7 +33,7 @@ class NetworkError(SdkError):
 
 
 class RequestError(SdkError):
-    """Request-related errors - unsupported request, invalid payload, malformed transaction, etc."""
+    """Request-related errors - bad request, invalid payload, malformed transaction, etc."""
     def __init__(self, error_code=None, extra=None):
         super(RequestError, self).__init__('bad request', error_code, extra)
 
@@ -45,13 +45,13 @@ class ServerError(SdkError):
 
 
 class ResourceNotFoundError(SdkError):
-    """Resource not found on server."""
+    """Resource not found on the server."""
     def __init__(self, error_code=None, extra=None):
         super(ResourceNotFoundError, self).__init__('resource not found', error_code, extra)
 
 
 class AccountError(SdkError):
-    """Base class for account related errors."""
+    """Base class for account-related errors."""
     def __init__(self, address=None, message=None, error_code=None, extra=None):
         if address:
             extra = dict(extra or ())
@@ -84,7 +84,7 @@ class LowBalanceError(SdkError):
 
 
 class InternalError(SdkError):
-    """Internal unhandled error. To find out more check the error code and extra data."""
+    """Internal unhandled error. To find out more, check the error code and extra data."""
     def __init__(self, error_code=None, extra=None):
         super(InternalError, self).__init__('internal error', error_code, extra)
 

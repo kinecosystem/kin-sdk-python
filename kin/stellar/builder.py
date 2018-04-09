@@ -13,7 +13,7 @@ from .utils import is_valid_address, is_valid_secret_key
 
 class Builder(BaseBuilder):
     """
-    This class overrides :class:`~stellar_base.builder` to provide additional functionality.
+    This class overrides :class:`stellar_base.builder` to provide additional functionality.
     """
     def __init__(self, secret=None, address=None, horizon=None, horizon_uri=None, network=None):
         if secret:

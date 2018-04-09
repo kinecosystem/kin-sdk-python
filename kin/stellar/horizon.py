@@ -37,7 +37,10 @@ USER_AGENT = 'py-stellar-base'
 
 class Horizon(object):
     """
-    This class redefines :class:`~stellar_base.horizon.Horizon` to provide additional functionality.
+    This class redefines :class:`stellar_base.horizon.Horizon` to provide additional functionality:
+        - persistent connection to Horizon and connection pool
+        - configurable request retry functionality
+        - Horizon error checking and deserialization
     """
     def __init__(self, horizon_uri=None, pool_size=DEFAULT_POOLSIZE, num_retries=DEFAULT_NUM_RETRIES,
                  request_timeout=DEFAULT_REQUEST_TIMEOUT, backoff_factor=DEFAULT_BACKOFF_FACTOR, user_agent=USER_AGENT):
@@ -83,6 +86,7 @@ class Horizon(object):
         self._sse_session = sse_session
 
     def submit(self, te):
+        """Submit the transaction using a pooled connection, and retry on failure."""
         params = {'tx': te}
         url = self.horizon_uri + '/transactions/'
 

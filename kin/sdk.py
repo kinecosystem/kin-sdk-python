@@ -23,7 +23,7 @@ getcontext().prec = 7  # IMPORTANT: XLM decimal precision
 
 class SDK(object):
     """
-    The :class:`~kin.SDK` class is the primary interface to the KIN Python SDK based on Stellar Blockchain.
+    The :class:`kin.SDK` class is the primary interface to the KIN Python SDK based on Stellar Blockchain.
     It maintains a connection context with a Horizon node and hides all the specifics of dealing with Stellar REST API.
     """
 
@@ -46,24 +46,24 @@ class SDK(object):
             not not be initialized and methods needing the wallet will raise exception.
 
         :param str horizon_endpoint_uri: (optional) a Horizon endpoint. If not provided, a default global endpoint will
-            be used, either a TESTNET or PUBNET, depending on the `network` parameter.
+            be used, either a `TESTNET` or `PUBLIC`, depending on the `network` parameter.
 
-        :param str network: (optional) either PUBLIC or TESTNET, will set the Horizon endpoint in the absence of
-            `horizon_endpoint_uri`. Defaults to PUBLIC if not specified.
+        :param str network: (optional) either `PUBLIC` or `TESTNET`, will set the Horizon endpoint in the absence of
+            `horizon_endpoint_uri`. Defaults to `PUBLIC` if not specified.
 
         :param list of str channel_secret_keys: (optional) a list of channels to sign transactions with. More channels
             means less blocking on transactions and better response time.
 
-        :param kin_asset: the KIN asset to work with. For testing purposes only.
-        :type: :class:`~stellar_base.asset.Asset`
+        :param kin_asset: the KIN asset to work with. *For testing purposes only*.
+        :type: :class:`stellar_base.asset.Asset`
 
         :return: An instance of the SDK.
-        :rtype: :class:`~kin.SDK`
+        :rtype: :class:`kin.SDK`
 
         :raises: ValueError: if some of the configuration parameters are invalid.
-        :raises: :class:`~kin.AccountNotFoundError`: if SDK wallet or channel account is not yet created.
-        :raises: :class:`~kin.AccountNotActivatedError`: if SDK wallet account is not yet activated.
-        :raises: :class:`~kin.NetworkError`: if there is a problem connecting to Horizon.
+        :raises: :class:`kin.AccountNotFoundError`: if SDK wallet or channel account is not yet created.
+        :raises: :class:`kin.AccountNotActivatedError`: if SDK wallet account is not yet activated.
+        :raises: :class:`kin.NetworkError`: if there is a problem connecting to Horizon.
         """
 
         channel_secret_keys = channel_secret_keys or []
@@ -165,7 +165,7 @@ class SDK(object):
         :return: public address of the wallet.
         :rtype: str
 
-        :raises: :class:`~kin.SdkError`: if the SDK wallet is not configured.
+        :raises: :class:`kin.SdkError`: if the SDK wallet is not configured.
         """
         if not self.base_keypair:
             raise SdkError('address not configured')
@@ -178,7 +178,7 @@ class SDK(object):
         :return: : the balance in lumens.
         :rtype: Decimal
 
-        :raises: :class:`~kin.SdkError`: if the SDK wallet is not configured.
+        :raises: :class:`kin.SdkError`: if the SDK wallet is not configured.
         """
         return self.get_account_native_balance(self.get_address())
 
@@ -186,10 +186,10 @@ class SDK(object):
         """Get KIN balance of the SDK wallet.
         The wallet is configured by a secret key supplied during SDK initialization.
 
-        :return: : the balance in KIN.
+        :return: the balance in KIN.
         :rtype: Decimal
 
-        :raises: :class:`~kin.SdkError`: if the SDK wallet is not configured.
+        :raises: :class:`kin.SdkError`: if the SDK wallet is not configured.
         """
         return self.get_account_kin_balance(self.get_address())
 
@@ -202,7 +202,7 @@ class SDK(object):
         :rtype: Decimal
 
         :raises: ValueError: if the supplied address has a wrong format.
-        :raises: :class:`~kin.AccountNotFoundError`: if the account does not exist.
+        :raises: :class:`kin.AccountNotFoundError`: if the account does not exist.
         """
         return self._get_account_asset_balance(address, Asset.native())
 
@@ -215,8 +215,8 @@ class SDK(object):
         :rtype: Decimal
 
         :raises: ValueError: if the supplied address has a wrong format.
-        :raises: :class:`~kin.AccountNotFoundError`: if the account does not exist.
-        :raises: :class:`~kin.AccountNotActivatedError`: if the account is not activated.
+        :raises: :class:`kin.AccountNotFoundError`: if the account does not exist.
+        :raises: :class:`kin.AccountNotActivatedError`: if the account is not activated.
         """
         return self._get_account_asset_balance(address, self.kin_asset)
 
@@ -233,9 +233,9 @@ class SDK(object):
         :return: transaction hash
         :rtype: str
 
-        :raises: :class:`~kin.SdkError` if the SDK wallet is not configured.
+        :raises: :class:`kin.SdkError` if the SDK wallet is not configured.
         :raises: ValueError: if the supplied address has a wrong format.
-        :raises: :class:`~kin.AccountExistsError`: if the account already exists.
+        :raises: :class:`kin.AccountExistsError`: if the account already exists.
         """
         if not self.base_keypair:
             raise SdkError('address not configured')
@@ -277,7 +277,7 @@ class SDK(object):
         :rtype: boolean
 
         :raises: ValueError: if the supplied address has a wrong format.
-        :raises: :class:`~kin.AccountNotFoundError`: if the account is not yet created.
+        :raises: :class:`kin.AccountNotFoundError`: if the account is not yet created.
         """
         return self._check_asset_trusted(address, self.kin_asset)
 
@@ -293,11 +293,11 @@ class SDK(object):
         :return: transaction hash
         :rtype: str
 
-        :raises: :class:`~kin.SdkError` if the SDK wallet is not configured.
+        :raises: :class:`kin.SdkError` if the SDK wallet is not configured.
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
-        :raises: :class:`~kin.AccountNotFoundError`: if the account does not exist.
-        :raises: :class:`~kin.LowBalanceError`: if there is not enough money to send and pay transaction fee.
+        :raises: :class:`kin.AccountNotFoundError`: if the account does not exist.
+        :raises: :class:`kin.LowBalanceError`: if there is not enough money to send and pay transaction fee.
         """
         return self._send_asset(Asset.native(), address, amount, memo_text)
 
@@ -313,12 +313,12 @@ class SDK(object):
         :return: transaction hash
         :rtype: str
 
-        :raises: :class:`~kin.SdkError` if the SDK wallet is not configured.
+        :raises: :class:`kin.SdkError` if the SDK wallet is not configured.
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
-        :raises: :class:`~kin.AccountNotFoundError`: if the account does not exist.
-        :raises: :class:`~kin.AccountNotActivatedError`: if the account is not activated.
-        :raises: :class:`~kin.LowBalanceError`: if there is not enough money to send and pay transaction fee.
+        :raises: :class:`kin.AccountNotFoundError`: if the account does not exist.
+        :raises: :class:`kin.AccountNotActivatedError`: if the account is not activated.
+        :raises: :class:`kin.LowBalanceError`: if there is not enough money to send and pay transaction fee.
         """
         return self._send_asset(self.kin_asset, address, amount, memo_text)
 
@@ -328,10 +328,10 @@ class SDK(object):
         :param str address: the account to query.
 
         :return: account data
-        :rtype: :class:`~kin.AccountData`
+        :rtype: :class:`kin.AccountData`
 
         :raises: ValueError: if the provided address has a wrong format.
-        :raises: :class:`~kin.AccountNotFoundError`: if the account does not exist.
+        :raises: :class:`kin.AccountNotFoundError`: if the account does not exist.
         """
         if not is_valid_address(address):
             raise ValueError('invalid address: {}'.format(address))
@@ -349,10 +349,10 @@ class SDK(object):
         :param str tx_hash: transaction hash.
 
         :return: transaction data
-        :rtype: :class:`~kin.TransactionData`
+        :rtype: :class:`kin.TransactionData`
 
         :raises: ValueError: if the provided hash is invalid.
-        :raises: :class:`~kin.ResourceNotFoundError`: if the transaction does not exist.
+        :raises: :class:`kin.ResourceNotFoundError`: if the transaction does not exist.
         """
         if not is_valid_transaction_hash(tx_hash):
             raise ValueError('invalid transaction hash: {}'.format(tx_hash))
@@ -373,9 +373,9 @@ class SDK(object):
         NOTE: the function starts a background thread.
 
         :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data)`.
-        :type: callable[[str, :class:`~kin.TransactionData`], None]
+        :type: callable[[str, :class:`kin.TransactionData`], None]
 
-        :raises: :class:`~kin.SdkError` if the SDK wallet is not configured.
+        :raises: :class:`kin.SdkError` if the SDK wallet is not configured.
         """
         self.monitor_accounts_kin_payments([self.get_address()], callback_fn)
 
@@ -386,11 +386,11 @@ class SDK(object):
         :param list of str addresses: the addresses of the accounts to query.
 
         :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data)`.
-        :type: callable[[str, :class:`~kin.TransactionData`], None]
+        :type: callable[[str, :class:`kin.TransactionData`], None]
 
         :raises: ValueError: when no addresses are given.
         :raises: ValueError: if one of the provided addresses has a wrong format.
-        :raises: :class:`~kin.AccountNotFoundError`: if one of the provided accounts is not yet created.
+        :raises: :class:`kin.AccountNotFoundError`: if one of the provided accounts is not yet created.
         """
         self._monitor_accounts_asset_transactions(self.kin_asset, addresses, callback_fn, only_payments=True)
 
@@ -402,11 +402,11 @@ class SDK(object):
         :param list of str addresses: the addresses of the accounts to query.
 
         :param callback_fn: the function to call on each received transaction as `callback_fn(address, tx_data)`.
-        :type: callable[[str, :class:`~kin.TransactionData`], None]
+        :type: callable[[str, :class:`kin.TransactionData`], None]
 
         :raises: ValueError: when no addresses are given.
         :raises: ValueError: if one of the provided addresses has a wrong format.
-        :raises: :class:`~kin.AccountNotFoundError`: if one of the provided accounts is not yet created.
+        :raises: :class:`kin.AccountNotFoundError`: if one of the provided accounts is not yet created.
         """
         self._monitor_accounts_asset_transactions(None, addresses, callback_fn)
 
@@ -425,8 +425,8 @@ class SDK(object):
 
         :raises: ValueError: if the supplied address has a wrong format.
         :raises: ValueError: when account is not activated (no trustline).
-        :raises: :class:`~kin.AccountNotFoundError`: if the account does not exist.
-        :raises: :class:`~kin.AccountNotActivatedError`: if the account is not activated for the asset.
+        :raises: :class:`kin.AccountNotFoundError`: if the account does not exist.
+        :raises: :class:`kin.AccountNotActivatedError`: if the account is not activated for the asset.
         """
         if not asset.is_native() and not is_valid_address(asset.issuer):
             raise ValueError('invalid asset issuer: {}'.format(asset.issuer))
@@ -453,9 +453,9 @@ class SDK(object):
         :return: transaction hash
         :rtype: str
 
-        :raises: :class:`~kin.SdkError` if the SDK wallet is not configured.
+        :raises: :class:`kin.SdkError` if the SDK wallet is not configured.
         :raises: ValueError: if the issuer address has a wrong format.
-        :raises: :class:`~kin.LowBalanceError`: if there is not enough money to pay transaction fee.
+        :raises: :class:`kin.LowBalanceError`: if there is not enough money to pay transaction fee.
         """
         if not self.base_keypair:
             raise SdkError('address not configured')
@@ -485,7 +485,7 @@ class SDK(object):
 
         :raises: ValueError: if the supplied address has a wrong format.
         :raises: ValueError: if the asset issuer address has a wrong format.
-        :raises: :class:`~kin.AccountNotFoundError`: if the account does not exist.
+        :raises: :class:`kin.AccountNotFoundError`: if the account does not exist.
         """
         try:
             self._get_account_asset_balance(address, asset)
@@ -508,13 +508,13 @@ class SDK(object):
         :return: transaction hash
         :rtype: str
 
-        :raises: :class:`~kin.SdkError` if the SDK wallet is not configured.
+        :raises: :class:`kin.SdkError` if the SDK wallet is not configured.
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the asset issuer address has a wrong format.
         :raises: ValueError: if the amount is not positive.
-        :raises: :class:`~kin.AccountNotFoundError`: if the account does not exist.
-        :raises: :class:`~kin.AccountNotActivatedError`: if the account is not activated for the asset.
-        :raises: :class:`~kin.LowBalanceError`: if there is not enough money to send and pay transaction fee.
+        :raises: :class:`kin.AccountNotFoundError`: if the account does not exist.
+        :raises: :class:`kin.AccountNotActivatedError`: if the account is not activated for the asset.
+        :raises: :class:`kin.LowBalanceError`: if there is not enough money to send and pay transaction fee.
         """
         if not self.base_keypair:
             raise SdkError('address not configured')
@@ -548,14 +548,14 @@ class SDK(object):
         :param list of str addresses: the list of account addresses to query.
 
         :param callback_fn: the function to call on each received transaction as `callback_fn(address, tx_data)`.
-        :type: callable[[str, :class:`~kin.TransactionData`], None]
+        :type: callable[[str, :class:`kin.TransactionData`], None]
 
         :param boolean only_payments: whether to return payment transactions only.
 
         :raises: ValueError: if asset issuer is invalid.
         :raises: ValueError: when no addresses are given.
         :raises: ValueError: if one of the provided addresses has a wrong format.
-        :raises: :class:`~kin.AccountNotFoundError`: if one of the provided accounts is not yet created.
+        :raises: :class:`kin.AccountNotFoundError`: if one of the provided accounts is not yet created.
         """
         if asset and not asset.is_native() and not is_valid_address(asset.issuer):
             raise ValueError('invalid asset issuer: {}'.format(asset.issuer))

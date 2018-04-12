@@ -186,6 +186,28 @@ print status
 
 ## Limitations
 
+One of the most sensitive points in Stellar is [transaction sequence](https://www.stellar.org/developers/guides/concepts/transactions.html#sequence-number).
+In order for a transaction to be submitted successfully, this number should be correct. However, if you have several 
+SDK instances, each working with the same wallet account or channel accounts, sequence collisions will occur. 
+Though the SDK makes an effort to retrieve the correct sequence and retry the transaction, this is not a recommended practice. 
+Instead, we highly recommend to keep only one SDK instance in your application, having unique channel accounts.
+Depending on the nature of your application, here are our recommendations:
+
+1. You have a simple (command line) script that sends transactions on demand or only once in a while. 
+In this case, the SDK can be instantiated with only the wallet key, the channel accounts are not necessary.
+
+2. You have a single application server that should handle a stream of concurrent transactions. In this case, 
+you need to make sure that only a single instance of SDK is initialized with multiple channel accounts. 
+This is an important point, because if you use a standard `gunicorn/Flask` setup for example, gunicorn will spawn 
+several *worker processes*, each containing your Flask application, each containing your SDK instance, so mutliple
+SDK instances will exist, having the same channel accounts. The solution is to use gunicorn *thread workers* instead of
+*process workers*, for example run gunicorn with `--threads` switch instead of `--workers` switch, so that only 
+one Flask application is created, containing a single SDK instance.
+
+3. You have a number of load-balanced application servers. Here, each application server should a) have the setup outlined
+above, and b) have its own channel accounts. This way, you ensure you will not have any collisions in your transaction
+sequences.
+
 
 ## License
 The code is currently released under [MIT license](LICENSE).

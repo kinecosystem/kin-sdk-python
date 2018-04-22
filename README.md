@@ -133,6 +133,55 @@ sdk.monitor_accounts_kin_payments(['address1', 'address2'], print_callback)
 sdk.monitor_accounts_transactions(['address1', 'address2'], print_callback)
 ```
 
+#### Receiving Payments from Users
+Let us consider a real-life case when you need to receive payments from users for the orders they make.
+In order to associate a transaction with an order, we will use the `TransactionData.memo` field:
+
+```python
+# setup your orders cache
+orders = {}
+
+# define a callback function that validates payments and marks orders as completed
+def payment_callback(address, tx_data):
+    order_id = tx_data.memo
+    if order_id not in orders:
+        logging.warn('order not found: {}'.format(order_id))
+        return
+    
+    order = orders[order_id]
+    
+    # check that the order is not yet completed
+    if order['completed'] is not None:
+        logging.warn('order {} is already completed'.format(order_id))
+        return
+        
+    # check that the amount matches 
+    if tx_data.operations[0].amount != order['amount']:
+        logging.warn('wrong amount paid for order {}: received {}, need {}'
+            .format(order_id, tx_data.operations[0].amount, order['amount']))
+        return
+        
+    # all good
+    order['completed'] = datetime.now()
+
+
+# start monitoring KIN payments related to the SDK wallet account
+sdk.monitor_kin_payments(payment_callback)   
+
+# when an order comes, store its data in the cache
+order_id = generate_order_id()
+orders[order_id] = {
+    'user_id': user_id,
+    'product_id': product_id,
+    'amount': product_cost,
+    'created': datetime.now(),
+    'completed': None
+}
+
+# now pass this order_id to the user and have him insert it into the memo field of his transaction.
+# After he submits the transaction, the payment_callback above will catch it and update the order data.
+```
+
 ### Checking Status
 The handy `get_status` method will return some parameters the SDK was configured with, along with Horizon status:
 ```python

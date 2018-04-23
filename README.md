@@ -1,7 +1,7 @@
 ![Kin Logo](kin.png)  ![Stelalr Logo](stellar.png)
 
 # KIN Python SDK for Stellar Blockchain
-[![Build Status](https://travis-ci.org/kinfoundation/kin-core-python.svg?branch=master)](https://travis-ci.org/kinfoundation/kin-core-python) [![Coverage Status](https://codecov.io/gh/kinfoundation/kin-core-python/branch/master/graph/badge.svg)](https://codecov.io/gh/kinfoundation/kin-core-python)
+[![Build Status](https://travis-ci.org/kinecosystem/kin-core-python.svg?branch=master)](https://travis-ci.org/kinecosystem/kin-core-python) [![Coverage Status](https://codecov.io/gh/kinecosystem/kin-core-python/branch/master/graph/badge.svg)](https://codecov.io/gh/kinecosystem/kin-core-python)
 
 ## Disclaimer
 
@@ -14,7 +14,7 @@ Make sure you have Python 2 >=2.7.9.
 ## Installation 
 
 ```bash
-pip install git+https://github.com/kinfoundation/kin-core-python.git
+pip install git+https://github.com/kinecosystem/kin-core-python.git
 ```
 
 ## Usage

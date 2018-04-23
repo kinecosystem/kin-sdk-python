@@ -4,10 +4,10 @@ Thank you for your interest in the project. We look forward to your contribution
 and streamlined as possible, here is a set of guidelines we recommend you follow.
 
 ## Reporting Issues
-First of all, please be sure to check our documentation and [issue archive](https://github.com/kinfoundation/kin-core-python/issues) 
+First of all, please be sure to check our documentation and [issue archive](https://github.com/kinecosystem/kin-core-python/issues) 
 to find out if your issue has already been addressed, or is currently being looked at.
 
-To start a discussion around a bug or a feature, [open a new issue](https://github.com/kinfoundation/kin-core-python/issues/new). 
+To start a discussion around a bug or a feature, [open a new issue](https://github.com/kinecosystem/kin-core-python/issues/new). 
 When opening an issue, please provide the following information:
 
 - SDK version and Python version

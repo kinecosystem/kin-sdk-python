@@ -17,7 +17,7 @@ setup(
     author_email='david.bolshoy@kik.com',
     maintainer='David Bolshoy',
     maintainer_email='david.bolshoy@kik.com',
-    url='https://github.com/kinfoundation/kin-core-python',
+    url='https://github.com/kinecosystem/kin-core-python',
     license='MIT',
     packages=find_packages(),
     long_description=open("README.md").read(),

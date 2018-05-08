@@ -8,7 +8,7 @@ from time import sleep
 from stellar_base.keypair import Keypair
 
 from .builder import Builder
-from .errors import HorizonError, HorizonErrorType, TransactionResultCode
+from .errors import ChannelsBusyError, HorizonError, HorizonErrorType, TransactionResultCode
 
 import logging
 logger = logging.getLogger(__name__)
@@ -18,6 +18,8 @@ if sys.version[0] == '2':
 else:
     # noinspection PyUnresolvedReferences
     import queue as queue
+
+CHANNEL_QUEUE_TIMEOUT = 10  # how much time to wait until a channel is available, in seconds
 
 
 class ChannelManager(object):
@@ -48,8 +50,11 @@ class ChannelManager(object):
         # send and retry bad sequence errors
         retry_count = self.horizon.num_retries
         while True:
-            # get an available channel builder first (blocking)
-            builder = self.channel_builders.get(True)
+            # get an available channel builder first (blocking with timeout)
+            try:
+                builder = self.channel_builders.get(True, CHANNEL_QUEUE_TIMEOUT)
+            except queue.Empty:
+                raise ChannelsBusyError
 
             # operation source is always the base account
             source = self.base_address if builder.address != self.base_address else None

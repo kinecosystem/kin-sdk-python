@@ -5,6 +5,10 @@
 from .horizon_models import HTTPProblemDetails
 
 
+class ChannelsBusyError(Exception):
+    pass
+
+
 HORIZON_NS_PREFIX = 'https://stellar.org/horizon-errors/'
 
 '''

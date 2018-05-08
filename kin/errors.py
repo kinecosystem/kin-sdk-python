@@ -26,6 +26,12 @@ class SdkError(Exception):
         return ''.join(sb)
 
 
+class ThrottleError(SdkError):
+    """Service is busy"""
+    def __init__(self):
+        super(ThrottleError, self).__init__('service is busy, retry later')
+
+
 class NetworkError(SdkError):
     """Network-level errors - connection error, timeout error, etc."""
     def __init__(self, extra=None):
@@ -93,6 +99,8 @@ def translate_error(err):
     """A high-level error translator."""
     if isinstance(err, RequestException):
         return NetworkError({'internal_error': str(err)})
+    if isinstance(err, ChannelsBusyError):
+        return ThrottleError
     if isinstance(err, HorizonError):
         return translate_horizon_error(err)
     return InternalError(None, {'internal_error': str(err)})

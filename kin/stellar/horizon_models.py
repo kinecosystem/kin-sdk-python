@@ -19,6 +19,9 @@ class PModel(Model):
 
     def __repr__(self):
         return self.__str__()
+    
+    def __hash__(self):
+        return hash(self.__str__())
 
 
 class AccountData(PModel):

@@ -335,3 +335,14 @@ def test_assets(test_sdk):
     # assert reply
     # assert reply['_embedded']['records']
     pass
+
+
+def test_horizon_error_hashable(test_sdk):
+    err_dict = dict(title='title',
+                    status=400,
+                    detail='detail',
+                    instance='instance',
+                    extras={},
+                    type=HORIZON_NS_PREFIX + HorizonErrorType.BAD_REQUEST)
+    e = HorizonError(err_dict)
+    {e: 1}  # shouldn't fail on unhashable type

@@ -99,9 +99,11 @@ class Horizon(object):
                 reply = self._session.post(url, data=params, timeout=self.request_timeout)
                 return check_horizon_reply(reply.json())
             except (RequestException, ValueError) as e:
-                logging.warning('horizon submit exception: {}'.format(str(e)))
+                logging.warning('horizon submit exception: {}, reply: [{}] {}'.format(str(e),
+                                                                                      reply.status_code, reply.text))
                 if reply and reply.status_code not in self.status_forcelist:
                     raise Exception('invalid horizon reply: [{}] {}'.format(reply.status_code, reply.text))
+                # retry
                 if retry_count <= 0:
                     raise
                 retry_count -= 1

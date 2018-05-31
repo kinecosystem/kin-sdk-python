@@ -129,7 +129,8 @@ def translate_horizon_error(horizon_error):
 
     # server errors
     if horizon_error.type == HorizonErrorType.RATE_LIMIT_EXCEEDED \
-            or horizon_error.type == HorizonErrorType.SERVER_OVER_CAPACITY:
+            or horizon_error.type == HorizonErrorType.SERVER_OVER_CAPACITY \
+            or horizon_error.type == HorizonErrorType.TIMEOUT:
         return ServerError(horizon_error.type)
     if horizon_error.type == HorizonErrorType.INTERNAL_SERVER_ERROR:
         return InternalError(horizon_error.type)

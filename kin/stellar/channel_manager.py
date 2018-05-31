@@ -19,7 +19,7 @@ else:
     # noinspection PyUnresolvedReferences
     import queue as queue
 
-CHANNEL_QUEUE_TIMEOUT = 10  # how much time to wait until a channel is available, in seconds
+CHANNEL_QUEUE_TIMEOUT = 11  # how much time to wait until a channel is available, in seconds
 
 
 class ChannelManager(object):
@@ -56,19 +56,19 @@ class ChannelManager(object):
             except queue.Empty:
                 raise ChannelsBusyError
 
-            # operation source is always the base account
-            source = self.base_address if builder.address != self.base_address else None
-
-            # add operation (using external partial) and sign
-            add_ops_fn(builder)(source=source)
-            if memo_text:
-                builder.add_text_memo(memo_text[:28])  # max memo length is 28
-            builder.sign()  # always sign with a channel key
-            if source:
-                builder.sign(secret=self.base_key)  # sign with the base key if needed
-
             retrying = False
             try:
+                # operation source is always the base account
+                source = self.base_address if builder.address != self.base_address else None
+
+                # add operation (using external partial) and sign
+                add_ops_fn(builder)(source=source)
+                if memo_text:
+                    builder.add_text_memo(memo_text[:28])  # max memo length is 28
+
+                builder.sign()  # always sign with a channel key
+                if source:
+                    builder.sign(secret=self.base_key)  # sign with the base key if needed
                 return builder.submit()
             except HorizonError as e:
                 logging.warning('send transaction error with channel {}: {}'.format(builder.address, str(e)))

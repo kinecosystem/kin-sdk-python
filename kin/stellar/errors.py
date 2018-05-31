@@ -91,6 +91,7 @@ class OperationResultCode:
     INNER = 'op_inner'
     BAD_AUTH = 'op_bad_auth'
     NO_ACCOUNT = 'op_no_source_account'
+    NOT_SUPPORTED = 'op_not_supported'
 
 
 # noinspection PyClassHasNoInit
@@ -137,7 +138,7 @@ class ManageOfferResultCode:
     SELL_NO_ISSUER = 'op_sell_no_issuer'         # no issuer for what we're selling
     BUY_NO_ISSUER = 'op_buy_no_issuer'           # no issuer for what we're buying
     OFFER_NOT_FOUND = 'op_offer_not_found'       # offerID does not match an existing offer
-    OFFER_LOW_RESERVE = 'OpLowReserve'           # not enough funds to create a new Offer
+    OFFER_LOW_RESERVE = 'op_low_reserve'         # not enough funds to create a new Offer
 
 
 # noinspection PyClassHasNoInit

@@ -6,7 +6,7 @@ from stellar_base.asset import Asset
 from stellar_base.keypair import Keypair
 
 import kin
-from kin.stellar.builder import Builder
+from kin.blockchain.builder import Builder
 
 import logging
 logging.basicConfig()

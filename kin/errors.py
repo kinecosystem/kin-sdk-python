@@ -4,7 +4,7 @@
 
 from requests.exceptions import RequestException
 
-from .stellar.errors import *
+from .blockchain.errors import *
 
 
 # All exceptions should subclass from SdkError in this module.

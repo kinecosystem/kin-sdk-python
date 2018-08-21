@@ -9,10 +9,10 @@ from stellar_base.keypair import Keypair
 
 from .config import *
 from .errors import *
-from .stellar.channel_manager import ChannelManager
-from .stellar.horizon import Horizon, HORIZON_LIVE, HORIZON_TEST
-from .stellar.horizon_models import AccountData, TransactionData
-from .stellar.utils import *
+from .blockchain.channel_manager import ChannelManager
+from .blockchain.horizon import Horizon, HORIZON_LIVE, HORIZON_TEST
+from .blockchain.horizon_models import AccountData, TransactionData
+from .blockchain.utils import *
 from .version import __version__
 
 import logging

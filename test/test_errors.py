@@ -2,7 +2,7 @@ from requests.exceptions import RequestException
 
 import kin
 from kin.errors import translate_error, translate_horizon_error
-from kin.stellar.errors import *
+from kin.blockchain.errors import *
 
 
 def test_sdk_error():

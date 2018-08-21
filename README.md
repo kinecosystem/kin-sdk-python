@@ -1,6 +1,6 @@
-![Kin Logo](kin.png)  ![Stelalr Logo](stellar.png)
+![Kin Logo](kin.png)
 
-# KIN Python SDK for Stellar Blockchain
+# KIN Python SDK for Kin Blockchain
 [![Build Status](https://travis-ci.org/kinecosystem/kin-core-python.svg?branch=master)](https://travis-ci.org/kinecosystem/kin-core-python) [![Coverage Status](https://codecov.io/gh/kinecosystem/kin-core-python/branch/master/graph/badge.svg)](https://codecov.io/gh/kinecosystem/kin-core-python)
 
 ## Disclaimer

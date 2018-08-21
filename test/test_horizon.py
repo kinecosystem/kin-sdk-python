@@ -2,8 +2,8 @@ import pytest
 from requests.adapters import DEFAULT_POOLSIZE
 
 from stellar_base.horizon import HORIZON_TEST, HORIZON_LIVE
-from kin.stellar.errors import *
-from kin.stellar.horizon import (
+from kin.blockchain.errors import *
+from kin.blockchain.horizon import (
     Horizon,
     check_horizon_reply,
     DEFAULT_REQUEST_TIMEOUT,

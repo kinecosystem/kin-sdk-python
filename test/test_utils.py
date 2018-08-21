@@ -1,6 +1,6 @@
 import pytest
 
-from kin.stellar.utils import *
+from kin.blockchain.utils import *
 
 
 def test_is_valid_address():

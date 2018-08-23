@@ -6,11 +6,12 @@ from decimal import Decimal, getcontext
 from functools import partial
 
 from stellar_base.keypair import Keypair
+from stellar_base.asset import Asset
 
 from .config import *
 from .errors import *
 from .blockchain.channel_manager import ChannelManager
-from .blockchain.horizon import Horizon, HORIZON_LIVE, HORIZON_TEST
+from .blockchain.horizon import Horizon
 from .blockchain.horizon_models import AccountData, TransactionData
 from .blockchain.utils import *
 from .version import __version__
@@ -27,35 +28,27 @@ class SDK(object):
     It maintains a connection context with a Horizon node and hides all the specifics of dealing with Stellar REST API.
     """
 
-    def __init__(self, secret_key='', horizon_endpoint_uri='', network='PUBLIC',
-                 channel_secret_keys=None, kin_asset=None):
+    def __init__(self, environment, secret_key='',
+                 channel_secret_keys=None):
         """Create a new instance of the KIN SDK for Stellar.
 
         If secret key is not provided, the SDK can still be used in "anonymous" mode with only the following
         functions available:
             - get_account_native_balance
             - get_account_kin_balance
-            - check_account_exists
+            - check_account_exist
             - check_account_activated
             - get_account_data
             - get_transaction_data
             - monitor_accounts_kin_payments
             - monitor_accounts_transactions
+        :param environment: an environment for the sdk to point to.
 
         :param str secret_key: (optional) a key to initialize the sdk wallet account with. If not provided, the wallet
             not not be initialized and methods needing the wallet will raise exception.
 
-        :param str horizon_endpoint_uri: (optional) a Horizon endpoint. If not provided, a default global endpoint will
-            be used, either a `TESTNET` or `PUBLIC`, depending on the `network` parameter.
-
-        :param str network: (optional) either `PUBLIC` or `TESTNET`, will set the Horizon endpoint in the absence of
-            `horizon_endpoint_uri`. Defaults to `PUBLIC` if not specified.
-
         :param list of str channel_secret_keys: (optional) a list of channels to sign transactions with. More channels
             means less blocking on transactions and better response time.
-
-        :param kin_asset: the KIN asset to work with. *For testing purposes only*.
-        :type: :class:`stellar_base.asset.Asset`
 
         :return: An instance of the SDK.
         :rtype: :class:`kin.SDK`
@@ -67,24 +60,16 @@ class SDK(object):
         """
 
         channel_secret_keys = channel_secret_keys or []
-        self.network = network or 'PUBLIC'
+        self.environment = environment
+        self.network = environment.name
 
         # init our asset
-        if kin_asset:
-            self.kin_asset = kin_asset
-        else:
-            self.kin_asset = KIN_ASSET_PROD if self.network == 'PUBLIC' else KIN_ASSET_TEST
+        self.kin_asset = environment.kin_asset
 
         # set connection pool size for channels + monitoring connection + extra
         pool_size = max(1, len(channel_secret_keys)) + 2
 
-        if horizon_endpoint_uri:
-            self.horizon = Horizon(horizon_uri=horizon_endpoint_uri, pool_size=pool_size, user_agent=SDK_USER_AGENT)
-        else:
-            if self.network == 'TESTNET':
-                self.horizon = Horizon(horizon_uri=HORIZON_TEST, pool_size=pool_size, user_agent=SDK_USER_AGENT)
-            else:
-                self.horizon = Horizon(horizon_uri=HORIZON_LIVE, pool_size=pool_size, user_agent=SDK_USER_AGENT)
+        self.horizon = Horizon(horizon_uri=environment.horizon_uri, pool_size=pool_size, user_agent=SDK_USER_AGENT)
 
         # init sdk wallet account if a secret key is supplied
         self.base_keypair = None

@@ -11,7 +11,7 @@ import kin
 
 
 def test_sdk_not_configured(setup):
-    sdk = kin.SDK(horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network)
+    sdk = kin.KinClient(horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network)
     with pytest.raises(kin.SdkError, match='address not configured'):
         sdk.get_address()
     with pytest.raises(kin.SdkError, match='address not configured'):
@@ -30,28 +30,28 @@ def test_sdk_not_configured(setup):
 
 def test_sdk_create_fail(setup, helpers, test_sdk):
     with pytest.raises(ValueError, match='invalid secret key: bad'):
-        kin.SDK(secret_key='bad',
-                horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
+        kin.KinClient(secret_key='bad',
+                      horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
 
     keypair = Keypair.random()
     secret_key = keypair.seed()
     address = keypair.address().decode()
 
     with pytest.raises(ValueError, match='invalid channel key: bad'):
-        kin.SDK(secret_key=secret_key, channel_secret_keys=['bad'],
-                horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
+        kin.KinClient(secret_key=secret_key, channel_secret_keys=['bad'],
+                      horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
 
     # wallet account does not exist
     with pytest.raises(kin.AccountNotFoundError):
-        kin.SDK(secret_key=secret_key,
-                horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
+        kin.KinClient(secret_key=secret_key,
+                      horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
 
     helpers.fund_account(setup, address)
 
     # wallet account exists but not yet activated
     with pytest.raises(kin.AccountNotActivatedError):
-        kin.SDK(secret_key=secret_key,
-                horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
+        kin.KinClient(secret_key=secret_key,
+                      horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
 
     helpers.trust_asset(setup, secret_key)
 
@@ -60,26 +60,26 @@ def test_sdk_create_fail(setup, helpers, test_sdk):
 
     # channel account does not exist
     with pytest.raises(kin.AccountNotFoundError):
-        kin.SDK(secret_key=secret_key, channel_secret_keys=[channel_secret_key],
-                horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
+        kin.KinClient(secret_key=secret_key, channel_secret_keys=[channel_secret_key],
+                      horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
 
     # bad Horizon endpoint
     with pytest.raises(kin.NetworkError):
-        kin.SDK(secret_key=secret_key,
-                horizon_endpoint_uri='bad', network=setup.network, kin_asset=setup.test_asset)
+        kin.KinClient(secret_key=secret_key,
+                      horizon_endpoint_uri='bad', network=setup.network, kin_asset=setup.test_asset)
 
     # no Horizon on endpoint
     with pytest.raises(kin.NetworkError):
-        kin.SDK(secret_key=secret_key,
-                horizon_endpoint_uri='http://localhost:666', network=setup.network, kin_asset=setup.test_asset)
+        kin.KinClient(secret_key=secret_key,
+                      horizon_endpoint_uri='http://localhost:666', network=setup.network, kin_asset=setup.test_asset)
 
 
 def test_sdk_create_success(setup, test_sdk):
     # test defaults
     from stellar_base.horizon import HORIZON_LIVE, HORIZON_TEST
-    sdk = kin.SDK()
+    sdk = kin.KinClient()
     assert sdk.horizon.horizon_uri == HORIZON_LIVE
-    sdk = kin.SDK(network='TESTNET')
+    sdk = kin.KinClient(network='TESTNET')
     assert sdk.horizon.horizon_uri == HORIZON_TEST
 
     # test test_sdk fixture
@@ -93,14 +93,14 @@ def test_sdk_create_success(setup, test_sdk):
 
 def test_get_status(setup, test_sdk):
     # bad Horizon endpoint
-    sdk = kin.SDK(horizon_endpoint_uri='bad')
+    sdk = kin.KinClient(horizon_endpoint_uri='bad')
     status = sdk.get_status()
     assert status['horizon']
     assert status['horizon']['online'] is False
     assert status['horizon']['error'].startswith("Invalid URL 'bad': No schema supplied")
 
     # no Horizon on endpoint
-    sdk = kin.SDK(horizon_endpoint_uri='http://localhost:666')
+    sdk = kin.KinClient(horizon_endpoint_uri='http://localhost:666')
     status = sdk.get_status()
     assert status['horizon']
     assert status['horizon']['online'] is False
@@ -671,8 +671,8 @@ def test_channels(setup, helpers):
         helpers.fund_account(setup, channel_address)
 
     # init sdk with these channels
-    sdk = kin.SDK(secret_key=setup.sdk_keypair.seed(),channel_secret_keys=channel_keys,
-                  horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
+    sdk = kin.KinClient(secret_key=setup.sdk_keypair.seed(), channel_secret_keys=channel_keys,
+                        horizon_endpoint_uri=setup.horizon_endpoint_uri, network=setup.network, kin_asset=setup.test_asset)
 
     assert sdk
     assert sdk.channel_manager

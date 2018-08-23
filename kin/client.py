@@ -5,13 +5,12 @@
 from decimal import Decimal, getcontext
 from functools import partial
 
-from stellar_base.keypair import Keypair
 from stellar_base.asset import Asset
 
 from .config import *
 from .errors import *
-from .blockchain.channel_manager import ChannelManager
 from .blockchain.horizon import Horizon
+from .account import KinAccount
 from .blockchain.horizon_models import AccountData, TransactionData
 from .blockchain.utils import *
 from .version import __version__
@@ -22,86 +21,47 @@ logger = logging.getLogger(__name__)
 getcontext().prec = 7  # IMPORTANT: XLM decimal precision
 
 
-class SDK(object):
+class KinClient(object):
     """
-    The :class:`kin.SDK` class is the primary interface to the KIN Python SDK based on Stellar Blockchain.
-    It maintains a connection context with a Horizon node and hides all the specifics of dealing with Stellar REST API.
+    The :class:`kin.KinClient` class is the primary interface to the KIN Python SDK based on Kin Blockchain.
+    It maintains a connection context with a Horizon node and hides all the specifics of dealing with Kin REST API.
     """
 
-    def __init__(self, environment, secret_key='',
-                 channel_secret_keys=None):
+    def __init__(self, environment):
         """Create a new instance of the KIN SDK for Stellar.
-
-        If secret key is not provided, the SDK can still be used in "anonymous" mode with only the following
-        functions available:
-            - get_account_native_balance
-            - get_account_kin_balance
-            - check_account_exist
-            - check_account_activated
-            - get_account_data
-            - get_transaction_data
-            - monitor_accounts_kin_payments
-            - monitor_accounts_transactions
         :param environment: an environment for the sdk to point to.
 
-        :param str secret_key: (optional) a key to initialize the sdk wallet account with. If not provided, the wallet
-            not not be initialized and methods needing the wallet will raise exception.
-
-        :param list of str channel_secret_keys: (optional) a list of channels to sign transactions with. More channels
-            means less blocking on transactions and better response time.
-
         :return: An instance of the SDK.
-        :rtype: :class:`kin.SDK`
+        :rtype: :class:`kin.KinClient`
 
         :raises: ValueError: if some of the configuration parameters are invalid.
-        :raises: :class:`kin.AccountNotFoundError`: if SDK wallet or channel account is not yet created.
-        :raises: :class:`kin.AccountNotActivatedError`: if SDK wallet account is not yet activated.
         :raises: :class:`kin.NetworkError`: if there is a problem connecting to Horizon.
         """
 
-        channel_secret_keys = channel_secret_keys or []
         self.environment = environment
         self.network = environment.name
 
         # init our asset
         self.kin_asset = environment.kin_asset
 
-        # set connection pool size for channels + monitoring connection + extra
-        pool_size = max(1, len(channel_secret_keys)) + 2
-
-        self.horizon = Horizon(horizon_uri=environment.horizon_uri, pool_size=pool_size, user_agent=SDK_USER_AGENT)
-
-        # init sdk wallet account if a secret key is supplied
-        self.base_keypair = None
-        if secret_key:
-            # check wallet key
-            if not is_valid_secret_key(secret_key):
-                raise ValueError('invalid secret key: {}'.format(secret_key))
-
-            # check channel keys
-            if channel_secret_keys:
-                for channel_key in channel_secret_keys:
-                    if not is_valid_secret_key(channel_key):
-                        raise ValueError('invalid channel key: {}'.format(channel_key))
-
-            self.base_keypair = Keypair.from_seed(secret_key)
-            self.base_address = self.base_keypair.address().decode()
-
-            # check that sdk wallet account exists and is activated
-            self._get_account_asset_balance(self.base_address, self.kin_asset)
-
-            # check that channel accounts exist (they do not have to be activated)
-            if channel_secret_keys:
-                for channel_key in channel_secret_keys:
-                    channel_address = Keypair.from_seed(channel_key).address().decode()
-                    self.get_account_data(channel_address)
-            else:
-                channel_secret_keys = [secret_key]
-
-            # init channel manager
-            self.channel_manager = ChannelManager(secret_key, channel_secret_keys, self.network, self.horizon)
-
+        self.horizon = Horizon(horizon_uri=environment.horizon_uri, user_agent=SDK_USER_AGENT)
         logger.info('Kin SDK inited on network {}, horizon endpoint {}'.format(self.network, self.horizon.horizon_uri))
+
+    def kin_account(self, seed, channels=None, channel_secret_keys=None, create_channels=False):
+        """
+        Create a new instance of a KinAccount to perform authenticated operations on the blockchain.
+        :param seed: The secret seed of the account that will be used
+        :param channels: Number of channels to use
+        :param channel_secret_keys: A list of seeds to be used as channels
+        :param create_channels: Should the sdk also create the channel accounts
+        :return: An instance of KinAccount
+
+        :raises: :class:`kin.AccountNotFoundError`: if SDK wallet or channel account is not yet created.
+        :raises: :class:`kin.AccountNotActivatedError`: if SDK wallet account is not yet activated.
+        """
+
+        # Create a new kin account, using self as the KinClient to be used
+        return KinAccount(seed, self, channels, channel_secret_keys, create_channels)
 
     def get_config(self):
         """Get system configuration data and online status."""

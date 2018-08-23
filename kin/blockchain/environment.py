@@ -7,7 +7,7 @@ from stellar_base.asset import Asset
 
 
 
-class Environment():
+class Environment:
     # Environments holds the parameters that will be used to connect to horizon
     def __init__(self, name, horizon_endpoint_uri, network_passphrase, kin_issuer):
         """
@@ -25,4 +25,4 @@ class Environment():
         self.kin_asset = Asset('KIN',kin_issuer)
 
         # Calculate the hash of the passphrase, can be used to calculate tx hash.
-        self.passphrase_hash = hexlify(sha256(bytearray(network_passphrase,'utf-8')).digest())
+        self.passphrase_hash = hexlify(sha256(network_passphrase.encode()).digest())

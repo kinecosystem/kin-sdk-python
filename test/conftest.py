@@ -66,8 +66,8 @@ def test_sdk(setup):
     Helpers.trust_asset(setup, setup.sdk_keypair.seed())
 
     # init sdk
-    sdk = kin.SDK(secret_key=setup.sdk_keypair.seed(), horizon_endpoint_uri=setup.horizon_endpoint_uri,
-                  network=setup.network, kin_asset=setup.test_asset)
+    sdk = kin.KinClient(secret_key=setup.sdk_keypair.seed(), horizon_endpoint_uri=setup.horizon_endpoint_uri,
+                        network=setup.network, kin_asset=setup.test_asset)
     assert sdk
     print("""test_sdk fixture created with the following setup:
             type: {}

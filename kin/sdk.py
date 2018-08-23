@@ -103,7 +103,7 @@ class SDK(object):
 
         logger.info('Kin SDK inited on network {}, horizon endpoint {}'.format(self.network, self.horizon.horizon_uri))
 
-    def get_status(self):
+    def get_config(self):
         """Get system configuration data and online status."""
         status = {
             'sdk_version': __version__,

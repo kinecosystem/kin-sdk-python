@@ -205,6 +205,7 @@ class KinAccount:
 
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
+        :raises: ValueError: if the amount is too precise
         :raises: :class:`kin.AccountNotFoundError`: if the account does not exist.
         :raises: :class:`kin.AccountNotActivatedError`: if the account is not activated for the asset.
         :raises: :class:`kin.LowBalanceError`: if there is not enough KIN and XLM to send and pay transaction fee.
@@ -215,6 +216,9 @@ class KinAccount:
 
         if amount <= 0:
             raise ValueError('amount must be positive')
+
+        if len(str(amount).split('.')[-1]) > 7:
+            raise ValueError('Number of digits after the decimal point in the amount exceeded the limit(7).')
 
         try:
             reply = self.channel_manager.send_transaction(lambda builder:

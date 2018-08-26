@@ -180,9 +180,11 @@ class KinAccount:
 
         :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data)`.
         :type: callable[[str, :class:`kin.TransactionData`], None]
+
+        :return: an event to stop the monitoring
+        :rtype: threading.Event
         """
-        # TODO: add stop event
-        self._client.monitor_accounts_payments([self.keypair.public_address], callback_fn)
+        return self._client.monitor_accounts_payments([self.keypair.public_address], callback_fn)
 
     # Internal methods
 

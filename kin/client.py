@@ -185,7 +185,6 @@ class KinClient(object):
         pass  # TODO: decide if to simply data in previous methods
 
     def monitor_accounts_payments(self, addresses, callback_fn):
-        # TODO: Add stop event, don't want the monitor to run endlessly
         """Monitor KIN payment transactions related to the accounts identified by provided addresses.
         NOTE: the function starts a background thread.
 
@@ -193,6 +192,9 @@ class KinClient(object):
 
         :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data)`.
         :type: callable[[str, :class:`kin.TransactionData`], None]
+
+        :return: an event to stop the monitoring
+        :rtype: threading.Event
 
         :raises: ValueError: when no addresses are given.
         :raises: ValueError: if one of the provided addresses has a wrong format.
@@ -228,7 +230,7 @@ class KinClient(object):
             events = self.horizon.transactions(sse=True, params=params)
 
         # asynchronous event processor
-        def event_processor():
+        def event_processor(stop_event):
             import json
             for event in events:
                 if event.event != 'message':
@@ -266,6 +268,8 @@ class KinClient(object):
 
         # start monitoring thread
         import threading
-        t = threading.Thread(target=event_processor)
+        stop_event = threading.Event()
+        t = threading.Thread(target=event_processor,args=(stop_event,))
         t.daemon = True
         t.start()
+        return stop_event

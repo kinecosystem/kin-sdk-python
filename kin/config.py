@@ -15,7 +15,9 @@ PROD_ENVIRONMENT = Environment('ECOSYSTEM', HORIZON_URI_PROD, HORIZON_PASSPHRASE
 KIN_ISSUER_TEST = 'GBC3SG6NGTSZ2OMH3FFGB7UVRQWILW367U4GSOOF4TFSZONV42UJXUH7'
 HORIZON_URI_TEST = 'https://horizon-playground.kininfrastructure.com'
 HORIZON_PASSPHRASE_TEST = 'Kin Playground Network ; June 2018'
-TEST_ENVIRONMENT = Environment('PLAYGROUND', HORIZON_URI_TEST, HORIZON_PASSPHRASE_TEST, KIN_ISSUER_TEST)
+FRIENDBOT_URL_TEST = "http://friendbot-playground.kininfrastructure.com"
+TEST_ENVIRONMENT = Environment('PLAYGROUND', HORIZON_URI_TEST, HORIZON_PASSPHRASE_TEST,
+                               KIN_ISSUER_TEST, FRIENDBOT_URL_TEST)
 
 # https://www.stellar.org/developers/guides/concepts/fees.html
 BASE_RESERVE = 0.5  # in XLM

@@ -95,6 +95,12 @@ class InternalError(SdkError):
         super(InternalError, self).__init__('internal error', error_code, extra)
 
 
+class FriendbotError(SdkError):
+    """Friendbot related error"""
+    def __init__(self, error_code=None, extra=None):
+        super(FriendbotError, self).__init__('friendbot error', error_code, extra)
+
+
 def translate_error(err):
     """A high-level error translator."""
     if isinstance(err, RequestException):

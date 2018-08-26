@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*
 
 # Copyright (C) 2018 Kin Foundation
+import requests
 
 from .config import SDK_USER_AGENT
 from . import errors as KinErrors
@@ -183,6 +184,33 @@ class KinClient(object):
 
     def verify_transaction(self):
         pass  # TODO: decide if to simply data in previous methods
+
+    def friendbot(self, address):
+        """
+        Use the friendbot service to create and fund an account
+        :param str address: The address to create and fund
+        :return: the hash of the friendobt transaction
+        :rtype str
+
+        :raises ValueError: if no friendbot service was provided
+        :raises ValueError: if the address is invalid
+        :raises :class: `KinErrors.AccountExistsError`: if the account already exists
+        :raises :class: `KinErrors.FriendbotError`: If the friendbot request failed
+        """
+
+        if self.environment.friendbot_url is None:
+            raise ValueError("No friendbot service was configured for this client's environments")
+
+        if not is_valid_address(address):
+            raise ValueError('invalid address: {}'.format(address))
+        if self.get_account_status(address) != AccountStatus.NOT_CREATED:
+            raise KinErrors.AccountExistsError(address)
+
+        response = requests.get(self.environment.friendbot_url, params={'addr': address})
+        if response.ok:
+            return response.json()['hash']
+        else:
+            raise KinErrors.FriendbotError(response.status_code, response.text)
 
     def monitor_accounts_payments(self, addresses, callback_fn):
         """Monitor KIN payment transactions related to the accounts identified by provided addresses.

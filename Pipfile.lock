@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "db6a0fa84978bc2fb22358da981a14592baab3efc651a5b780d2f84282c0a3ed"
+            "sha256": "fa5adc59d04c8b2783bb7aa201d59577309e0da6ce69b43e8c3937a4a8f97d76"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -47,6 +47,15 @@
                 "sha256:2991b94e1883d1313c956a1e3ced27b8a2fdae23ac40c0d9d0b103d5a70d1d2a"
             ],
             "version": "==1.4"
+        },
+        "enum34": {
+            "hashes": [
+                "sha256:2d81cbbe0e73112bdfe6ef8576f2238f2ba27dd0d55752a776c41d38b7da2850",
+                "sha256:644837f692e5f550741432dd3f223bbb9852018674981b1664e5dc339387588a",
+                "sha256:6bd0f6ad48ec2aa117d3d141940d484deccda84d4fcd884f5c3d93c23ecd8c79",
+                "sha256:8ad8c4783bf61ded74527bffb48ed9b54166685e4230386a9ed9b1279e2df5b1"
+            ],
+            "version": "==1.1.6"
         },
         "idna": {
             "hashes": [

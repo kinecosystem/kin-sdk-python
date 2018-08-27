@@ -5,10 +5,12 @@ import requests
 
 from .config import SDK_USER_AGENT
 from . import errors as KinErrors
+from .blockchain.keypair import Keypair
+from .blockchain.builder import Builder
 from .blockchain.horizon import Horizon
 from .account import KinAccount, AccountStatus
 from .blockchain.horizon_models import AccountData, TransactionData
-from .blockchain.utils import is_valid_address, is_valid_transaction_hash
+from .blockchain.utils import is_valid_address, is_valid_transaction_hash, is_valid_secret_key
 from .transactions import SimplifiedTransaction
 from .version import __version__
 
@@ -217,6 +219,33 @@ class KinClient(object):
             return response.json()['hash']
         else:
             raise KinErrors.FriendbotError(response.status_code, response.text)
+
+    def activate_account(self, seed):
+        """
+        Activate an account.
+        :param str seed: The secret seed of the account to activate
+        :return: the hash of the transaction
+        :rtype: str
+        """
+
+        # Check seed
+        if not is_valid_secret_key(seed):
+            raise ValueError('invalid seed {}'.format(seed))
+        # Check the account status
+        address = Keypair.address_from_seed(seed)
+        status = self.get_account_status(address)
+
+        if status == AccountStatus.NOT_CREATED:
+            raise KinErrors.AccountNotFoundError(address)
+        if status == AccountStatus.ACTIVATED:
+            raise KinErrors.AccountActivatedError(address)
+
+        builder = Builder(self.environment.name, self.horizon, seed)
+        builder.append_trust_op(self.kin_asset.issuer, self.kin_asset.code)
+        builder.sign()
+        reply = builder.submit()
+
+        return reply['hash']
 
     def monitor_accounts_payments(self, addresses, callback_fn):
         """Monitor KIN payment transactions related to the accounts identified by provided addresses.

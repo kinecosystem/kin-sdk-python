@@ -8,6 +8,7 @@ from . import errors as KinErrors
 from .blockchain.keypair import Keypair
 from .blockchain.builder import Builder
 from .blockchain.horizon import Horizon
+from .transactions import OperationTypes
 from .account import KinAccount, AccountStatus
 from .blockchain.horizon_models import AccountData, TransactionData
 from .blockchain.utils import is_valid_address, is_valid_transaction_hash, is_valid_secret_key
@@ -190,8 +191,31 @@ class KinClient(object):
             return SimplifiedTransaction(tx_data, self.kin_asset)
         return tx_data
 
-    def verify_transaction(self):
-        pass  # TODO: decide if to simply data in previous methods
+    def verify_kin_payment(self, tx_hash, source, destination, amount, memo=None, check_memo=False):
+        """
+        Verify that a give tx matches the desired parameters
+        :param str tx_hash: The hash of the transaction to query
+        :param str source: The expected source account
+        :param str destination: The expected destination account
+        :param float amount: The expected amount
+        :param str memo: (optional) The expected memo
+        :param boolean check_memo: (optional) Should the memo match
+        :return: True/False
+        :rtype: boolean
+        """
+
+        tx = self.get_transaction_data(tx_hash)
+        operation = tx.operation
+        if operation.type != OperationTypes.PAYMENT:
+            return False
+        if operation.asset != self.kin_asset.code:
+            return False
+        if source != tx.source or destination != operation.destination or amount != operation.amount:
+            return False
+        if check_memo and memo != operation.memo:
+            return False
+
+        return True
 
     def friendbot(self, address):
         """

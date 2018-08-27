@@ -217,7 +217,7 @@ class KinAccount:
         if amount <= 0:
             raise ValueError('amount must be positive')
 
-        if len(str(amount).split('.')[-1]) > 7:
+        if amount * 1e7 % 1 != 0:
             raise ValueError('Number of digits after the decimal point in the amount exceeded the limit(7).')
 
         try:

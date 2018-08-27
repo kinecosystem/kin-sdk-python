@@ -9,6 +9,7 @@ from .blockchain.horizon import Horizon
 from .account import KinAccount, AccountStatus
 from .blockchain.horizon_models import AccountData, TransactionData
 from .blockchain.utils import is_valid_address, is_valid_transaction_hash
+from .transactions import SimplifiedTransaction
 from .version import __version__
 
 import logging
@@ -156,18 +157,19 @@ class KinClient(object):
             raise KinErrors.AccountNotFoundError(address) if \
                 isinstance(err, KinErrors.ResourceNotFoundError) else err
 
-    def get_transaction_data(self, tx_hash):
+    def get_transaction_data(self, tx_hash, simple=True):
         """Gets transaction data.
 
         :param str tx_hash: transaction hash.
+        :param boolean simple: (optional) returns a simplified transaction object
 
         :return: transaction data
-        :rtype: :class:`KinErrors.TransactionData`
+        :rtype: :class:`kin.TransactionData` or `kin.SimplifiedTransaction`
 
         :raises: ValueError: if the provided hash is invalid.
         :raises: :class:`KinErrors.ResourceNotFoundError`: if the transaction does not exist.
+        :raises: :class:`KinErrors.CantSimplifyError`: if the tx is too complex to simplify
         """
-        # TODO: might want to simplify the tx data
         if not is_valid_transaction_hash(tx_hash):
             raise ValueError('invalid transaction hash: {}'.format(tx_hash))
 
@@ -178,9 +180,13 @@ class KinClient(object):
             tx_ops = self.horizon.transaction_operations(tx['hash'], params={'limit': 100})
             tx['operations'] = tx_ops['_embedded']['records']
 
-            return TransactionData(tx, strict=False)
+            tx_data = TransactionData(tx, strict=False)
         except Exception as e:
             raise KinErrors.translate_error(e)
+
+        if simple:
+            return SimplifiedTransaction(tx_data, self.kin_asset)
+        return tx_data
 
     def verify_transaction(self):
         pass  # TODO: decide if to simply data in previous methods

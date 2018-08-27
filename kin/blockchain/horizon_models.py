@@ -79,6 +79,9 @@ class OperationData(PModel):
     from_address = StringType(serialized_name='from')
     to_address = StringType(serialized_name='to')
     amount = DecimalType()
+    #  account is the created account in create_account op
+    account = StringType()
+    starting_balance = DecimalType()
 
 
 class TransactionData(PModel):

@@ -101,6 +101,12 @@ class FriendbotError(SdkError):
         super(FriendbotError, self).__init__('friendbot error', error_code, extra)
 
 
+class CantSimplifyError(SdkError):
+    """Transaction is too complex to simplify"""
+    def __init__(self, error_code=None, extra=None):
+        super(CantSimplifyError, self).__init__('Tx simplification error', error_code, extra)
+
+
 def translate_error(err):
     """A high-level error translator."""
     if isinstance(err, RequestException):

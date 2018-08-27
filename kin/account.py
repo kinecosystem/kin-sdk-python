@@ -84,6 +84,10 @@ class KinAccount:
         self.channel_manager = ChannelManager(seed, self.channel_secret_keys,
                                               self._client.environment.name, self.horizon)
 
+    def get_public_address(self):
+        """Return this KinAccount's public address"""
+        return self.keypair.public_address
+
     def get_balances(self):
         """
         Get the KIN and XLM balance of this KinAccount

@@ -30,6 +30,7 @@ class ChannelManager(object):
         self.num_channels = len(channel_keys)
         self.channel_builders = queue.Queue(len(channel_keys))
         self.horizon = horizon
+        self.low_balance_builders = []
         for channel_key in channel_keys:
             # create a channel transaction builder.
             builder = Builder(secret=channel_key, network=network, horizon=horizon)
@@ -72,6 +73,12 @@ class ChannelManager(object):
                 return builder.submit()
             except HorizonError as e:
                 logging.warning('send transaction error with channel {}: {}'.format(builder.address, str(e)))
+                # fund channel if its out of XLM for fees
+                if e.type == HorizonErrorType.TRANSACTION_FAILED \
+                        and e.extras.result_codes.transaction == TransactionResultCode.INSUFFICIENT_BALANCE:
+                            self.low_balance_builders.append(builder)
+                            raise
+
                 # retry bad sequence error
                 if e.type == HorizonErrorType.TRANSACTION_FAILED \
                         and e.extras.result_codes.transaction == TransactionResultCode.BAD_SEQUENCE \
@@ -84,6 +91,7 @@ class ChannelManager(object):
             finally:
                 # always clean the builder and return it to the queue
                 builder.clear()
-                self.channel_builders.put(builder)
+                if builder not in self.low_balance_builders:
+                    self.channel_builders.put(builder)
                 if retrying:
                     sleep(builder.horizon.backoff_factor)

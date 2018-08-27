@@ -9,6 +9,7 @@ from .blockchain.keypair import Keypair
 from .blockchain.horizon import Horizon
 from .blockchain.channel_manager import ChannelManager
 from . import errors as KinErrors
+from .blockchain.errors import TransactionResultCode, HorizonErrorType , HorizonError
 from .config import MIN_ACCOUNT_BALANCE, SDK_USER_AGENT
 from .blockchain.utils import is_valid_secret_key, is_valid_address
 
@@ -26,7 +27,7 @@ class KinAccount:
         # Set keypair
         self.keypair = Keypair(seed)
         # check that sdk wallet account exists and is activated
-        if self._client.get_account_data(self.keypair.public_address) != AccountStatus.NOT_ACTIVATED:
+        if self._client.get_account_data(self.keypair.public_address) == AccountStatus.NOT_ACTIVATED:
             raise KinErrors.AccountNotActivatedError
 
         if channels is not None and channel_secret_keys is not None:
@@ -41,7 +42,7 @@ class KinAccount:
                     raise ValueError('invalid channel key: {}'.format(channel_key))
                 # Check that channel accounts exists (they do not have to be activated).
                 channel_address = Keypair.address_from_seed(channel_key)
-                if self._client.get_account_data(channel_address) != AccountStatus.NOT_CREATED:
+                if self._client.get_account_data(channel_address) == AccountStatus.NOT_CREATED:
                     raise KinErrors.AccountNotFoundError
             self.channel_secret_keys = channel_secret_keys
 
@@ -129,13 +130,22 @@ class KinAccount:
             raise ValueError('invalid address: {}'.format(address))
 
         try:
+            # + 0.1 starting balance for fees
             reply = self.channel_manager.send_transaction(lambda builder:
                                                           partial(builder.append_create_account_op, address,
-                                                                  starting_balance),
+                                                                  starting_balance + 0.1),
                                                           memo_text=memo_text)
             return reply['hash']
-        except Exception as e:
-            raise KinErrors.translate_error(e)
+
+        # If the error was because the channel had no more XLM for fee, send it again and fun the channel
+        except HorizonError as e:
+            if e.type == HorizonErrorType.TRANSACTION_FAILED \
+                    and e.extras.result_codes.transaction == TransactionResultCode.INSUFFICIENT_BALANCE:
+                        self.create_account(address, starting_balance, memo_text)
+                        for builder in self.channel_manager.low_balance_builders:
+                            self.send_xlm(builder.address, 1, 'Channel top up')
+                            builder.clear()
+                            self.channel_manager.channel_builders.put(builder)
 
     def send_xlm(self, address, amount, memo_text=None):
         """Send XLM to the account identified by the provided address.
@@ -210,9 +220,9 @@ class KinAccount:
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
         :raises: ValueError: if the amount is too precise
-        :raises: :class:`kin.AccountNotFoundError`: if the account does not exist.
-        :raises: :class:`kin.AccountNotActivatedError`: if the account is not activated for the asset.
-        :raises: :class:`kin.LowBalanceError`: if there is not enough KIN and XLM to send and pay transaction fee.
+        :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
+        :raises: :class:`KinErrors.AccountNotActivatedError`: if the account is not activated for the asset.
+        :raises: :class:`KinErrors.LowBalanceError`: if there is not enough KIN and XLM to send and pay transaction fee.
         """
 
         if not is_valid_address(address):
@@ -230,6 +240,16 @@ class KinAccount:
                                                                   asset_type=asset.code, asset_issuer=asset.issuer),
                                                           memo_text=memo_text)
             return reply['hash']
+        # If the error was because the channel had no more XLM for fee, send it again and fun the channel
+        except HorizonError as e:
+            if e.type == HorizonErrorType.TRANSACTION_FAILED \
+                    and e.extras.result_codes.transaction == TransactionResultCode.INSUFFICIENT_BALANCE:
+                        self._send_asset(asset, address, amount, memo_text)
+                        for builder in self.channel_manager.low_balance_builders:
+                            self.send_xlm(builder.address, 1, 'Channel top up')
+                            builder.clear()
+                            self.channel_manager.channel_builders.put(builder)
+
         except Exception as e:
             raise KinErrors.translate_error(e)
 

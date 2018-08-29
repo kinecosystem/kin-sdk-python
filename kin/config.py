@@ -21,6 +21,6 @@ TEST_ENVIRONMENT = Environment('PLAYGROUND', HORIZON_URI_TEST, HORIZON_PASSPHRAS
 
 # https://www.stellar.org/developers/guides/concepts/fees.html
 BASE_RESERVE = 0.5  # in XLM
-MIN_ACCOUNT_BALANCE = (2 + 1) * BASE_RESERVE  # 1 additional trustline op
+MIN_ACCOUNT_BALANCE = (2 + 1) * BASE_RESERVE + 0.1  # 1 additional trustline op + fees
 
 SDK_USER_AGENT = 'kin-core-python/{}'.format(__version__)

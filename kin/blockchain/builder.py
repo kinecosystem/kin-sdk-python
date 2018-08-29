@@ -6,8 +6,6 @@ from stellar_base.builder import Builder as BaseBuilder
 from stellar_base.keypair import Keypair
 from stellar_base.memo import NoneMemo
 
-from .horizon import HORIZON_LIVE, HORIZON_TEST
-from .horizon import Horizon
 from .utils import is_valid_address, is_valid_secret_key
 
 

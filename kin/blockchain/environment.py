@@ -1,6 +1,5 @@
 """Contains the Environment class to configure horizon"""
 from hashlib import sha256
-from binascii import hexlify
 
 from stellar_base.network import NETWORKS
 from stellar_base.asset import Asset
@@ -34,4 +33,4 @@ class Environment:
         self.friendbot_url = friendbot_url
 
         # Calculate the hash of the passphrase, can be used to calculate tx hash.
-        self.passphrase_hash = hexlify(sha256(network_passphrase.encode()).digest())
+        self.passphrase_hash = sha256(network_passphrase.encode()).digest()

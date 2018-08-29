@@ -7,11 +7,16 @@ from stellar_base.asset import Asset
 
 from .blockchain.keypair import Keypair
 from .blockchain.horizon import Horizon
+from .blockchain.builder import Builder
 from .blockchain.channel_manager import ChannelManager
 from . import errors as KinErrors
+from .transactions import Transaction
 from .blockchain.errors import TransactionResultCode, HorizonErrorType , HorizonError
 from .config import MIN_ACCOUNT_BALANCE, SDK_USER_AGENT
 from .blockchain.utils import is_valid_secret_key, is_valid_address
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class KinAccount:
@@ -125,27 +130,22 @@ class KinAccount:
 
         :raises: ValueError: if the supplied address has a wrong format.
         :raises: :class:`KinErrors.AccountExistsError`: if the account already exists.
+        :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than 28 characters
         """
         if not is_valid_address(address):
             raise ValueError('invalid address: {}'.format(address))
 
-        try:
-            # + 0.1 starting balance for fees
-            reply = self.channel_manager.send_transaction(lambda builder:
-                                                          partial(builder.append_create_account_op, address,
-                                                                  starting_balance + 0.1),
-                                                          memo_text=memo_text)
-            return reply['hash']
+        if len(memo_text) > 28:
+            raise KinErrors.MemoTooLongError('{} > 28'.format(len(memo_text)))
 
-        # If the error was because the channel had no more XLM for fee, send it again and fun the channel
-        except HorizonError as e:
-            if e.type == HorizonErrorType.TRANSACTION_FAILED \
-                    and e.extras.result_codes.transaction == TransactionResultCode.INSUFFICIENT_BALANCE:
-                        self.create_account(address, starting_balance, memo_text)
-                        for builder in self.channel_manager.low_balance_builders:
-                            self.send_xlm(builder.address, 1, 'Channel top up')
-                            builder.clear()
-                            self.channel_manager.channel_builders.put(builder)
+        # Build the transaction and send it.
+
+        builder = self.channel_manager.build_transaction(lambda builder:
+                                                         partial(builder.append_create_account_op, address,
+                                                                 starting_balance),
+                                                         memo_text=memo_text)
+        tx = Transaction(builder, self.channel_manager)
+        return self.submit_transaction(tx)
 
     def send_xlm(self, address, amount, memo_text=None):
         """Send XLM to the account identified by the provided address.
@@ -188,6 +188,32 @@ class KinAccount:
         """
         return self._send_asset(self._client.kin_asset, address, amount, memo_text)
 
+    def submit_transaction(self, tx):
+        """
+        Submit a transaction to the blockchain.
+        :param :class: `kin.Transaction` tx: The transaction object to send
+        :return: The hash of the transaction.
+        :rtype: str
+        """
+        try:
+            return tx.builder.submit()['hash']
+        # If the channel is out of XLM, top it up and try again
+        except HorizonError as e:
+            logging.warning('send transaction error with channel {}: {}'.format(tx.builder.address, str(e)))
+            if e.type == HorizonErrorType.TRANSACTION_FAILED \
+                    and e.extras.result_codes.transaction == TransactionResultCode.INSUFFICIENT_BALANCE:
+                self.channel_manager.low_balance_builders.append(tx.builder)
+                self._top_up(tx.builder.address)
+                self.channel_manager.low_balance_builders.remove(tx.builder)
+
+                # Insufficient balance is a "fast-fail", the sequence number doesn't increment
+                # so there is no need to build the transaction again
+                self.submit_transaction(tx)
+            else:
+                raise KinErrors.translate_error(e)
+        finally:
+            tx.release()
+
     def monitor_kin_payments(self, callback_fn):
         """Monitor KIN payment transactions related to the this KinAccount.
         NOTE: the function starts a background thread.
@@ -214,13 +240,14 @@ class KinAccount:
 
         :param str memo_text: (optional) a text to put into transaction memo.
 
-        :return: the hash of the transaction
+        :return: The hash of the transaction
         :rtype: str
 
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
         :raises: ValueError: if the amount is too precise
         :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
+        :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than 28 characters
         :raises: :class:`KinErrors.AccountNotActivatedError`: if the account is not activated for the asset.
         :raises: :class:`KinErrors.LowBalanceError`: if there is not enough KIN and XLM to send and pay transaction fee.
         """
@@ -228,30 +255,36 @@ class KinAccount:
         if not is_valid_address(address):
             raise ValueError('invalid address: {}'.format(address))
 
+        if len(memo_text) > 28:
+            raise KinErrors.MemoTooLongError('{} > 28'.format(len(memo_text)))
+
         if amount <= 0:
             raise ValueError('amount must be positive')
 
         if amount * 1e7 % 1 != 0:
             raise ValueError('Number of digits after the decimal point in the amount exceeded the limit(7).')
 
-        try:
-            reply = self.channel_manager.send_transaction(lambda builder:
-                                                          partial(builder.append_payment_op, address, amount,
-                                                                  asset_type=asset.code, asset_issuer=asset.issuer),
-                                                          memo_text=memo_text)
-            return reply['hash']
-        # If the error was because the channel had no more XLM for fee, send it again and fun the channel
-        except HorizonError as e:
-            if e.type == HorizonErrorType.TRANSACTION_FAILED \
-                    and e.extras.result_codes.transaction == TransactionResultCode.INSUFFICIENT_BALANCE:
-                        self._send_asset(asset, address, amount, memo_text)
-                        for builder in self.channel_manager.low_balance_builders:
-                            self.send_xlm(builder.address, 1, 'Channel top up')
-                            builder.clear()
-                            self.channel_manager.channel_builders.put(builder)
+        builder = self.channel_manager.build_transaction(lambda builder:
+                                                         partial(builder.append_payment_op, address, amount,
+                                                                 asset_type=asset.code, asset_issuer=asset.issuer),
+                                                         memo_text=memo_text)
+        tx = Transaction(builder, self.channel_manager)
+        return self.submit_transaction(tx)
 
-        except Exception as e:
-            raise KinErrors.translate_error(e)
+    def _top_up(self, address):
+        """
+        Top up a channel with the base account.
+        :param str address: The address to top up
+        """
+        # In theory, if the sdk runs in threads, and 2 or more channels
+        # are out of funds and needed to be topped up at the exact same time
+        # there is a chance for a bad_sequence error,
+        # however it is virtually impossible that this situation will occur.
+
+        builder = Builder(self._client.environment.name, self._client.horizon, self.keypair.secret_seed)
+        builder.append_payment_op(address, 1)
+        builder.sign()
+        builder.submit()
 
 
 class AccountStatus(Enum):

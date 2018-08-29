@@ -3,12 +3,11 @@
 # Copyright (C) 2018 Kin Foundation
 
 import sys
-from time import sleep
 
 from stellar_base.keypair import Keypair
 
 from .builder import Builder
-from .errors import ChannelsBusyError, HorizonError, HorizonErrorType, TransactionResultCode
+from .errors import ChannelsBusyError
 
 import logging
 logger = logging.getLogger(__name__)
@@ -36,7 +35,7 @@ class ChannelManager(object):
             builder = Builder(secret=channel_key, network=network, horizon=horizon)
             self.channel_builders.put(builder)
 
-    def send_transaction(self, add_ops_fn, memo_text=None):
+    def build_transaction(self, add_ops_fn, memo_text=None):
         """Send a transaction using an available channel account.
 
         :param add_ops_fn: a function to call, that will add operations to the transaction. The function should be
@@ -48,50 +47,21 @@ class ChannelManager(object):
         :return: transaction object
         :rtype: dict
         """
-        # send and retry bad sequence errors
-        retry_count = self.horizon.num_retries
-        while True:
-            # get an available channel builder first (blocking with timeout)
-            try:
-                builder = self.channel_builders.get(True, CHANNEL_QUEUE_TIMEOUT)
-            except queue.Empty:
-                raise ChannelsBusyError
+        # get an available channel builder first (blocking with timeout)
+        try:
+            builder = self.channel_builders.get(True, CHANNEL_QUEUE_TIMEOUT)
+        except queue.Empty:
+            raise ChannelsBusyError
 
-            retrying = False
-            try:
-                # operation source is always the base account
-                source = self.base_address if builder.address != self.base_address else None
+        # operation source is always the base account
+        source = self.base_address if builder.address != self.base_address else None
 
-                # add operation (using external partial) and sign
-                add_ops_fn(builder)(source=source)
-                if memo_text:
-                    builder.add_text_memo(memo_text[:28])  # max memo length is 28
+        # add operation (using external partial) and sign
+        add_ops_fn(builder)(source=source)
+        if memo_text:
+            builder.add_text_memo(memo_text)  # max memo length is 28
 
-                builder.sign()  # always sign with a channel key
-                if source:
-                    builder.sign(secret=self.base_key)  # sign with the base key if needed
-                return builder.submit()
-            except HorizonError as e:
-                logging.warning('send transaction error with channel {}: {}'.format(builder.address, str(e)))
-                # fund channel if its out of XLM for fees
-                if e.type == HorizonErrorType.TRANSACTION_FAILED \
-                        and e.extras.result_codes.transaction == TransactionResultCode.INSUFFICIENT_BALANCE:
-                            self.low_balance_builders.append(builder)
-                            raise
-
-                # retry bad sequence error
-                if e.type == HorizonErrorType.TRANSACTION_FAILED \
-                        and e.extras.result_codes.transaction == TransactionResultCode.BAD_SEQUENCE \
-                        and retry_count > 0:
-                            retrying = True
-                            retry_count -= 1
-                            logging.warning('send transaction retry attempt {}'.format(retry_count))
-                            continue
-                raise
-            finally:
-                # always clean the builder and return it to the queue
-                builder.clear()
-                if builder not in self.low_balance_builders:
-                    self.channel_builders.put(builder)
-                if retrying:
-                    sleep(builder.horizon.backoff_factor)
+        builder.sign()  # always sign with a channel key
+        if source:
+            builder.sign(secret=self.base_key)  # sign with the base key if needed
+        return builder

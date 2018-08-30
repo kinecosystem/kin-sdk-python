@@ -22,7 +22,7 @@ class Transaction:
         :param :class: `Kin.ChannelManager` channel_manager: The channel manager that owns the builder
         """
         self.builder = builder
-        self._channel_manager = channel_manager
+        self.channel_manager = channel_manager
         self.hash = self.calculate_tx_hash(builder.te, builder.te.network_id)
 
     def release(self):
@@ -30,8 +30,8 @@ class Transaction:
         Clear the builder and return it to the queue.
         """
         self.builder.clear()
-        if self.builder not in self._channel_manager.low_balance_builders:
-            self._channel_manager.channel_builders.put(self.builder)
+        if self.builder not in self.channel_manager.low_balance_builders:
+            self.channel_manager.channel_builders.put(self.builder)
 
     @staticmethod
     def calculate_tx_hash(te, network_passphrase_hash):

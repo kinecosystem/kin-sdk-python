@@ -202,9 +202,9 @@ class KinAccount:
             logging.warning('send transaction error with channel {}: {}'.format(tx.builder.address, str(e)))
             if e.type == HorizonErrorType.TRANSACTION_FAILED \
                     and e.extras.result_codes.transaction == TransactionResultCode.INSUFFICIENT_BALANCE:
-                self.channel_manager.low_balance_builders.append(tx.builder)
+                tx.channel_manager.low_balance_builders.append(tx.builder)
                 self._top_up(tx.builder.address)
-                self.channel_manager.low_balance_builders.remove(tx.builder)
+                tx.channel_manager.low_balance_builders.remove(tx.builder)
 
                 # Insufficient balance is a "fast-fail", the sequence number doesn't increment
                 # so there is no need to build the transaction again

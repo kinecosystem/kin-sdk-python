@@ -17,7 +17,7 @@ def setup():
     # Using a local blockchain, this is the root account
     issuer_seed = 'SDBDJVXHPVQGDXYHEVOBBV4XZUDD7IQTXM5XHZRLXRJVY5YMH4YUCNZC'
     issuer_address = 'GCLBBAIDP34M4JACPQJUYNSPZCQK7IRHV7ETKV6U53JPYYUIIVDVJJFQ'
-    docker_environment = Environment('DOCKER', 'http://localhost:8000',
+    docker_environment = Environment('DOCKER', 'http://localhost:8008',
                                      'private testnet',issuer_address,'http://localhost:8001')
 
     return Struct(issuer_address=issuer_address,

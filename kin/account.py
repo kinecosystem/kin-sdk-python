@@ -132,19 +132,7 @@ class KinAccount:
         :raises: :class:`KinErrors.AccountExistsError`: if the account already exists.
         :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than 28 characters
         """
-        if not is_valid_address(address):
-            raise ValueError('invalid address: {}'.format(address))
-
-        if memo_text is not None and len(memo_text) > 28:
-            raise KinErrors.MemoTooLongError('{} > 28'.format(len(memo_text)))
-
-        # Build the transaction and send it.
-
-        builder = self.channel_manager.build_transaction(lambda builder:
-                                                         partial(builder.append_create_account_op, address,
-                                                                 starting_balance),
-                                                         memo_text=memo_text)
-        tx = Transaction(builder, self.channel_manager)
+        tx = self.build_create_account(address, starting_balance=starting_balance, memo_text=memo_text)
         return self.submit_transaction(tx)
 
     def send_xlm(self, address, amount, memo_text=None):
@@ -165,7 +153,8 @@ class KinAccount:
         :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
         :raises: :class:`KinErrors.LowBalanceError`: if there is not enough XLM to send and pay transaction fee.
         """
-        return self._send_asset(Asset.native(), address, amount, memo_text)
+        tx = self._build_send_asset(Asset.native(), address, amount, memo_text)
+        return self.submit_transaction(tx)
 
     def send_kin(self, address, amount, memo_text=None):
         """Send KIN to the account identified by the provided address.
@@ -186,7 +175,75 @@ class KinAccount:
         :raises: :class:`KinErrors.AccountNotActivatedError`: if the account is not activated.
         :raises: :class:`KinErrors.LowBalanceError`: if there is not enough KIN and XLM to send and pay transaction fee.
         """
-        return self._send_asset(self._client.kin_asset, address, amount, memo_text)
+        tx = self._build_send_asset(self._client.kin_asset, address, amount, memo_text)
+        return self.submit_transaction(tx)
+
+    def build_create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, memo_text=None):
+        """Build a tx that will create an account identified by the provided address.
+
+        :param str address: the address of the account to create.
+
+        :param number starting_balance: (optional) the starting XLM balance of the account.
+        If not provided, a default MIN_ACCOUNT_BALANCE will be used.
+
+        # TODO: might want to limit this if we use tx_coloring
+        :param str memo_text: (optional) a text to put into transaction memo, up to 28 chars.
+
+        :return: a transaction object
+        :rtype: :class: `Kin.Transaction`
+
+        :raises: ValueError: if the supplied address has a wrong format.
+        :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than 28 characters
+        """
+        if not is_valid_address(address):
+            raise ValueError('invalid address: {}'.format(address))
+
+        if memo_text is not None and len(memo_text) > 28:
+            raise KinErrors.MemoTooLongError('{} > 28'.format(len(memo_text)))
+
+        # Build the transaction and send it.
+
+        builder = self.channel_manager.build_transaction(lambda builder:
+                                                         partial(builder.append_create_account_op, address,
+                                                                 starting_balance),
+                                                         memo_text=memo_text)
+        return Transaction(builder, self.channel_manager)
+
+    def build_send_xlm(self, address, amount, memo_text=None):
+        """Send XLM to the account identified by the provided address.
+
+        :param str address: the account to send XLM to.
+
+        :param number amount: the number of XLM to send.
+
+        # TODO: might want to limit this if we do tx coloring
+        :param str memo_text: (optional) a text to put into transaction memo.
+
+        :return: a transaction object
+        :rtype: :class: `Kin.Transaction`
+
+        :raises: ValueError: if the provided address has a wrong format.
+        :raises: ValueError: if the amount is not positive.
+        """
+        return self._build_send_asset(Asset.native(), address, amount, memo_text)
+
+    def build_send_kin(self, address, amount, memo_text=None):
+        """Send KIN to the account identified by the provided address.
+
+         :param str address: the account to send KIN to.
+
+         :param number amount: the amount of KIN to send.
+
+         # TODO: might want to limit this if we do tx coloring
+         :param str memo_text: (optional) a text to put into transaction memo.
+
+        :return: a transaction object
+        :rtype: :class: `Kin.Transaction`
+
+         :raises: ValueError: if the provided address has a wrong format.
+         :raises: ValueError: if the amount is not positive.
+         """
+        return self._build_send_asset(self._client.kin_asset, address, amount, memo_text)
 
     def submit_transaction(self, tx):
         """
@@ -228,8 +285,8 @@ class KinAccount:
 
     # Internal methods
 
-    def _send_asset(self, asset, address, amount, memo_text=None):
-        """Send asset to the account identified by the provided address.
+    def _build_send_asset(self, asset, address, amount, memo_text=None):
+        """Build a tx to send asset to the account identified by the provided address.
 
         :param str address: the account to send asset to.
 
@@ -240,16 +297,12 @@ class KinAccount:
 
         :param str memo_text: (optional) a text to put into transaction memo.
 
-        :return: The hash of the transaction
-        :rtype: str
+        :return: a transaction object
+        :rtype: :class: `Kin.Transaction`
 
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
         :raises: ValueError: if the amount is too precise
-        :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
-        :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than 28 characters
-        :raises: :class:`KinErrors.AccountNotActivatedError`: if the account is not activated for the asset.
-        :raises: :class:`KinErrors.LowBalanceError`: if there is not enough KIN and XLM to send and pay transaction fee.
         """
 
         if not is_valid_address(address):
@@ -268,8 +321,7 @@ class KinAccount:
                                                          partial(builder.append_payment_op, address, amount,
                                                                  asset_type=asset.code, asset_issuer=asset.issuer),
                                                          memo_text=memo_text)
-        tx = Transaction(builder, self.channel_manager)
-        return self.submit_transaction(tx)
+        return Transaction(builder, self.channel_manager)
 
     def _top_up(self, address):
         """

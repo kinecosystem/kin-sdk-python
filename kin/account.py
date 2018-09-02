@@ -135,7 +135,7 @@ class KinAccount:
         if not is_valid_address(address):
             raise ValueError('invalid address: {}'.format(address))
 
-        if len(memo_text) > 28:
+        if memo_text is not None and len(memo_text) > 28:
             raise KinErrors.MemoTooLongError('{} > 28'.format(len(memo_text)))
 
         # Build the transaction and send it.
@@ -255,7 +255,7 @@ class KinAccount:
         if not is_valid_address(address):
             raise ValueError('invalid address: {}'.format(address))
 
-        if len(memo_text) > 28:
+        if memo_text is not None and len(memo_text) > 28:
             raise KinErrors.MemoTooLongError('{} > 28'.format(len(memo_text)))
 
         if amount <= 0:

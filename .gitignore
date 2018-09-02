@@ -10,4 +10,4 @@ MANIFEST
 docs/build
 dist/
 virtualenv/
-
+test/images/volumes/

@@ -12,7 +12,7 @@ class Keypair:
         # Create an instance of Keypair.
         :param seed: (Optional) The secret seed of an account
         """
-        self.secret_seed = seed
+        self.secret_seed = seed or self.generate_seed()
         self.public_address = Keypair.address_from_seed(seed)
 
     @staticmethod

@@ -5,9 +5,9 @@ set -e
 sudo docker-compose down -v
 
 sudo rm -rf \
-    ./stellar-core-1/opt/stellar-core/buckets ./stellar-core-2/opt/stellar-core/buckets \
-    ./stellar-core-1/opt/stellar-core/*.log ./stellar-core-2/opt/stellar-core/*.log \
-    ./stellar-core-1/tmp/stellar-core ./stellar-core-2/tmp/stellar-core
+    volumes/stellar-core-1/opt/stellar-core/buckets volumes/stellar-core-2/opt/stellar-core/buckets \
+    volumes/stellar-core-1/opt/stellar-core/*.log volumes/stellar-core-2/opt/stellar-core/*.log \
+    volumes/stellar-core-1/tmp/stellar-core volumes/stellar-core-2/tmp/stellar-core
 
 # setup core database
 # https://www.stellar.org/developers/stellar-core/software/commands.html

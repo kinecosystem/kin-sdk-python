@@ -132,6 +132,7 @@ client.verify_kin_payment('tx_hash','addr1','addr3',10) >> False
 ```python
 # This method allows you to monitor the kin payments that an account is reciving/sending
 # Transaction that are too complex to simplify will not be shown.
+# Currently, sometimes you will also get a callback for 1 transaction that happened before starting the monitoring
 
 # define a callback function that receives an address and a kin.SimpleTransaction object
 def print_callback(address, tx_data):

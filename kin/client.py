@@ -295,7 +295,18 @@ class KinClient(object):
             if self.get_account_status(address) == AccountStatus.NOT_CREATED:
                 raise KinErrors.AccountNotFoundError(addresses)
 
-        params = {'cursor': 'now'}
+        # Currently, due to nonstandard SSE implementation in Horizon, using cursor=now will hang.
+        # Instead, we determine the cursor ourselves.
+        # Fix will be for horizon to send any message just to start a connection
+        params = {}
+        if len(addresses) == 1:
+            reply = self.horizon.account_transactions(addresses[0], params={'order': 'desc', 'limit': 2})
+        else:
+            reply = self.horizon.transactions(params={'order': 'desc', 'limit': 2})
+
+        if len(reply['_embedded']['records']) == 2:
+            cursor = TransactionData(reply['_embedded']['records'][1], strict=False).paging_token
+            params = {'cursor': cursor}
 
         # make synchronous SSE request (will raise errors in the current thread)
         if len(addresses) == 1:

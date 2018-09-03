@@ -187,32 +187,26 @@ def test_monitor_accounts_kin_payments_single(test_client, test_account):
 
     def account_tx_callback(addr, tx_data):
         assert addr == address
-        txs_found.append(tx_data)
-
-    # pay from sdk to account
-    hash1 = test_account.send_kin(address, 1)
-    sleep(10)
+        txs_found.append(tx_data.id)
 
     # start monitoring
     stop_event = test_client.monitor_accounts_payments([address], account_tx_callback)
     assert not stop_event.is_set()
 
     # pay from sdk to the account
+    hash1 = test_account.send_kin(address, 1)
     hash2 = test_account.send_kin(address, 2)
-    hash3 = test_account.send_kin(address, 3)
     sleep(15)
     # stop monitoring
     stop_event.set()
 
     # pay again
-    test_account.send_kin(address, 4)
+    hash3 = test_account.send_kin(address, 3)
     
     sleep(15)
-    assert len(txs_found) == 2
-
-    # check collected transactions
-    assert txs_found[0].id == hash2
-    assert txs_found[1].id == hash3
+    assert hash1 in txs_found
+    assert hash2 in txs_found
+    assert not hash3 in txs_found
 
 
 def test_monitor_accounts_kin_payments_multiple(test_client, test_account):
@@ -231,9 +225,9 @@ def test_monitor_accounts_kin_payments_multiple(test_client, test_account):
 
     def account_tx_callback(addr, tx_data):
         if addr == address1:
-            txs_found1.append(tx_data)
+            txs_found1.append(tx_data.id)
         else:
-            txs_found2.append(tx_data)
+            txs_found2.append(tx_data.id)
 
     # start monitoring
     stop_event = test_client.monitor_accounts_payments([address1, address2], account_tx_callback)
@@ -247,10 +241,6 @@ def test_monitor_accounts_kin_payments_multiple(test_client, test_account):
     stop_event.set()
 
     sleep(10)
-    assert len(txs_found1) == 1
-    assert len(txs_found2) == 2
-
-    # check collected transactions
-    assert txs_found1[0].id == hash1
-    assert txs_found2[0].id == hash2
+    assert hash1 in txs_found1
+    assert hash2 in txs_found2
 

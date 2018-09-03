@@ -31,8 +31,9 @@ class KinAccount:
 
         # Set keypair
         self.keypair = Keypair(seed)
-        # check that sdk wallet account exists and is activated
-        if self._client.get_account_data(self.keypair.public_address) == AccountStatus.NOT_ACTIVATED:
+        # check that sdk wallet account exists and is activated, issuer should continue without activation
+        if self._client.get_account_status(self.keypair.public_address) != AccountStatus.ACTIVATED and \
+                        self.keypair.public_address != self._client.kin_asset.issuer:
             raise KinErrors.AccountNotActivatedError
 
         if channels is not None and channel_secret_keys is not None:

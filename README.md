@@ -1,7 +1,7 @@
 ![Kin Logo](kin.png)
 
 # KIN Python SDK for Kin Blockchain
-[![Build Status](https://travis-ci.org/kinecosystem/kin-core-python.svg?branch=master)](https://travis-ci.org/kinecosystem/kin-core-python) [![Coverage Status](https://codecov.io/gh/kinecosystem/kin-core-python/branch/master/graph/badge.svg)](https://codecov.io/gh/kinecosystem/kin-core-python)
+
 
 ## Disclaimer
 
@@ -9,218 +9,165 @@ The SDK is still in beta. No warranties are given, use on your own discretion.
 
 ## Requirements.
 
-Make sure you have Python 2 >=2.7.9.
+Python 2 > 2.7.9 / 3 > 3.4
 
 ## Installation 
 
 ```bash
 pip install git+https://github.com/kinecosystem/kin-core-python.git
+# TODO: add to pypi after PR is done
 ```
 
 ## Usage
 
 ### Initialization
 
-To initialize the SDK, you need to provide the following parameters:
-- (optional) the secret key to init the internal SDK wallet with. If not provided, you will NOT be able to use the 
-  following functions: `get_address`, `get_native_balance`, `get_kin_balance`, `create_account`, `monitor_kin_payments`.
-- (optional) the endpoint URI of your [Horizon](https://www.stellar.org/developers/horizon/reference/) node. 
-  If not provided, a default Horizon endpoint will be used, either a testnet or pubnet, depending on the `network` 
-  parameter below.
-- (optional) a network identifier, which is either `PUBLIC` or `TESTNET`, defaults to `PUBLIC`.
-- (optional) a list of channel keys. If provided, the channel accounts will be used to sign transactions instead 
-  of the internal SDK wallet. Use it to insure higher concurrency.
+The sdk has two main components, KinClient and KinAccount.  
+**KinClient** - Used to query the blockchain and perform actions that don't require authentication (e.g Get account balance)  
+**KinAccount** - Used to perform authenticated actions on the blockchain (e.g Send payment)
+
+To initialize the Kin Client you will need to provide an environment (Test and Production environments are pre-configured)
 
 
 ```python
-import kin
+from kin import KinClient, TEST_ENVIRONMENT
 
-# Init SDK without a secret key, in the public Stellar network (for generic blockchain queries)
-sdk = kin.SDK()
-
-# Init SDK without a secret key, for Stellar testnet
-sdk = kin.SDK(network='TESTNET')
-
-# Init SDK without a secret key, with specific Horizon server, running on Stellar testnet
-sdk = kin.SDK(horizon_endpoint_uri='http://my.horizon.uri', network='TESTNET')
-
-# Init SDK with wallet secret key, on public network
-sdk = kin.SDK(secret_key='my key')
-
-# Init SDK with several channels, on public network
-sdk = kin.SDK(secret_key='my key', channel_secret_keys=['key1', 'key2', ...])
+client = KinClient(TEST_ENVIRONMENT)
 ```
-For more examples, see the [SDK test file](test/test_sdk.py).
 
-
-### Getting Wallet Details
+Custom environment can also be used:  
 ```python
-# Get the address of my wallet account. The address is derived from the secret key the SDK was inited with.
-address = sdk.get_address()
+from kin import Environment
+
+MY_CUSTOM_ENVIRONMENT = Environemnt('name','horizon endpoint','network passphrase','kin issuer',optional - 'friendbot url')
 ```
+
+Once you have a KinClient, you can use it to get a KinAccount object: 
+```python
+# The KinAccount object can be initizlied in a number of ways:
+
+# With a single seed:
+account = client.kin_account('seed')
+
+# With specific channels:
+account = client.kin_account('seed', channel_secret_keys=['seed1','seed2','seed3'...])
+
+# With deterministic channels
+# This will generate the channels secret seeds for you, based on your primary seed. 
+# The generated channels will always be the same for the same primary seed.
+# If this is your first time using these channels, you should set 'create_channels' to true.
+# This will create the channel account from your primary seed (and will cost 1.6 * number of channels XLM)
+account = client.kin_account('seed',channels=number, create_channels=True/False)
+
+# Every seed can only send one transaction per ledger (~5 seconds),
+# so using channels will greatly increase your concurrency.
+```
+
+## Client Usage
+Most methods provided by the KinClient to query the blockchain about a specific account, can also be used from the KinAccount object to query the blockchain about itself
 
 ### Getting Account Balance
 ```python
-# Get native (lumen) balance of the SDK wallet
-native_balance = sdk.get_native_balance()
-
-# Get KIN balance of the SDK wallet
-kin_balance = sdk.get_kin_balance()
-
-# Get native (lumen) balance of some account
-native_balance = sdk.get_account_native_balance('address')
-
-# Get KIN balance of some account
-kin_balance = sdk.get_account_kin_balance('address')
+# Get KIN/XLM balance
+balances = client.get_account_balances('address')
+kin_balance = balances['KIN']
+xlm_balance = balances['XLM']
 ```
 
 ### Getting Account Data
 ```python
-# returns kin.AccountData
-account_data = sdk.get_account_data('address')
+account_data = client.get_account_data('address')
 ```
 
-### Checking If Account Exists
+### Checking Account Status
 ```python
-account_exists = sdk.check_account_exists('address')
+from kin import AccountStatuses
+
+status = client.get_account_status('address')
+
+# status can be one of:
+AccountStatuses.NOT_CREATED
+AccountStatuses.NOT_ACTIVATED
+AccountStatuses.ACTIVATED
 ```
 
-### Creating a New Account
-```python
-# create a new account prefunded with MIN_ACCOUNT_BALANCE lumens
-tx_hash = sdk.create_account('address')
-
-# create a new account prefunded with a specified amount of native currency (lumens).
-tx_hash = sdk.create_account('address', starting_balance=1000)
-```
-
-### Checking if Account is Activated (Trustline established)
-```python
-# check if KIN is trusted by some account
-kin_trusted = sdk.check_account_activated('address')
-```
-
-### Sending Currency
-```python
-# send native currency (lumens) to some address
-tx_hash = sdk.send_native('address', 100, memo_text='order123')
-
-# send KIN to some address
-tx_hash = sdk.send_kin('address', 1000, memo_text='order123')
-```
 
 ### Getting Transaction Data
 ```python
-# create a transaction, for example a new account
-tx_hash = sdk.create_account('address')
-# get transaction data, returns kin.TransactionData
-tx_data = sdk.get_transaction_data(tx_hash)
+# Get information about a specific transaction
+# The 'simple' flag is enabled by defualt, and dectates what object should be returned
+# For simple=False: A 'kin.TransactionData' object will return,
+# containig many fields that may be confusing and of no use to the user.
+
+# For simple=True: A 'kin.SimpleTransaction' object will return,
+# containing only the data that the user will need.
+# However, if the transaction if too complex to be simplified, a 'CantSimplifyError' will be raised
+tx_data = sdk.get_transaction_data(tx_hash, simple=True/False)
+
+# A transaction will not be simplifed if:
+# 1. It contains a memo that is not a text memo
+# 2. It contains multiple operations
+# 3. It contains a payment that is not of KIN/XLM
+# 4. It contains activation to anything other than KIN
+# 5. Its operation type is not one of 'Payment'/'Activation'/'Create account'.
+
+# Given the use case of our blockchain, and the tools that we currently provied to interact with it, these conditions should not occur.
 ```
 
-### Transaction Monitoring
+### Kin Payment Monitoring
 ```python
-# define a callback function that receives an address and a kin.TransactionData object
+# This method allows you to monitor the kin payments that an account is reciving/sending
+# Transaction that are too complex to simplify will not be shown.
+
+# define a callback function that receives an address and a kin.SimpleTransaction object
 def print_callback(address, tx_data):
     print(address, tx_data)
     
-# start monitoring KIN payments related to the SDK wallet account
-sdk.monitor_kin_payments(print_callback)
+# Create a list of addresses to monitor
+addresses = ['addr1','addr2','addr3']
 
-# start monitoring KIN payments related to a list of addresses
-sdk.monitor_accounts_kin_payments(['address1', 'address2'], print_callback)
+# Start monitoring kin payments for these addresses
+stop_event = client.monitor_accounts_payments(addresses, print_callback)
 
-# start monitoring all transactions related to a list of addresses
-sdk.monitor_accounts_transactions(['address1', 'address2'], print_callback)
+# The method will start a background thread, once you wish to stop it you can use:
+stop_event.set()
 ```
 
-#### Receiving Payments from Users
-Let us consider a real-life case when you need to receive payments from users for the orders they make.
-In order to associate a transaction with an order, we will use the `TransactionData.memo` field:
-
+### Checking configuration
+The handy `get_config` method will return some parameters the client was configured with, along with Horizon status:
 ```python
-# setup your orders cache
-orders = {}
-
-# define a callback function that validates payments and marks orders as completed
-def payment_callback(address, tx_data):
-    order_id = tx_data.memo
-    if order_id not in orders:
-        logging.warn('order not found: {}'.format(order_id))
-        return
-    
-    order = orders[order_id]
-    
-    # check that the order is not yet completed
-    if order['completed'] is not None:
-        logging.warn('order {} is already completed'.format(order_id))
-        return
-        
-    # check that the amount matches 
-    if tx_data.operations[0].amount != order['amount']:
-        logging.warn('wrong amount paid for order {}: received {}, need {}'
-            .format(order_id, tx_data.operations[0].amount, order['amount']))
-        return
-        
-    # all good
-    order['completed'] = datetime.now()
-
-
-# start monitoring KIN payments related to the SDK wallet account
-sdk.monitor_kin_payments(payment_callback)   
-
-# when an order comes, store its data in the cache
-order_id = generate_order_id()
-orders[order_id] = {
-    'user_id': user_id,
-    'product_id': product_id,
-    'amount': product_cost,
-    'created': datetime.now(),
-    'completed': None
-}
-
-# now pass this order_id to the user and have him insert it into the memo field of his transaction.
-# After he submits the transaction, the payment_callback above will catch it and update the order data.
-```
-
-### Checking Status
-The handy `get_status` method will return some parameters the SDK was configured with, along with Horizon status:
-```python
-status = sdk.get_status()
+status = client.get_config()
 print status
-#  {
-#     'sdk_version': '0.2.0',
-#     'channels': {
-#         'all': 5,  
-#         'free': 5  
-#     }, 
-#     'kin_asset': {
-#         'code': 'KIN', 
-#         'issuer': '<issuer address>'
-#     }, 
-#     'network': 'TESTNET', 
-#     'horizon': {
-#         'uri': '<horizon uri>', 
-#         'online': True,
-#         'error': None 
-#     }, 
-#     'address': '<sdk wallet address>',
-#     'transport': {
-#         'pool_size': 7,
-#         'num_retries': 5,
-#         'request_timeout': 11,
-#         'retry_statuses': [413, 429, 503, 504],
-#         'backoff_factor': 0.5
-#     }
-#   }
+#{
+#  "horizon": {
+#    "uri": "https://horizon-playground.kininfrastructure.com",
+#    "online": true,
+#    "error": null
+#  },
+#  "sdk_version": "2.0.0",
+#  "environment": "PLAYGROUND",
+#  "kin_asset": {
+#    "code": "KIN",
+#    "issuer": "GBC3SG6NGTSZ2OMH3FFGB7UVRQWILW367U4GSOOF4TFSZONV42UJXUH7"
+#  },
+#  "transport": {
+#    "pool_size": 10,
+#    "request_timeout": 11,
+#    "backoff_factor": 0.5,
+#    "num_retries": 5,
+#    "retry_statuses": [
+#      503,
+#      413,
+#      429,
+#      504
+#    ]
+#  }
+#}
 ```
 - `sdk_version` - the version of this SDK.
 - `address` - the SDK wallet address.
-- `channels`:
-  - `all` - the number of channels the SDK was configured with.
-  - `free` - the number of currently free channels. If the number is consistently close to zero, it means the channels
-             are always busy, and you might consider adding more channels or more servers.
 - `kin_asset` - the KIN asset the SDK was configured with.
-- `network` - the network the SDK was configured with (PUBLIC/TESTNET/CUSTOM).
+- `environment` - the environment the SDK was configured with (TEST/PROD/CUSTOM).
 - `horizon`:
   - `uri` - the endpoint URI of the Horizon server.
   - `online` - Horizon online status.
@@ -233,25 +180,120 @@ print status
   - `backoff_factor` - a backoff factor to apply between retry attempts.
 
 
+### Friendbot
+```python
+# If a friendbot endpoint is provided when creating the environment (it is provided with the TEST_ENVIRONMENT),  
+# you will be able to use the friendbot method to call a service that will create an account for you
+
+client.friendbot('address')
+```
+
+### Activate Account
+**This is the only KinClient method that requires a seed**
+```python
+client.activate_account('seed')
+```
+
+
+## Account Usage
+
+### Getting Wallet Details
+```python
+# Get the public address of my wallet account. The address is derived from the seed the account was inited with.
+address = account.get_public_address()
+```
+
+### Creating a New Account
+```python
+# create a new account prefunded with MIN_ACCOUNT_BALANCE XLM
+tx_hash = account.create_account('address')
+
+# create a new account prefunded with a specified amount of XLM.
+tx_hash = account.create_account('address', starting_balance=1000)
+
+# a text memo can also be provided:
+tx_hash = account.create_account('address', starting_balance=1000,memo_text='Account creation example')
+```
+
+### Sending Currency
+```python
+# send XLM
+tx_hash = account.send_xlm('address', 100, memo_text='order123')
+
+# send KIN
+tx_hash = account.send_kin('address', 1000, memo_text='order123')
+```
+
+### Build/Submit transactions
+While the previous methods build and send the transaction for you, there is another way to send transactions with two steps
+
+Step 1: Build the transaction
+```python
+tx = account.build_send_kin('address',100,memo_text='order123')
+```
+Step 2: Submit the transaction
+```python
+tx_hash = account.submit_transaction(tx)
+```
+
+This can be useful for some advanced use cases, since the 'build' methods return a 'kin.Transaction' object.
+The transaction object can give you the tx_hash of the transaction before sending it, and can be used to perform advanced operations such as multi-signature/multi-operations **(Not implemented yet)**
+
+**Pay attention** - Building a tx locks a channel for this specific transaction, submiting it releases that lock. However if you wish to build a tx, but decide not to submit it, make sure to release this lock with
+```python
+tx.release()
+```
+
+## Keypair
+These set of methods allow you to create new keypairs.
+
+### Create a new keypair
+```python
+from kin import Keypair
+
+my_keypair = Keypair()
+# Or, you can create a keypair from an existing seed
+my_keypair = Keypair('seed')
+```
+
+### Getting the public address from a seed
+```python
+public_address = Keypair.address_from_seed('seed')
+```
+
+### Generate a new random seed
+```python
+seed = Keypair.generate_seed()
+```
+
+### Generate a deterministic seed
+```python
+# Given the same seed and salt, the same seed will always be generated
+seed = Keypair.generate_hd_seed('seed','salt')
+```
+
+### Generate a mnemonic seed:
+**Not implemented yet**
+
 ## Limitations
 
 One of the most sensitive points in Stellar is [transaction sequence](https://www.stellar.org/developers/guides/concepts/transactions.html#sequence-number).
 In order for a transaction to be submitted successfully, this number should be correct. However, if you have several 
 SDK instances, each working with the same wallet account or channel accounts, sequence collisions will occur. 
-Though the SDK makes an effort to retrieve the correct sequence and retry the transaction, this is not a recommended practice. 
-Instead, we highly recommend to keep only one SDK instance in your application, having unique channel accounts.
+ 
+We highly recommend to keep only one KinAccount instance in your application, having unique channel accounts.
 Depending on the nature of your application, here are our recommendations:
 
 1. You have a simple (command line) script that sends transactions on demand or only once in a while. 
 In this case, the SDK can be instantiated with only the wallet key, the channel accounts are not necessary.
 
 2. You have a single application server that should handle a stream of concurrent transactions. In this case, 
-you need to make sure that only a single instance of SDK is initialized with multiple channel accounts. 
+you need to make sure that only a single instance of a KinAccount initialized with multiple channel accounts. 
 This is an important point, because if you use a standard `gunicorn/Flask` setup for example, gunicorn will spawn 
-several *worker processes*, each containing your Flask application, each containing your SDK instance, so mutliple
-SDK instances will exist, having the same channel accounts. The solution is to use gunicorn *thread workers* instead of
+several *worker processes*, each containing your Flask application, each containing your KinAccount instance, so multiple
+KinAccount instances will exist, having the same channel accounts. The solution is to use gunicorn *thread workers* instead of
 *process workers*, for example run gunicorn with `--threads` switch instead of `--workers` switch, so that only 
-one Flask application is created, containing a single SDK instance.
+one Flask application is created, containing a single KinAccount instance.
 
 3. You have a number of load-balanced application servers. Here, each application server should a) have the setup outlined
 above, and b) have its own channel accounts. This way, you ensure you will not have any collisions in your transaction
@@ -264,4 +306,5 @@ The code is currently released under [MIT license](LICENSE).
 
 ## Contributing
 See [CONTRIBUTING.md](CONTRIBUTING.md) for SDK contributing guidelines. 
+
 

@@ -1,76 +1,64 @@
 import pytest
 
-from stellar_base.keypair import Keypair
 from kin.blockchain.builder import Builder
-from kin.blockchain.horizon import Horizon, HORIZON_LIVE, HORIZON_TEST
+from kin.blockchain.horizon import Horizon
 
 
 def test_create_fail():
-    with pytest.raises(Exception, match='either secret or address must be provided'):
-        Builder()
     with pytest.raises(Exception, match='invalid secret key'):
-        Builder(secret='bad')
+        Builder(secret='bad',network=None, horizon=None)
     with pytest.raises(Exception, match='invalid address'):
-        Builder(address='bad')
+        Builder(address='bad', network=None, horizon=None)
 
 
-def test_create_default():
-    keypair = Keypair.random()
+def test_create():
+    seed = 'SASKOJJOG7MLXAWJGE6QNCWH5ZIBH5LWQCXPRGDHUKUOB4RBRWXXFZ2T'
+    address = 'GCAZ7QXD6UJ5NOVWYTNKLNP36DPJZMRO67LQ4X5CH2IHY3OG5QGECGYQ'
 
     # with secret
-    builder = Builder(secret=keypair.seed())
+    builder = Builder(secret=seed, network=None, horizon=None)
     assert builder
-    assert builder.key_pair.seed() == keypair.seed()
-    assert builder.address == keypair.address().decode()
-    assert builder.network == 'PUBLIC'
-    assert builder.horizon
-    assert builder.horizon.horizon_uri == HORIZON_LIVE
+    assert builder.key_pair.seed().decode() == seed
+    assert builder.address == address
 
     # with address
-    builder = Builder(address=keypair.address().decode())
+    builder = Builder(address=address, network=None, horizon=None)
     assert builder
-    assert builder.address == keypair.address().decode()
-    assert builder.network == 'PUBLIC'
-    assert builder.horizon
-    assert builder.horizon.horizon_uri == HORIZON_LIVE
-
-    # on testnet
-    builder = Builder(secret=keypair.seed(), network='TESTNET')
-    assert builder
-    assert builder.network == 'TESTNET'
-    assert builder.horizon
-    assert builder.horizon.horizon_uri == HORIZON_TEST
+    assert builder.address == address
 
 
-def test_create_custom(test_sdk):
-    keypair = Keypair.random()
+def test_create_custom(test_client):
+    seed = 'SASKOJJOG7MLXAWJGE6QNCWH5ZIBH5LWQCXPRGDHUKUOB4RBRWXXFZ2T'
+    address = 'GCAZ7QXD6UJ5NOVWYTNKLNP36DPJZMRO67LQ4X5CH2IHY3OG5QGECGYQ'
 
-    builder = Builder(secret=keypair.seed(), horizon_uri='custom', network='custom')
-    assert builder
-    assert builder.horizon
-    assert builder.horizon.horizon_uri == 'custom'
-    assert builder.network == 'CUSTOM'
-
-    # with custom horizon
     horizon = Horizon()
-    builder = Builder(secret=keypair.seed(), horizon=horizon)
+    builder = Builder(secret=seed, horizon=horizon, network='custom')
+    assert builder
+    assert builder.horizon
+    assert builder.network == 'custom'
     assert builder
     assert builder.horizon == horizon
 
     # with horizon fixture
-    builder = Builder(secret=test_sdk.base_keypair.seed(), horizon=test_sdk.horizon, network=test_sdk.network)
+    builder = Builder(secret=seed,
+                      horizon=test_client.horizon,
+                      network=test_client.environment.name)
     assert builder
 
 
 @pytest.fixture(scope='session')
-def test_builder(test_sdk):
-    builder = Builder(secret=test_sdk.base_keypair.seed(), horizon=test_sdk.horizon, network=test_sdk.network)
+def test_builder(test_client, test_account):
+    builder = Builder(secret=test_account.keypair.secret_seed,
+                      horizon=test_account.horizon,
+                      network=test_client.environment.name)
     assert builder
     return builder
 
 
 def test_sign(test_builder):
-    test_builder.append_create_account_op(Keypair.random().address().decode(), 100)
+    address = 'GCAZ7QXD6UJ5NOVWYTNKLNP36DPJZMRO67LQ4X5CH2IHY3OG5QGECGYQ'
+
+    test_builder.append_create_account_op(address, 100)
     assert len(test_builder.ops) == 1
     test_builder.sign()
     assert test_builder.te
@@ -89,8 +77,10 @@ def test_get_sequence(test_builder):
 
 
 def test_next(test_builder):
+    address = 'GCAZ7QXD6UJ5NOVWYTNKLNP36DPJZMRO67LQ4X5CH2IHY3OG5QGECGYQ'
+
     sequence = test_builder.get_sequence()
-    test_builder.append_create_account_op(Keypair.random().address().decode(), 100)
+    test_builder.append_create_account_op(address, 100)
     test_builder.sign()
     test_builder.next()
     assert not test_builder.tx

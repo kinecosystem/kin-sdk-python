@@ -75,8 +75,8 @@ class SimplifiedOperation:
         if op_data.type == 'payment':
             # Raise error if asset is not KIN or XLM
             if op_data.asset_type != 'native':
-                if op_data.asset_code != kin_asset.asset_code \
-                        or op_data.asset_issuer != kin_asset.asset_issuer:
+                if op_data.asset_code != kin_asset.code \
+                        or op_data.asset_issuer != kin_asset.issuer:
                     raise CantSimplifyError('Cant simplify operation with asset {} issued by {}'.
                                             format(op_data.asset_code, op_data.asset_issuer))
 
@@ -86,8 +86,8 @@ class SimplifiedOperation:
             self.type = OperationTypes.PAYMENT
         elif op_data.type == 'change_trust':
             # Raise error if asset is not KIN
-            if op_data.asset_code != kin_asset.asset_code \
-                    or op_data.asset_issuer != kin_asset.asset_issuer:
+            if op_data.asset_code != kin_asset.code \
+                    or op_data.asset_issuer != kin_asset.issuer:
                 raise CantSimplifyError('Cant simplify operation with asset {} issued by {}'.
                                         format(op_data.asset_code, op_data.asset_issuer))
 

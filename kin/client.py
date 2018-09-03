@@ -31,9 +31,6 @@ class KinClient(object):
 
         :return: An instance of the KinClient.
         :rtype: :class:`KinErrors.KinClient`
-
-        :raises: ValueError: if some of the configuration parameters are invalid.
-        :raises: :class:`KinErrors.NetworkError`: if there is a problem connecting to Horizon.
         """
 
         self.environment = environment
@@ -212,7 +209,7 @@ class KinClient(object):
             return False
         if source != tx.source or destination != operation.destination or amount != operation.amount:
             return False
-        if check_memo and memo != operation.memo:
+        if check_memo and memo != tx.memo:
             return False
 
         return True
@@ -298,17 +295,7 @@ class KinClient(object):
             if self.get_account_status(address) == AccountStatus.NOT_CREATED:
                 raise KinErrors.AccountNotFoundError(addresses)
 
-        # Currently, due to nonstandard SSE implementation in Horizon, using cursor=now will hang.
-        # Instead, we determine the cursor ourselves.
-        params = {}
-        if len(addresses) == 1:
-            reply = self.horizon.account_transactions(addresses[0], params={'order': 'desc', 'limit': 2})
-        else:
-            reply = self.horizon.transactions(params={'order': 'desc', 'limit': 2})
-
-        if len(reply['_embedded']['records']) == 2:
-            cursor = TransactionData(reply['_embedded']['records'][1], strict=False).paging_token
-            params = {'cursor': cursor}
+        params = {'cursor': 'now'}
 
         # make synchronous SSE request (will raise errors in the current thread)
         if len(addresses) == 1:
@@ -320,6 +307,8 @@ class KinClient(object):
         def event_processor(stop_event):
             import json
             for event in events:
+                if stop_event.is_set():
+                    return
                 if event.event != 'message':
                     continue
                 try:
@@ -339,6 +328,14 @@ class KinClient(object):
                         if op_data.asset_code != self.kin_asset.code or op_data.asset_issuer \
                                 != self.kin_asset.issuer:
                             continue
+
+                        try:
+                            tx_data = SimplifiedTransaction(tx_data,self.kin_asset)
+                        except KinErrors.CantSimplifyError:
+                            break
+                        if tx_data.operation.type is not OperationTypes.PAYMENT:
+                            break
+
                         if len(addresses) == 1:
                             callback_fn(addresses[0], tx_data)
                             break

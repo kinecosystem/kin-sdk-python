@@ -20,6 +20,7 @@ def setup():
     docker_environment = Environment('DOCKER', 'http://localhost:8008',
                                      'private testnet',issuer_address,'http://localhost:8001')
 
+    print('Testing with environment:' ,docker_environment)
     return Struct(issuer_address=issuer_address,
                   issuer_seed=issuer_seed,
                   environment=docker_environment)
@@ -28,6 +29,7 @@ def setup():
 @pytest.fixture(scope='session')
 def test_client(setup):
     # Create a base KinClient
+    print('Created a base KinClient')
     return KinClient(setup.environment)
 
 
@@ -39,7 +41,10 @@ def test_account(setup, test_client):
     sdk_seed = 'SBKI7MEF62NHHH3AOXBHII46K2FD3LVH63FYHUDLTBUYT3II6RAFLZ7B'
 
     root_account = test_client.kin_account(setup.issuer_seed)
-    root_account.create_account(sdk_address)
+    root_account.create_account(sdk_address, 10000)
+    print('Created the base kin account')
     test_client.activate_account(sdk_seed)
+    print('Base kin account activated')
     root_account.send_kin(sdk_address,1000000)
+    print('Funded the base kin account')
     return test_client.kin_account(sdk_seed)

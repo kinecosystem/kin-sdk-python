@@ -4,6 +4,8 @@ from hashlib import sha256
 
 from stellar_base.keypair import Keypair as BaseKeypair
 
+from .utils import is_valid_secret_key
+
 
 class Keypair:
     # Keypair holds the public address and secret seed.
@@ -13,7 +15,9 @@ class Keypair:
         :param seed: (Optional) The secret seed of an account
         """
         self.secret_seed = seed or self.generate_seed()
-        self.public_address = Keypair.address_from_seed(seed)
+        if not is_valid_secret_key(self.secret_seed):
+            raise ValueError('invalid seed {}'.format(self.secret_seed))
+        self.public_address = Keypair.address_from_seed(self.secret_seed)
 
     @staticmethod
     def address_from_seed(seed):

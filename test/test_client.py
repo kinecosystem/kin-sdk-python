@@ -200,14 +200,14 @@ def test_monitor_accounts_kin_payments_single(test_client, test_account):
     # pay from sdk to the account
     hash2 = test_account.send_kin(address, 2)
     hash3 = test_account.send_kin(address, 3)
-    sleep(5)
+    sleep(15)
     # stop monitoring
     stop_event.set()
 
     # pay again
     test_account.send_kin(address, 4)
     
-    sleep(10)
+    sleep(15)
     assert len(txs_found) == 2
 
     # check collected transactions
@@ -242,6 +242,7 @@ def test_monitor_accounts_kin_payments_multiple(test_client, test_account):
     # pay from sdk to the account
     hash1 = test_account.send_kin(address1, 1)
     hash2 = test_account.send_kin(address2, 1)
+    sleep(15)
     # stop monitoring
     stop_event.set()
 

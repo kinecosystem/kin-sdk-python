@@ -39,7 +39,7 @@ Custom environment can also be used:
 ```python
 from kin import Environment
 
-MY_CUSTOM_ENVIRONMENT = Environemnt('name','horizon endpoint','network passphrase','kin issuer',optional - 'friendbot url')
+MY_CUSTOM_ENVIRONMENT = Environemnt('name','horizon endpoint','network passphrase','kin issuer','friendbot url'(optional))
 ```
 
 Once you have a KinClient, you can use it to get a KinAccount object: 
@@ -112,6 +112,20 @@ tx_data = sdk.get_transaction_data(tx_hash, simple=True/False)
 # 5. Its operation type is not one of 'Payment'/'Activation'/'Create account'.
 
 # Given the use case of our blockchain, and the tools that we currently provied to interact with it, these conditions should not occur.
+```
+
+### Verify Kin Payment
+This method provides an easy way to verify that a transaction is what you expect it to be  
+```python
+client.verify_kin_payment('tx_hash','sender','destination',amount,memo(optional),check_memo=True/False)
+
+#Lets say that addr1 payed 15 KIN to add2, with the memo 'Enjoy!'
+
+client.verify_kin_payment('tx_hash','addr1','addr2',15,'Enjoy!',True) >> True
+client.verify_kin_payment('tx_hash','addr1','addr2',15,'Hello',True) >> False
+client.verify_kin_payment('tx_hash','addr1','addr2',15) >> True
+client.verify_kin_payment('tx_hash','addr1','addr2',10) >> False
+client.verify_kin_payment('tx_hash','addr1','addr3',10) >> False
 ```
 
 ### Kin Payment Monitoring

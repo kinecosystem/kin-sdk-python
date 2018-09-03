@@ -191,6 +191,7 @@ def test_monitor_accounts_kin_payments_single(test_client, test_account):
 
     # pay from sdk to account
     hash1 = test_account.send_kin(address, 1)
+    sleep(10)
 
     # start monitoring
     stop_event = test_client.monitor_accounts_payments([address], account_tx_callback)
@@ -207,8 +208,6 @@ def test_monitor_accounts_kin_payments_single(test_client, test_account):
     test_account.send_kin(address, 4)
     
     sleep(10)
-    for i in txs_found:
-        print(i.id)
     assert len(txs_found) == 2
 
     # check collected transactions

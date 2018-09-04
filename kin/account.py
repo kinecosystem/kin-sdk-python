@@ -12,7 +12,7 @@ from .blockchain.channel_manager import ChannelManager
 from . import errors as KinErrors
 from .transactions import Transaction
 from .blockchain.errors import TransactionResultCode, HorizonErrorType , HorizonError
-from .config import MIN_ACCOUNT_BALANCE, SDK_USER_AGENT
+from .config import MIN_ACCOUNT_BALANCE, SDK_USER_AGENT, DEFAULT_FEE, MEMO_CAP
 from .blockchain.utils import is_valid_secret_key, is_valid_address
 
 import logging
@@ -34,7 +34,7 @@ class KinAccount:
         # check that sdk wallet account exists and is activated, issuer should continue without activation
         if self._client.get_account_status(self.keypair.public_address) != AccountStatus.ACTIVATED and \
                         self.keypair.public_address != self._client.kin_asset.issuer:
-            raise KinErrors.AccountNotActivatedError
+            raise KinErrors.AccountNotActivatedError(self.keypair.public_address)
 
         if channels is not None and channel_secret_keys is not None:
             raise ValueError("Account cannot be initialized with both 'channels'"
@@ -49,7 +49,7 @@ class KinAccount:
                 # Check that channel accounts exists (they do not have to be activated).
                 channel_address = Keypair.address_from_seed(channel_key)
                 if self._client.get_account_data(channel_address) == AccountStatus.NOT_CREATED:
-                    raise KinErrors.AccountNotFoundError
+                    raise KinErrors.AccountNotFoundError(channel_address)
             self.channel_secret_keys = channel_secret_keys
 
         elif channels is not None:
@@ -70,7 +70,7 @@ class KinAccount:
 
             # Verify that there is enough XLM to create the channels
             # Balance should be at least (Number of channels + yourself) * (Minimum account balance + fees)
-            if (len(self.channel_secret_keys) + 1) * (MIN_ACCOUNT_BALANCE + 0.00001) > \
+            if (len(self.channel_secret_keys) + 1) * (MIN_ACCOUNT_BALANCE + DEFAULT_FEE) > \
                     base_account.get_balances()['XLM']:
                 raise KinErrors.LowBalanceError('The base account does not have enough XLM to create the channels')
 
@@ -124,14 +124,14 @@ class KinAccount:
         If not provided, a default MIN_ACCOUNT_BALANCE will be used.
 
         # TODO: might want to limit this if we use tx_coloring
-        :param str memo_text: (optional) a text to put into transaction memo, up to 28 chars.
+        :param str memo_text: (optional) a text to put into transaction memo, up to MEMO_CAP chars.
 
         :return: the hash of the transaction
         :rtype: str
 
         :raises: ValueError: if the supplied address has a wrong format.
         :raises: :class:`KinErrors.AccountExistsError`: if the account already exists.
-        :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than 28 characters
+        :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than MEMO_CAP characters
         """
         tx = self.build_create_account(address, starting_balance=starting_balance, memo_text=memo_text)
         return self.submit_transaction(tx)
@@ -153,6 +153,7 @@ class KinAccount:
         :raises: ValueError: if the amount is not positive.
         :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
         :raises: :class:`KinErrors.LowBalanceError`: if there is not enough XLM to send and pay transaction fee.
+        :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than MEMO_CAP characters
         """
         tx = self._build_send_asset(Asset.native(), address, amount, memo_text)
         return self.submit_transaction(tx)
@@ -175,6 +176,7 @@ class KinAccount:
         :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
         :raises: :class:`KinErrors.AccountNotActivatedError`: if the account is not activated.
         :raises: :class:`KinErrors.LowBalanceError`: if there is not enough KIN and XLM to send and pay transaction fee.
+        :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than MEMO_CAP characters
         """
         tx = self._build_send_asset(self._client.kin_asset, address, amount, memo_text)
         return self.submit_transaction(tx)
@@ -188,19 +190,19 @@ class KinAccount:
         If not provided, a default MIN_ACCOUNT_BALANCE will be used.
 
         # TODO: might want to limit this if we use tx_coloring
-        :param str memo_text: (optional) a text to put into transaction memo, up to 28 chars.
+        :param str memo_text: (optional) a text to put into transaction memo, up to MEMO_CAP chars.
 
         :return: a transaction object
         :rtype: :class: `Kin.Transaction`
 
         :raises: ValueError: if the supplied address has a wrong format.
-        :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than 28 characters
+        :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than MEMO_CAP characters
         """
         if not is_valid_address(address):
             raise ValueError('invalid address: {}'.format(address))
 
-        if memo_text is not None and len(memo_text) > 28:
-            raise KinErrors.MemoTooLongError('{} > 28'.format(len(memo_text)))
+        if memo_text is not None and len(memo_text) > MEMO_CAP:
+            raise KinErrors.MemoTooLongError('{} > {}'.format(len(memo_text),MEMO_CAP))
 
         # Build the transaction and send it.
 
@@ -309,8 +311,8 @@ class KinAccount:
         if not is_valid_address(address):
             raise ValueError('invalid address: {}'.format(address))
 
-        if memo_text is not None and len(memo_text) > 28:
-            raise KinErrors.MemoTooLongError('{} > 28'.format(len(memo_text)))
+        if memo_text is not None and len(memo_text) > MEMO_CAP:
+            raise KinErrors.MemoTooLongError('{} > {}'.format(len(memo_text), MEMO_CAP))
 
         if amount <= 0:
             raise ValueError('amount must be positive')

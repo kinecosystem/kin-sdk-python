@@ -220,7 +220,7 @@ class SDK(object):
         """
         return self._get_account_asset_balance(address, self.kin_asset)
 
-    def create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, memo_text=None):
+    def create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, memo_text=None, activate=False):
         """Create an account identified by the provided address.
 
         :param str address: the address of the account to create.
@@ -229,6 +229,8 @@ class SDK(object):
             MIN_ACCOUNT_BALANCE will be used.
 
         :param str memo_text: (optional) a text to put into transaction memo.
+
+        :param boolean activate: (optional) should the created account be activated
 
         :return: transaction hash
         :rtype: str
@@ -246,7 +248,8 @@ class SDK(object):
         try:
             reply = self.channel_manager.send_transaction(lambda builder:
                                                           partial(builder.append_create_account_op, address,
-                                                                  starting_balance),
+                                                                  starting_balance,trustline=activate,
+                                                                  issuer=self.kin_asset.issuer,asset_code=self.kin_asset.code),
                                                           memo_text=memo_text)
             return reply['hash']
         except Exception as e:

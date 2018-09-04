@@ -97,7 +97,7 @@ AccountStatuses.ACTIVATED
 # Get information about a specific transaction
 # The 'simple' flag is enabled by defualt, and dectates what object should be returned
 # For simple=False: A 'kin.TransactionData' object will return,
-# containig many fields that may be confusing and of no use to the user.
+# containing many fields that may be confusing and of no use to the user.
 
 # For simple=True: A 'kin.SimpleTransaction' object will return,
 # containing only the data that the user will need.
@@ -152,7 +152,9 @@ stop_event.set()
 The handy `get_config` method will return some parameters the client was configured with, along with Horizon status:
 ```python
 status = client.get_config()
-print status
+print (status)
+```
+```json
 #{
 #  "horizon": {
 #    "uri": "https://horizon-playground.kininfrastructure.com",

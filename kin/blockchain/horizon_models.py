@@ -4,7 +4,7 @@
 
 
 from schematics.models import Model
-from schematics.types import IntType, BooleanType, DecimalType, StringType, UTCDateTimeType
+from schematics.types import IntType, BooleanType, StringType, UTCDateTimeType, FloatType
 from schematics.types.compound import ModelType, ListType, DictType
 
 
@@ -43,8 +43,8 @@ class AccountData(PModel):
         asset_type = StringType()
         asset_code = StringType()
         asset_issuer = StringType()
-        balance = DecimalType(default=0)
-        limit = DecimalType()
+        balance = FloatType(default=0)
+        limit = FloatType()
 
     class Signer(PModel):
         public_key = StringType()
@@ -73,12 +73,15 @@ class OperationData(PModel):
     asset_type = StringType()
     asset_code = StringType()
     asset_issuer = StringType()
-    limit = DecimalType()
+    limit = FloatType()
     trustor = StringType()
     trustee = StringType()
     from_address = StringType(serialized_name='from')
     to_address = StringType(serialized_name='to')
-    amount = DecimalType()
+    amount = FloatType()
+    #  account is the created account in create_account op
+    account = StringType()
+    starting_balance = FloatType()
 
 
 class TransactionData(PModel):
@@ -92,7 +95,7 @@ class TransactionData(PModel):
     ledger = StringType()
     memo_type = StringType()
     memo = StringType()
-    fee_paid = DecimalType()
+    fee_paid = FloatType()
     signatures = ListType(StringType, default=[])
     paging_token = StringType()
     envelope_xdr = StringType()

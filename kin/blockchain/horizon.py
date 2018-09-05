@@ -55,7 +55,8 @@ class Horizon(object):
         self.backoff_factor = backoff_factor
 
         # adding 504 to the list of statuses to retry
-        self.status_forcelist = list(Retry.RETRY_AFTER_STATUS_CODES).append(504)
+        self.status_forcelist = list(Retry.RETRY_AFTER_STATUS_CODES)
+        self.status_forcelist.append(504)
 
         # configure standard session
 

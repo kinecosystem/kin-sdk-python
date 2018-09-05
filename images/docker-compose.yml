@@ -1,0 +1,128 @@
+version: "3"
+
+services:
+  stellar-core-1:
+    image: kinecosystem/stellar-core:9.2.0
+    ports:
+      - 11626:11626
+    links:
+      - stellar-core-1-db
+      - stellar-core-2
+    volumes:
+      - ./volumes/stellar-core-1/opt/stellar-core:/opt/stellar-core
+      - ./volumes/stellar-core-1/tmp/stellar-core:/tmp/stellar-core
+    restart: on-failure
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
+        max-file: "3"
+
+  stellar-core-1-db:
+    image: postgres:10-alpine
+    environment:
+      POSTGRES_USER: stellar
+      POSTGRES_PASSWORD: "12345678"
+      POSTGRES_DB: core
+
+  stellar-core-2:
+    image: kinecosystem/stellar-core:9.2.0
+    ports:
+      - 11627:11626
+    links:
+      - stellar-core-2-db
+    volumes:
+      - ./volumes/stellar-core-2/opt/stellar-core:/opt/stellar-core
+      - ./volumes/stellar-core-2/tmp/stellar-core:/tmp/stellar-core
+    restart: on-failure
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
+        max-file: "3"
+
+  stellar-core-2-db:
+    image: postgres:10-alpine
+    environment:
+      POSTGRES_USER: stellar
+      POSTGRES_PASSWORD: "12345678"
+      POSTGRES_DB: core
+
+  horizon:
+    image: kinecosystem/horizon:v0.12.3-control-db-connection-count
+    # using nginx-proxy
+    ports:
+      - 8000:8000
+    links:
+      - horizon-db
+      - stellar-core-1
+      - stellar-core-1-db
+    volumes:
+      - ./volumes/horizon/opt/horizon:/opt/horizon
+    environment:
+      # available configuration visible at:
+      # https://github.com/stellar/horizon/blob/v0.11.1/src/github.com/stellar/horizon/cmd/horizon/main.go#L33
+      #
+      NETWORK_PASSPHRASE: private testnet
+      DATABASE_URL: postgres://stellar:12345678@horizon-db/horizon?sslmode=disable
+      HORIZON_DB_MAX_OPEN_CONNECTIONS: "24"
+      STELLAR_CORE_DATABASE_URL: postgres://stellar:12345678@stellar-core-1-db/core?sslmode=disable
+      STELLAR_CORE_URL: http://stellar-core-1:11626
+
+      LOG_LEVEL: info
+      INGEST: "true"
+      PER_HOUR_RATE_LIMIT: "999999"
+      # https://www.stellar.org/developers/horizon/reference/admin.html#managing-storage-for-historical-data
+      HISTORY_RETENTION_COUNT: "200000"
+
+      # versions < 0.12.2
+      # FRIENDBOT_SECRET: "${ROOT_ACCOUNT_SEED}"
+
+      # versions >= 0.12.2
+      FRIENDBOT_URL: http://friendbot:8000
+
+    restart: on-failure
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
+        max-file: "3"
+
+  horizon-db:
+    image: postgres:10-alpine
+    environment:
+      POSTGRES_USER: stellar
+      POSTGRES_PASSWORD: "12345678"
+      POSTGRES_DB: horizon
+
+  horizon-nginx-proxy:
+    image: kinecosystem/horizon-nginx-proxy:85c6b72
+    ports:
+      - 8008:80
+    links:
+      - horizon
+    environment:
+      PROXY_LISTEN_PORT: 80
+      PROXY_READ_TIMEOUT: 10
+      PROXY_PASS_URL: http://horizon:8000
+      # Set host for Horizon's response links, leave as $$host for the links to show the original request host
+      HOST: $$host
+
+  # friendbot was originally part of horizon
+  # but extracted to its own microservice since horizon v0.12.2
+  friendbot:
+    image: kinecosystem/friendbot:36bb484
+    ports:
+      - 8001:8000
+    links:
+      - horizon
+    volumes:
+      - ./volumes/friendbot/opt/friendbot:/opt/friendbot
+    environment:
+      ROOT_ACCOUNT_SEED: "${ROOT_ACCOUNT_SEED}"
+    restart: on-failure
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
+        max-file: "3"

@@ -6,8 +6,6 @@ from stellar_base.builder import Builder as BaseBuilder
 from stellar_base.keypair import Keypair
 from stellar_base.memo import NoneMemo
 
-from .horizon import HORIZON_LIVE, HORIZON_TEST
-from .horizon import Horizon
 from .utils import is_valid_address, is_valid_secret_key
 
 
@@ -15,7 +13,7 @@ class Builder(BaseBuilder):
     """
     This class overrides :class:`stellar_base.builder` to provide additional functionality.
     """
-    def __init__(self, secret=None, address=None, horizon=None, horizon_uri=None, network=None):
+    def __init__(self, network, horizon, secret=None, address=None):
         if secret:
             if not is_valid_secret_key(secret):
                 raise ValueError('invalid secret key')
@@ -31,14 +29,8 @@ class Builder(BaseBuilder):
 
         # custom overrides
 
-        self.network = network.upper() if network else 'PUBLIC'
-
-        if horizon:
-            self.horizon = horizon
-        elif horizon_uri:
-            self.horizon = Horizon(horizon_uri)
-        else:
-            self.horizon = Horizon(HORIZON_LIVE) if self.network == 'PUBLIC' else Horizon(HORIZON_TEST)
+        self.network = network
+        self.horizon = horizon
 
     def clear(self):
         """"Clears the builder so it can be reused."""

@@ -1,12 +1,11 @@
 from requests.exceptions import RequestException
 
-import kin
-from kin.errors import translate_error, translate_horizon_error
-from kin.stellar.errors import *
+from kin import KinErrors
+from kin.blockchain.errors import *
 
 
 def test_sdk_error():
-    e = kin.SdkError(message='message', error_code=1, extra={'key': 'value'})
+    e = KinErrors.SdkError(message='message', error_code=1, extra={'key': 'value'})
     assert e.message == 'message'
     assert e.error_code == 1
     assert e.extra == {'key': 'value'}
@@ -14,12 +13,12 @@ def test_sdk_error():
 
 
 def test_translate_error():
-    e = translate_error(RequestException('error'))
-    assert isinstance(e, kin.NetworkError)
+    e = KinErrors.translate_error(RequestException('error'))
+    assert isinstance(e, KinErrors.NetworkError)
     assert e.extra['internal_error'] == 'error'
 
-    e = translate_error(Exception('error'))
-    assert isinstance(e, kin.InternalError)
+    e = KinErrors.translate_error(Exception('error'))
+    assert isinstance(e, KinErrors.InternalError)
     assert e.extra['internal_error'] == 'error'
 
 
@@ -28,30 +27,30 @@ def test_translate_horizon_error():
 
     fixtures = [
         # RequestError
-        [HorizonErrorType.BAD_REQUEST, kin.RequestError, 'bad request', {}],
-        [HorizonErrorType.FORBIDDEN, kin.RequestError, 'bad request', {}],
-        [HorizonErrorType.NOT_ACCEPTABLE, kin.RequestError, 'bad request', {}],
-        [HorizonErrorType.UNSUPPORTED_MEDIA_TYPE, kin.RequestError, 'bad request', {}],
-        [HorizonErrorType.NOT_IMPLEMENTED, kin.RequestError, 'bad request', {}],
-        [HorizonErrorType.BEFORE_HISTORY, kin.RequestError, 'bad request', {}],
-        [HorizonErrorType.STALE_HISTORY, kin.RequestError, 'bad request', {}],
-        [HorizonErrorType.TRANSACTION_MALFORMED, kin.RequestError, 'bad request', {}],
+        [HorizonErrorType.BAD_REQUEST, KinErrors.RequestError, 'bad request', {}],
+        [HorizonErrorType.FORBIDDEN, KinErrors.RequestError, 'bad request', {}],
+        [HorizonErrorType.NOT_ACCEPTABLE, KinErrors.RequestError, 'bad request', {}],
+        [HorizonErrorType.UNSUPPORTED_MEDIA_TYPE, KinErrors.RequestError, 'bad request', {}],
+        [HorizonErrorType.NOT_IMPLEMENTED, KinErrors.RequestError, 'bad request', {}],
+        [HorizonErrorType.BEFORE_HISTORY, KinErrors.RequestError, 'bad request', {}],
+        [HorizonErrorType.STALE_HISTORY, KinErrors.RequestError, 'bad request', {}],
+        [HorizonErrorType.TRANSACTION_MALFORMED, KinErrors.RequestError, 'bad request', {}],
 
         # ResourceNotFoundError
-        [HorizonErrorType.NOT_FOUND, kin.ResourceNotFoundError, 'resource not found', {}],
+        [HorizonErrorType.NOT_FOUND, KinErrors.ResourceNotFoundError, 'resource not found', {}],
 
         # ServerError
-        [HorizonErrorType.RATE_LIMIT_EXCEEDED, kin.ServerError, 'server error', {}],
-        [HorizonErrorType.SERVER_OVER_CAPACITY, kin.ServerError, 'server error', {}],
+        [HorizonErrorType.RATE_LIMIT_EXCEEDED, KinErrors.ServerError, 'server error', {}],
+        [HorizonErrorType.SERVER_OVER_CAPACITY, KinErrors.ServerError, 'server error', {}],
 
         # InternalError
-        [HorizonErrorType.INTERNAL_SERVER_ERROR, kin.InternalError, 'internal error', {}],
-        ['unknown', kin.InternalError, 'internal error', {'internal_error': 'unknown horizon error'}],
+        [HorizonErrorType.INTERNAL_SERVER_ERROR, KinErrors.InternalError, 'internal error', {}],
+        ['unknown', KinErrors.InternalError, 'internal error', {'internal_error': 'unknown horizon error'}],
     ]
 
     for fixture in fixtures:
         err_dict['type'] = HORIZON_NS_PREFIX + fixture[0]
-        e = translate_horizon_error(HorizonError(err_dict))
+        e = KinErrors.translate_horizon_error(HorizonError(err_dict))
         assert isinstance(e, fixture[1])
         assert e.error_code == fixture[0]
         assert e.message == fixture[2]
@@ -64,27 +63,27 @@ def test_translate_transaction_error():
 
     fixtures = [
         # RequestError
-        [TransactionResultCode.TOO_EARLY, kin.RequestError, 'bad request', {}],
-        [TransactionResultCode.TOO_LATE, kin.RequestError, 'bad request', {}],
-        [TransactionResultCode.MISSING_OPERATION, kin.RequestError, 'bad request', {}],
-        [TransactionResultCode.BAD_AUTH, kin.RequestError, 'bad request', {}],
-        [TransactionResultCode.BAD_AUTH_EXTRA, kin.RequestError, 'bad request', {}],
-        [TransactionResultCode.BAD_SEQUENCE, kin.RequestError, 'bad request', {}],
-        [TransactionResultCode.INSUFFICIENT_FEE, kin.RequestError, 'bad request', {}],
+        [TransactionResultCode.TOO_EARLY, KinErrors.RequestError, 'bad request', {}],
+        [TransactionResultCode.TOO_LATE, KinErrors.RequestError, 'bad request', {}],
+        [TransactionResultCode.MISSING_OPERATION, KinErrors.RequestError, 'bad request', {}],
+        [TransactionResultCode.BAD_AUTH, KinErrors.RequestError, 'bad request', {}],
+        [TransactionResultCode.BAD_AUTH_EXTRA, KinErrors.RequestError, 'bad request', {}],
+        [TransactionResultCode.BAD_SEQUENCE, KinErrors.RequestError, 'bad request', {}],
+        [TransactionResultCode.INSUFFICIENT_FEE, KinErrors.RequestError, 'bad request', {}],
 
         # AccountNotFoundError
-        [TransactionResultCode.NO_ACCOUNT, kin.AccountNotFoundError, 'account not found', {}],
+        [TransactionResultCode.NO_ACCOUNT, KinErrors.AccountNotFoundError, 'account not found', {}],
 
         # LowBalanceError
-        [TransactionResultCode.INSUFFICIENT_BALANCE, kin.LowBalanceError, 'low balance', {}],
+        [TransactionResultCode.INSUFFICIENT_BALANCE, KinErrors.LowBalanceError, 'low balance', {}],
 
         # InternalError
-        ['unknown', kin.InternalError, 'internal error', {'internal_error': 'unknown transaction error'}]
+        ['unknown', KinErrors.InternalError, 'internal error', {'internal_error': 'unknown transaction error'}]
     ]
 
     for fixture in fixtures:
         err_dict['extras']['result_codes']['transaction'] = fixture[0]
-        e = translate_horizon_error(HorizonError(err_dict))
+        e = KinErrors.translate_horizon_error(HorizonError(err_dict))
         assert isinstance(e, fixture[1])
         assert e.error_code == fixture[0]
         assert e.message == fixture[2]
@@ -99,36 +98,36 @@ def test_translate_operation_error():
 
     fixtures = [
         # RequestError
-        [OperationResultCode.BAD_AUTH, kin.RequestError, 'bad request', {}],
-        [CreateAccountResultCode.MALFORMED, kin.RequestError, 'bad request', {}],
-        [PaymentResultCode.NO_ISSUER, kin.RequestError, 'bad request', {}],
-        [PaymentResultCode.LINE_FULL, kin.RequestError, 'bad request', {}],
-        [ChangeTrustResultCode.INVALID_LIMIT, kin.RequestError, 'bad request', {}],
+        [OperationResultCode.BAD_AUTH, KinErrors.RequestError, 'bad request', {}],
+        [CreateAccountResultCode.MALFORMED, KinErrors.RequestError, 'bad request', {}],
+        [PaymentResultCode.NO_ISSUER, KinErrors.RequestError, 'bad request', {}],
+        [PaymentResultCode.LINE_FULL, KinErrors.RequestError, 'bad request', {}],
+        [ChangeTrustResultCode.INVALID_LIMIT, KinErrors.RequestError, 'bad request', {}],
 
         # AccountNotFoundError
-        [OperationResultCode.NO_ACCOUNT, kin.AccountNotFoundError, 'account not found', {}],
-        [PaymentResultCode.NO_DESTINATION, kin.AccountNotFoundError, 'account not found', {}],
+        [OperationResultCode.NO_ACCOUNT, KinErrors.AccountNotFoundError, 'account not found', {}],
+        [PaymentResultCode.NO_DESTINATION, KinErrors.AccountNotFoundError, 'account not found', {}],
 
         # AccountExistsError
-        [CreateAccountResultCode.ACCOUNT_EXISTS, kin.AccountExistsError, 'account already exists', {}],
+        [CreateAccountResultCode.ACCOUNT_EXISTS, KinErrors.AccountExistsError, 'account already exists', {}],
 
         # LowBalanceError
-        [CreateAccountResultCode.LOW_RESERVE, kin.LowBalanceError, 'low balance', {}],
-        [PaymentResultCode.UNDERFUNDED, kin.LowBalanceError, 'low balance', {}],
+        [CreateAccountResultCode.LOW_RESERVE, KinErrors.LowBalanceError, 'low balance', {}],
+        [PaymentResultCode.UNDERFUNDED, KinErrors.LowBalanceError, 'low balance', {}],
 
         # AccountNotActivatedError
-        [PaymentResultCode.SRC_NO_TRUST, kin.AccountNotActivatedError, 'account not activated', {}],
-        [PaymentResultCode.NO_TRUST, kin.AccountNotActivatedError, 'account not activated', {}],
-        [PaymentResultCode.SRC_NOT_AUTHORIZED, kin.AccountNotActivatedError, 'account not activated', {}],
-        [PaymentResultCode.NOT_AUTHORIZED, kin.AccountNotActivatedError, 'account not activated', {}],
+        [PaymentResultCode.SRC_NO_TRUST, KinErrors.AccountNotActivatedError, 'account not activated', {}],
+        [PaymentResultCode.NO_TRUST, KinErrors.AccountNotActivatedError, 'account not activated', {}],
+        [PaymentResultCode.SRC_NOT_AUTHORIZED, KinErrors.AccountNotActivatedError, 'account not activated', {}],
+        [PaymentResultCode.NOT_AUTHORIZED, KinErrors.AccountNotActivatedError, 'account not activated', {}],
 
         # InternalError
-        ['unknown', kin.InternalError, 'internal error', {'internal_error': 'unknown operation error'}]
+        ['unknown', KinErrors.InternalError, 'internal error', {'internal_error': 'unknown operation error'}]
     ]
 
     for fixture in fixtures:
         err_dict['extras']['result_codes']['operations'] = [fixture[0]]
-        e = translate_horizon_error(HorizonError(err_dict))
+        e = KinErrors.translate_horizon_error(HorizonError(err_dict))
         assert isinstance(e, fixture[1])
         assert e.error_code == fixture[0]
         assert e.message == fixture[2]

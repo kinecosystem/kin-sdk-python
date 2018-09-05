@@ -4,7 +4,7 @@
 
 from requests.exceptions import RequestException
 
-from .stellar.errors import *
+from .blockchain.errors import *
 
 
 # All exceptions should subclass from SdkError in this module.
@@ -71,6 +71,12 @@ class AccountNotFoundError(AccountError):
         super(AccountNotFoundError, self).__init__(address, 'account not found', error_code, extra)
 
 
+class AccountActivatedError(AccountError):
+    """Trying to activate an activated account."""
+    def __init__(self, address=None, error_code=None, extra=None):
+        super(AccountActivatedError, self).__init__(address, 'account already activated', error_code, extra)
+
+
 class AccountExistsError(AccountError):
     """Trying to create an existing account."""
     def __init__(self, address=None, error_code=None, extra=None):
@@ -93,6 +99,24 @@ class InternalError(SdkError):
     """Internal unhandled error. To find out more, check the error code and extra data."""
     def __init__(self, error_code=None, extra=None):
         super(InternalError, self).__init__('internal error', error_code, extra)
+
+
+class FriendbotError(SdkError):
+    """Friendbot related error"""
+    def __init__(self, error_code=None, extra=None):
+        super(FriendbotError, self).__init__('friendbot error', error_code, extra)
+
+
+class CantSimplifyError(SdkError):
+    """Transaction is too complex to simplify"""
+    def __init__(self, error_code=None, extra=None):
+        super(CantSimplifyError, self).__init__('Tx simplification error', error_code, extra)
+
+
+class MemoTooLongError(SdkError):
+    """The memo is too long"""
+    def __init__(self, error_code=None, extra=None):
+        super(MemoTooLongError, self).__init__('Memo is too long', error_code, extra)
 
 
 def translate_error(err):

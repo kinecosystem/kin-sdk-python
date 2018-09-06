@@ -92,8 +92,10 @@ tx_hash = sdk.create_account('address')
 
 # create a new account prefunded with a specified amount of native currency (lumens).
 tx_hash = sdk.create_account('address', starting_balance=1000)
-```
 
+# create a new activated account
+tx_hash = sdk.create_account('address', starting_balance=1000, activate=True)  
+```
 ### Checking if Account is Activated (Trustline established)
 ```python
 # check if KIN is trusted by some account

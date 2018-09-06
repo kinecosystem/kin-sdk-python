@@ -94,7 +94,7 @@ tx_hash = sdk.create_account('address')
 tx_hash = sdk.create_account('address', starting_balance=1000)
 
 # create a new activated account
-tx_hash = sdk.create_account('address', starting_balance=1000,activate=True)  
+tx_hash = sdk.create_account('address', starting_balance=1000, activate=True)  
 ```
 ### Checking if Account is Activated (Trustline established)
 ```python

@@ -246,10 +246,10 @@ class SDK(object):
             raise ValueError('invalid address: {}'.format(address))
 
         try:
+            pretrusted_asset = self.kin_asset if activate else None
             reply = self.channel_manager.send_transaction(lambda builder:
                                                           partial(builder.append_create_account_op, address,
-                                                                  starting_balance,trustline=activate,
-                                                                  issuer=self.kin_asset.issuer,asset_code=self.kin_asset.code),
+                                                                  starting_balance, pretrusted_asset=pretrusted_asset),
                                                           memo_text=memo_text)
             return reply['hash']
         except Exception as e:

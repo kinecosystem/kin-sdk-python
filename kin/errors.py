@@ -119,6 +119,13 @@ class MemoTooLongError(SdkError):
         super(MemoTooLongError, self).__init__('Memo is too long', error_code, extra)
 
 
+class StoppedMonitorError(SdkError):
+    """A stopped monitor cannot be modified"""
+    def __init__(self, error_code=None, extra=None):
+        super(StoppedMonitorError, self).__init__('Stopped monitor cannot be modified', error_code, extra)
+
+
+
 def translate_error(err):
     """A high-level error translator."""
     if isinstance(err, RequestException):

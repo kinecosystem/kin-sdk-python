@@ -84,4 +84,4 @@ def test_multi_monitor(test_client, test_account):
     hash4 = test_account.send_kin(address2, 4)
     sleep(10)
     assert not monitor.thread.is_alive()
-    assert hash4 in txs_found2
+    assert not hash4 in txs_found2

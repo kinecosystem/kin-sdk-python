@@ -42,14 +42,6 @@ class KinAccount:
 
         if channel_secret_keys is not None:
             # Use given channels
-            for channel_key in channel_secret_keys:
-                # Verify channel seed
-                if not is_valid_secret_key(channel_key):
-                    raise ValueError('invalid channel key: {}'.format(channel_key))
-                # Check that channel accounts exists (they do not have to be activated).
-                channel_address = Keypair.address_from_seed(channel_key)
-                if self._client.get_account_data(channel_address) == AccountStatus.NOT_CREATED:
-                    raise KinErrors.AccountNotFoundError(channel_address)
             self.channel_secret_keys = channel_secret_keys
 
         elif channels is not None:
@@ -78,9 +70,18 @@ class KinAccount:
             for channel in self.channel_secret_keys:
                 try:
                     # TODO: might want to make it a 1 multi operation tx
-                    base_account.create_account(channel)
+                    base_account.create_account(Keypair.address_from_seed(channel))
                 except KinErrors.AccountExistsError:
                     pass
+
+        for channel_key in self.channel_secret_keys:
+            # Verify channel seed
+            if not is_valid_secret_key(channel_key):
+                raise ValueError('invalid channel key: {}'.format(channel_key))
+            # Check that channel accounts exists (they do not have to be activated).
+            channel_address = Keypair.address_from_seed(channel_key)
+            if self._client.get_account_data(channel_address) == AccountStatus.NOT_CREATED:
+                raise KinErrors.AccountNotFoundError(channel_address)
 
         # set connection pool size for channels + monitoring connection + extra
         pool_size = max(1, len(self.channel_secret_keys)) + 2
@@ -248,10 +249,11 @@ class KinAccount:
          """
         return self._build_send_asset(self._client.kin_asset, address, amount, memo_text)
 
-    def submit_transaction(self, tx):
+    def submit_transaction(self, tx, is_re_submitting=False):
         """
         Submit a transaction to the blockchain.
         :param :class: `kin.Transaction` tx: The transaction object to send
+        :param boolean is_re_submitting: is this a re-submission
         :return: The hash of the transaction.
         :rtype: str
         """
@@ -268,11 +270,12 @@ class KinAccount:
 
                 # Insufficient balance is a "fast-fail", the sequence number doesn't increment
                 # so there is no need to build the transaction again
-                self.submit_transaction(tx)
+                self.submit_transaction(tx, is_re_submitting=True)
             else:
                 raise KinErrors.translate_error(e)
         finally:
-            tx.release()
+            if not is_re_submitting:
+                tx.release()
 
     def monitor_payments(self, callback_fn):
         """Monitor KIN payment transactions related to this account

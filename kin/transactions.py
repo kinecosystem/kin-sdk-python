@@ -1,6 +1,7 @@
 """Contains classes and methods related to transactions and operations"""
 from hashlib import sha256
 from binascii import hexlify
+from queue import Full
 
 from enum import Enum
 from stellar_base.stellarxdr import Xdr
@@ -31,8 +32,7 @@ class Transaction:
         """
         self.builder.clear()
         if self.builder not in self.channel_manager.low_balance_builders:
-            self.channel_manager.channel_builders.put(self.builder)
-
+                self.channel_manager.channel_builders.put(self.builder, timeout=0.5)
     @staticmethod
     def calculate_tx_hash(te, network_passphrase_hash):
         """

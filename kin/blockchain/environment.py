@@ -24,7 +24,7 @@ class Environment:
         """
         # Add the network to the stellar_base network list.
         NETWORKS[name.upper()] = network_passphrase
-        self.name = name
+        self.name = name.upper()
         self.horizon_uri = horizon_endpoint_uri
 
         if not is_valid_address(kin_issuer):

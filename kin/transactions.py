@@ -1,7 +1,6 @@
 """Contains classes and methods related to transactions and operations"""
 from hashlib import sha256
 from binascii import hexlify
-from queue import Full
 
 from enum import Enum
 from stellar_base.stellarxdr import Xdr

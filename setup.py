@@ -5,19 +5,19 @@ from setuptools import setup, find_packages
 exec(open("kin/version.py").read())
 
 with open('requirements.txt') as f:
-    requires = [line.strip() for line in f if line.strip()]
+    requires = [line.split(' ')[0] for line in f]
 with open('requirements-dev.txt') as f:
-    tests_requires = [line.strip() for line in f if line.strip()]
+    tests_requires = [line.split(' ')[0] for line in f]
 
 setup(
     name='kin',
     version=__version__,
-    description='KIN Stellar SDK for Python',
-    author='Kin Foundation',
+    description='KIN SDK for Python',
+    author='Kin Ecosystem',
     author_email='david.bolshoy@kik.com',
-    maintainer='David Bolshoy',
-    maintainer_email='david.bolshoy@kik.com',
-    url='https://github.com/kinecosystem/kin-core-python',
+    maintainer='Ron Serruya',
+    maintainer_email='ron.serruya@kik.com',
+    url='https://github.com/kinecosystem/kin-core-python/tree/v2-master',
     license='MIT',
     packages=find_packages(),
     long_description=open("README.md").read(),
@@ -25,7 +25,6 @@ setup(
     classifiers=[
         'License :: OSI Approved :: MIT License',
         'Intended Audience :: Developers',
-        'Development Status :: 0 - Alpha/unstable',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2.7',

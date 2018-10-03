@@ -11,16 +11,18 @@ from .blockchain.builder import Builder
 from .blockchain.channel_manager import ChannelManager
 from . import errors as KinErrors
 from .transactions import Transaction
-from .blockchain.errors import TransactionResultCode, HorizonErrorType , HorizonError
+from .blockchain.errors import TransactionResultCode, HorizonErrorType, HorizonError
 from .config import MIN_ACCOUNT_BALANCE, SDK_USER_AGENT, DEFAULT_FEE, MEMO_CAP
 from .blockchain.utils import is_valid_secret_key, is_valid_address
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
 class KinAccount:
     """Account class to perform authenticated actions on the blockchain"""
+
     def __init__(self, seed, client, channels, channel_secret_keys, create_channels):
         # Set the internal sdk
         self._client = client
@@ -58,7 +60,7 @@ class KinAccount:
             # Create the channels using the base account
             if self.channel_secret_keys == [seed]:
                 raise ValueError('There are no channels to create')
-            base_account = KinAccount(seed,self._client, None, None, False)
+            base_account = KinAccount(seed, self._client, None, None, False)
 
             # Verify that there is enough XLM to create the channels
             # Balance should be at least (Number of channels + yourself) * (Minimum account balance + fees)
@@ -88,7 +90,7 @@ class KinAccount:
 
         # Set an horizon instance with the new pool_size
         self.horizon = Horizon(self._client.environment.horizon_uri,
-                               pool_size=pool_size , user_agent=SDK_USER_AGENT)
+                               pool_size=pool_size, user_agent=SDK_USER_AGENT)
         self.channel_manager = ChannelManager(seed, self.channel_secret_keys,
                                               self._client.environment.name, self.horizon)
 
@@ -203,7 +205,7 @@ class KinAccount:
             raise ValueError('invalid address: {}'.format(address))
 
         if memo_text is not None and len(memo_text) > MEMO_CAP:
-            raise KinErrors.MemoTooLongError('{} > {}'.format(len(memo_text),MEMO_CAP))
+            raise KinErrors.MemoTooLongError('{} > {}'.format(len(memo_text), MEMO_CAP))
 
         # Build the transaction and send it.
 

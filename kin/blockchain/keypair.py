@@ -8,7 +8,8 @@ from .utils import is_valid_secret_key
 
 
 class Keypair:
-    # Keypair holds the public address and secret seed.
+    """Keypair holds the public address and secret seed."""
+
     def __init__(self, seed=None):
         """
         # Create an instance of Keypair.
@@ -47,4 +48,3 @@ class Keypair:
         # Create a new raw seed from the first 32 bytes of this hash
         raw_seed = sha256((base_seed + salt).encode()).digest()[:32]
         return BaseKeypair.from_raw_seed(raw_seed).seed().decode()
-

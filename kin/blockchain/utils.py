@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*
-
-# Copyright (C) 2018 Kin Foundation
+"""Contains useful methods to be used across the sdk"""
 
 from stellar_base.utils import decode_check
 

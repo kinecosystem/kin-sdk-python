@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*
-
-# Copyright (C) 2018 Kin Foundation
-
+"""Contains data models related to horizon"""
 
 from schematics.models import Model
 from schematics.types import IntType, BooleanType, StringType, UTCDateTimeType, FloatType
@@ -10,6 +7,7 @@ from schematics.types.compound import ModelType, ListType, DictType
 
 class PModel(Model):
     """Base class for our models that provides printout capabilities"""
+
     def __str__(self):
         sb = []
         for key in self.__dict__:
@@ -19,7 +17,7 @@ class PModel(Model):
 
     def __repr__(self):
         return self.__str__()
-    
+
     def __hash__(self):
         return hash(self.__str__())
 
@@ -114,6 +112,7 @@ class HTTPProblemDetails(PModel):
     """HTTP Problem Details object.
     See https://tools.ietf.org/html/rfc7807
     """
+
     class Extras(PModel):
         invalid_field = StringType()
         envelope_xdr = StringType()

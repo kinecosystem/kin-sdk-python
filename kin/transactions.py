@@ -14,6 +14,7 @@ PACKED_ENVELOP_TYPE = b'\x00\x00\x00\x02'
 
 class Transaction:
     """A transaction instance ready to be submitted"""
+
     # Provides a way to get the hash before sending, might be used in the future for multisig.
     def __init__(self, builder, channel_manager):
         """
@@ -31,7 +32,8 @@ class Transaction:
         """
         self.builder.clear()
         if self.builder not in self.channel_manager.low_balance_builders:
-                self.channel_manager.channel_builders.put(self.builder, timeout=0.5)
+            self.channel_manager.channel_builders.put(self.builder, timeout=0.5)
+
     @staticmethod
     def calculate_tx_hash(te, network_passphrase_hash):
         """
@@ -53,6 +55,8 @@ class Transaction:
 
 
 class SimplifiedTransaction:
+    """Class to hold simplified info about a transaction"""
+
     def __init__(self, tx_data, kin_asset):
         self.id = tx_data.id
         self.timestamp = tx_data.created_at
@@ -70,6 +74,8 @@ class SimplifiedTransaction:
 
 
 class SimplifiedOperation:
+    """Class to hold simplified info about a operation"""
+
     def __init__(self, op_data, kin_asset):
         if op_data.type == 'payment':
             # Raise error if asset is not KIN or XLM
@@ -100,6 +106,8 @@ class SimplifiedOperation:
 
 
 class OperationTypes(Enum):
+    """Possible operation types for a simple operation"""
+
     PAYMENT = 1
     CREATE_ACCOUNT = 2
     ACTIVATION = 3

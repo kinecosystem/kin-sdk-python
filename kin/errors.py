@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*
-
-# Copyright (C) 2018 Kin Foundation
+"""Contains errors related to the Kin SDK"""
 
 from requests.exceptions import RequestException
 
@@ -10,6 +8,7 @@ from .blockchain.errors import *
 # All exceptions should subclass from SdkError in this module.
 class SdkError(Exception):
     """Base class for all SDK errors."""
+
     def __init__(self, message=None, error_code=None, extra=None):
         super(SdkError, self).__init__(self)
         self.message = message or 'unknown error'
@@ -28,36 +27,42 @@ class SdkError(Exception):
 
 class ThrottleError(SdkError):
     """Service is busy"""
+
     def __init__(self):
         super(ThrottleError, self).__init__('service is busy, retry later')
 
 
 class NetworkError(SdkError):
     """Network-level errors - connection error, timeout error, etc."""
+
     def __init__(self, extra=None):
         super(NetworkError, self).__init__('network error', None, extra)
 
 
 class RequestError(SdkError):
     """Request-related errors - bad request, invalid payload, malformed transaction, etc."""
+
     def __init__(self, error_code=None, extra=None):
         super(RequestError, self).__init__('bad request', error_code, extra)
 
 
 class ServerError(SdkError):
     """Server-related errors - rate limit exceeded, server over capacity."""
+
     def __init__(self, error_code=None, extra=None):
         super(ServerError, self).__init__('server error', error_code, extra)
 
 
 class ResourceNotFoundError(SdkError):
     """Resource not found on the server."""
+
     def __init__(self, error_code=None, extra=None):
         super(ResourceNotFoundError, self).__init__('resource not found', error_code, extra)
 
 
 class AccountError(SdkError):
     """Base class for account-related errors."""
+
     def __init__(self, address=None, message=None, error_code=None, extra=None):
         if address:
             extra = dict(extra or ())
@@ -67,63 +72,72 @@ class AccountError(SdkError):
 
 class AccountNotFoundError(AccountError):
     """Operation referenced a nonexistent account."""
+
     def __init__(self, address=None, error_code=None, extra=None):
         super(AccountNotFoundError, self).__init__(address, 'account not found', error_code, extra)
 
 
 class AccountActivatedError(AccountError):
     """Trying to activate an activated account."""
+
     def __init__(self, address=None, error_code=None, extra=None):
         super(AccountActivatedError, self).__init__(address, 'account already activated', error_code, extra)
 
 
 class AccountExistsError(AccountError):
     """Trying to create an existing account."""
+
     def __init__(self, address=None, error_code=None, extra=None):
         super(AccountExistsError, self).__init__(address, 'account already exists', error_code, extra)
 
 
 class AccountNotActivatedError(AccountError):
     """Operation referenced an account that exists but not yet activated."""
+
     def __init__(self, address=None, error_code=None, extra=None):
         super(AccountNotActivatedError, self).__init__(address, 'account not activated', error_code, extra)
 
 
 class LowBalanceError(SdkError):
     """Account balance is too low to complete the operation. Refers both to native and asset balance."""
+
     def __init__(self, error_code=None, extra=None):
         super(LowBalanceError, self).__init__('low balance', error_code, extra)
 
 
 class InternalError(SdkError):
     """Internal unhandled error. To find out more, check the error code and extra data."""
+
     def __init__(self, error_code=None, extra=None):
         super(InternalError, self).__init__('internal error', error_code, extra)
 
 
 class FriendbotError(SdkError):
     """Friendbot related error"""
+
     def __init__(self, error_code=None, extra=None):
         super(FriendbotError, self).__init__('friendbot error', error_code, extra)
 
 
 class CantSimplifyError(SdkError):
     """Transaction is too complex to simplify"""
+
     def __init__(self, error_code=None, extra=None):
         super(CantSimplifyError, self).__init__('Tx simplification error', error_code, extra)
 
 
 class MemoTooLongError(SdkError):
     """The memo is too long"""
+
     def __init__(self, error_code=None, extra=None):
         super(MemoTooLongError, self).__init__('Memo is too long', error_code, extra)
 
 
 class StoppedMonitorError(SdkError):
     """A stopped monitor cannot be modified"""
+
     def __init__(self, error_code=None, extra=None):
         super(StoppedMonitorError, self).__init__('Stopped monitor cannot be modified', error_code, extra)
-
 
 
 def translate_error(err):
@@ -144,12 +158,12 @@ def translate_horizon_error(horizon_error):
         return RequestError(horizon_error.type, {'invalid_field': horizon_error.extras.invalid_field})
     if horizon_error.type == HorizonErrorType.NOT_FOUND:
         return ResourceNotFoundError(horizon_error.type)
-    if horizon_error.type == HorizonErrorType.FORBIDDEN \
-            or horizon_error.type == HorizonErrorType.NOT_ACCEPTABLE \
-            or horizon_error.type == HorizonErrorType.UNSUPPORTED_MEDIA_TYPE \
-            or horizon_error.type == HorizonErrorType.NOT_IMPLEMENTED \
-            or horizon_error.type == HorizonErrorType.BEFORE_HISTORY \
-            or horizon_error.type == HorizonErrorType.STALE_HISTORY:
+    if horizon_error.type in [HorizonErrorType.FORBIDDEN,
+                              HorizonErrorType.NOT_ACCEPTABLE,
+                              HorizonErrorType.UNSUPPORTED_MEDIA_TYPE,
+                              HorizonErrorType.NOT_IMPLEMENTED,
+                              HorizonErrorType.BEFORE_HISTORY,
+                              HorizonErrorType.STALE_HISTORY]:
         return RequestError(horizon_error.type)
 
     # transaction (submit) errors
@@ -173,13 +187,13 @@ def translate_horizon_error(horizon_error):
 def translate_transaction_error(tx_error):
     """Transaction error translator."""
     tx_result_code = tx_error.extras.result_codes.transaction
-    if tx_result_code == TransactionResultCode.TOO_EARLY \
-            or tx_result_code == TransactionResultCode.TOO_LATE \
-            or tx_result_code == TransactionResultCode.MISSING_OPERATION \
-            or tx_result_code == TransactionResultCode.BAD_AUTH \
-            or tx_result_code == TransactionResultCode.BAD_AUTH_EXTRA \
-            or tx_result_code == TransactionResultCode.BAD_SEQUENCE \
-            or tx_result_code == TransactionResultCode.INSUFFICIENT_FEE:
+    if tx_result_code in [TransactionResultCode.TOO_EARLY,
+                          TransactionResultCode.TOO_LATE,
+                          TransactionResultCode.MISSING_OPERATION,
+                          TransactionResultCode.BAD_AUTH,
+                          TransactionResultCode.BAD_AUTH_EXTRA,
+                          TransactionResultCode.BAD_SEQUENCE,
+                          TransactionResultCode.INSUFFICIENT_FEE]:
         return RequestError(tx_result_code)
     if tx_result_code == TransactionResultCode.NO_ACCOUNT:
         return AccountNotFoundError(error_code=tx_result_code)

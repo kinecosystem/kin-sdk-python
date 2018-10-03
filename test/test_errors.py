@@ -132,4 +132,3 @@ def test_translate_operation_error():
         assert e.error_code == fixture[0]
         assert e.message == fixture[2]
         assert e.extra == fixture[3]
-

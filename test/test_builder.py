@@ -6,7 +6,7 @@ from kin.blockchain.horizon import Horizon
 
 def test_create_fail():
     with pytest.raises(Exception, match='invalid secret key'):
-        Builder(secret='bad',network=None, horizon=None)
+        Builder(secret='bad', network=None, horizon=None)
     with pytest.raises(Exception, match='invalid address'):
         Builder(address='bad', network=None, horizon=None)
 
@@ -86,4 +86,3 @@ def test_next(test_builder):
     assert not test_builder.tx
     assert not test_builder.te
     assert test_builder.sequence == str(int(sequence) + 1)
-

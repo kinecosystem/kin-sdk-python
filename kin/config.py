@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*
-
-# Copyright (C) 2018 Kin Foundation
+"""Contains the config for the Kin SDK"""
 
 from .blockchain.environment import Environment
 

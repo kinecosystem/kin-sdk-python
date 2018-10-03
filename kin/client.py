@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*
+"""Contains the KinClient class to interact with the blockchain"""
 
-# Copyright (C) 2018 Kin Foundation
 import requests
 
 from .config import SDK_USER_AGENT
@@ -17,6 +16,7 @@ from .transactions import SimplifiedTransaction
 from .version import __version__
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -306,4 +306,3 @@ class KinClient(object):
         """
 
         return MultiMonitor(self, addresses, callback_fn)
-

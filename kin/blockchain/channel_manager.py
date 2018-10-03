@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*
-
-# Copyright (C) 2018 Kin Foundation
+"""Contains the channel manager class to take care of channels"""
 
 import sys
 
@@ -10,6 +8,7 @@ from .builder import Builder
 from .errors import ChannelsBusyError
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 if sys.version[0] == '2':
@@ -23,6 +22,7 @@ CHANNEL_QUEUE_TIMEOUT = 11  # how much time to wait until a channel is available
 
 class ChannelManager(object):
     """ The class :class:`kin.ChannelManager` wraps channel-related specifics of transaction sending."""
+
     def __init__(self, secret_key, channel_keys, network, horizon):
         self.base_key = secret_key
         self.base_address = Keypair.from_seed(secret_key).address().decode()

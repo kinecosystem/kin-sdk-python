@@ -6,13 +6,11 @@ from kin.config import BASE_RESERVE, DEFAULT_FEE
 
 from kin.blockchain.utils import is_valid_transaction_hash
 
-
 SDK_PUBLIC = 'GAIDUTTQ5UIZDW7VZ2S3ZAFLY6LCRT5ZVHF5X3HDJVDQ4OJWYGJVJDZB'
 SDK_SEED = 'SBKI7MEF62NHHH3AOXBHII46K2FD3LVH63FYHUDLTBUYT3II6RAFLZ7B'
 
 
 def test_create_basic(test_client, test_account):
-
     with pytest.raises(KinErrors.AccountNotActivatedError):
         account = test_client.kin_account('SD6IDZHCMX3Z4QPDIC33PECKLLY572DAA5S3DZDALEVVACJKSZPVPJC6')
 
@@ -26,8 +24,8 @@ def test_create_basic(test_client, test_account):
     assert account.horizon
     assert account.channel_manager
 
-def test_create_exisitng_channels(test_client, test_account):
 
+def test_create_exisitng_channels(test_client, test_account):
     channels = [
         'SBIS2IZXKV7ZQABHYAXO6DR2GZKBUHNHYFYKGC4MNVURPFTY5RFBT5QX',
         'SAFROZPOSDXU2JME6EQ3IDXZVGMSRIFNTX7CSMSUCUX4SBZNRBQUAGVI',
@@ -35,13 +33,13 @@ def test_create_exisitng_channels(test_client, test_account):
     ]
 
     with pytest.raises(KinErrors.AccountNotFoundError):
-        account = test_client.kin_account(SDK_SEED,channel_secret_keys=channels)
+        account = test_client.kin_account(SDK_SEED, channel_secret_keys=channels)
 
     with pytest.raises(ValueError):
-        account = test_client.kin_account(SDK_SEED,channel_secret_keys=['bad'])
+        account = test_client.kin_account(SDK_SEED, channel_secret_keys=['bad'])
 
     with pytest.raises(ValueError):
-        account = test_client.kin_account(SDK_SEED,channel_secret_keys=channels,create_channels=True)
+        account = test_client.kin_account(SDK_SEED, channel_secret_keys=channels, create_channels=True)
 
     for channel in channels:
         test_client.friendbot(Keypair.address_from_seed(channel))
@@ -52,9 +50,8 @@ def test_create_exisitng_channels(test_client, test_account):
 
 
 def test_create_new_channels(test_client, test_account):
-
     with pytest.raises(KinErrors.AccountNotFoundError):
-        account = test_client.kin_account(SDK_SEED,channels=2,create_channels=False)
+        account = test_client.kin_account(SDK_SEED, channels=2, create_channels=False)
 
     account = test_client.kin_account(SDK_SEED, channels=4, create_channels=True)
     assert account
@@ -69,7 +66,6 @@ def test_get_address(test_client, test_account):
 
 
 def test_create_account(test_client, test_account):
-
     with pytest.raises(KinErrors.AccountExistsError):
         test_account.create_account(test_client.kin_asset.issuer)
 
@@ -79,7 +75,6 @@ def test_create_account(test_client, test_account):
 
 
 def test_send_xlm(test_client, test_account):
-
     recipient = 'GAXEQOJBLECPIZMU6LDLFZYRM46GWTQ6ZT462ZFUMYSLTGM2D6ZFYQ7T'
     test_client.friendbot(recipient)
     xlm_balance = test_client.get_account_balances(recipient)['XLM']
@@ -103,9 +98,9 @@ def test_build_create_account(test_account):
     with pytest.raises(ValueError):
         test_account.build_create_account('bad address')
     with pytest.raises(KinErrors.MemoTooLongError):
-        test_account.build_create_account(recipient, memo_text='a'*50)
+        test_account.build_create_account(recipient, memo_text='a' * 50)
 
-    tx = test_account.build_create_account(recipient,starting_balance=10)
+    tx = test_account.build_create_account(recipient, starting_balance=10)
 
     try:
         assert tx
@@ -125,7 +120,7 @@ def test_build_send_kin(test_account):
     with pytest.raises(ValueError):
         test_account.build_create_account('bad address')
     with pytest.raises(KinErrors.MemoTooLongError):
-        test_account.build_send_kin(recipient,10, memo_text='a'*50)
+        test_account.build_send_kin(recipient, 10, memo_text='a' * 50)
     with pytest.raises(ValueError):
         test_account.build_send_kin(recipient, -50)
     with pytest.raises(ValueError):
@@ -147,10 +142,9 @@ def test_build_send_kin(test_account):
 
 
 def test_auto_top_up(test_client, test_account):
-
     channel = 'SBYU2EBGTTGIFR4O4K4SQXTD4ISMVX4R5TX2TTB4SWVIA5WVRS2MHN4K'
     public = 'GBKZAXTDJRYBK347KDTOFWEBDR7OW3U67XV2BOF2NLBNEGRQ2WN6HFK6'
-    test_account.create_account(public, starting_balance=3*BASE_RESERVE + DEFAULT_FEE)
+    test_account.create_account(public, starting_balance=3 * BASE_RESERVE + DEFAULT_FEE)
     test_client.activate_account(channel)
 
     account = test_client.kin_account(test_account.keypair.secret_seed, channel_secret_keys=[channel])
@@ -158,4 +152,4 @@ def test_auto_top_up(test_client, test_account):
 
     channel_balance = test_client.get_account_balances(public)['XLM']
     # channel should have ran out of funds, so the base account should have topped it up
-    assert channel_balance > 3*BASE_RESERVE + DEFAULT_FEE
+    assert channel_balance > 3 * BASE_RESERVE + DEFAULT_FEE

@@ -41,4 +41,4 @@ def test_hd_seed():
     ]
 
     for i in range(4):
-        assert Keypair.generate_hd_seed(base_seed,str(i)) == hd_seeds[i]
+        assert Keypair.generate_hd_seed(base_seed, str(i)) == hd_seeds[i]

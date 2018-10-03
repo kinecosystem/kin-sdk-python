@@ -44,17 +44,12 @@ Git commit messages should include [a summary and proper line wrapping](http://t
 If you are looking to contribute to this SDK, here are the steps to get you started.
 
 1. Fork this project
-2. Setup your Python [virtual environment](http://docs.python-guide.org/en/latest/dev/virtualenvs):
+2. Setup your Python virtual environment with [Pipenv](https://github.com/pypa/pipenv):
 ```bash
-$ mkvirtualenv kin-core-python
-$ workon kin-core-python
+$ pipenv install
 ```
-3. Setup `pip` and `npm` dependencies:
-```bash
-$ make init
-```
-4. Work on code
-5. Test your code locally
+3. Work on code
+4. Test your code locally
 ```bash
 # start your local testnet
 $ make start
@@ -62,8 +57,4 @@ $ make start
 $ make test
 # stop the testnet
 $ make stop
-```
-6. Test your code with live testnet
-```bash
-$ make testnet
 ```

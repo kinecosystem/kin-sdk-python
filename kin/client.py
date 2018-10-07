@@ -43,13 +43,14 @@ class KinClient(object):
         self.horizon = Horizon(horizon_uri=environment.horizon_uri, user_agent=SDK_USER_AGENT)
         logger.info('Kin SDK inited on network {}, horizon endpoint {}'.format(self.network, self.horizon.horizon_uri))
 
-    def kin_account(self, seed, channels=None, channel_secret_keys=None, create_channels=False):
+    def kin_account(self, seed, channels=None, channel_secret_keys=None, create_channels=False, app_id=None):
         """
         Create a new instance of a KinAccount to perform authenticated operations on the blockchain.
         :param str seed: The secret seed of the account that will be used
         :param int channels: Number of channels to use
         :param list of str channel_secret_keys: A list of seeds to be used as channels
         :param boolean create_channels: Should the sdk create the channel accounts
+        :param str app_id: the unique id of your app
         :return: An instance of KinAccount
         :rtype: :class:`kin.KinAccount`
 
@@ -58,7 +59,7 @@ class KinClient(object):
         """
 
         # Create a new kin account, using self as the KinClient to be used
-        return KinAccount(seed, self, channels, channel_secret_keys, create_channels)
+        return KinAccount(seed, self, channels, channel_secret_keys, create_channels, app_id)
 
     def get_config(self):
         """Get system configuration data and online status.

@@ -2,7 +2,7 @@ import pytest
 from kin import KinErrors
 from kin import Keypair
 from kin import AccountStatus
-from kin.config import BASE_RESERVE, DEFAULT_FEE
+from kin.config import BASE_RESERVE, DEFAULT_FEE, MEMO_TEMPLATE
 
 from kin.blockchain.utils import is_valid_transaction_hash
 
@@ -153,3 +153,19 @@ def test_auto_top_up(test_client, test_account):
     channel_balance = test_client.get_account_balances(public)['XLM']
     # channel should have ran out of funds, so the base account should have topped it up
     assert channel_balance > 3 * BASE_RESERVE + DEFAULT_FEE
+
+
+def test_memo(test_client, test_account):
+    recipient1 = 'GCT3YLKNVEILHUOZYK3QPOVZWWVLF5AE5D24Y6I4VH7WGZYBFU2HSXYX'
+    recipient2 = 'GDR375ZLWHZUFH2SWXFEH7WVPK5G3EQBLXPZKYEFJ5EAW4WE4WIQ5BP3'
+
+    tx1 = test_account.create_account(recipient1, memo_text='Hello')
+    account2 = test_client.kin_account(test_account.keypair.secret_seed, app_id='test')
+    tx2 = account2.create_account(recipient2, memo_text='Hello')
+
+    tx1_data = test_client.get_transaction_data(tx1)
+    tx2_data = test_client.get_transaction_data(tx2)
+
+    assert tx1_data.memo == 'Hello'
+    assert tx2_data.memo == MEMO_TEMPLATE.format('test') + 'Hello'
+

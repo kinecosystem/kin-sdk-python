@@ -22,12 +22,11 @@ mnemonic = "==0.18"
 requests = "==2.18.4"
 schematics = "==2.0.1"
 sseclient = "==0.0.18"
-stellar-base = "==0.1.8.1"
+stellar-base = "==0.1.9.4"
 toml = "==0.9.4"
 "urllib3" = "==1.22"
 "enum34" = "*"
 numpy = "==1.15.2"
-"e1839a8" = {path = ".", editable = true}
 
 
 [dev-packages]

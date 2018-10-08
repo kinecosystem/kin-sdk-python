@@ -60,7 +60,7 @@ class KinAccount:
             # Create the channels using the base account
             if self.channel_secret_keys == [seed]:
                 raise ValueError('There are no channels to create')
-            base_account = KinAccount(seed, self._client, None, None, False)
+            base_account = self._client.kin_account(seed,app_id=app_id)
 
             # Verify that there is enough XLM to create the channels
             # Balance should be at least (Number of channels + yourself) * (Minimum account balance + fees)

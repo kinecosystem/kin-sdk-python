@@ -141,7 +141,7 @@ class KinAccount:
         """
         tx = self.build_create_account(address,
                                        starting_balance=starting_balance,
-                                       memo_text=self._build_memo(memo_text))
+                                       memo_text=memo_text)
         return self.submit_transaction(tx)
 
     def send_xlm(self, address, amount, memo_text=None):
@@ -214,7 +214,7 @@ class KinAccount:
         builder = self.channel_manager.build_transaction(lambda builder:
                                                          partial(builder.append_create_account_op, address,
                                                                  starting_balance),
-                                                         memo_text=memo_text)
+                                                         memo_text=self._build_memo(memo_text))
         return Transaction(builder, self.channel_manager)
 
     def build_send_xlm(self, address, amount, memo_text=None):

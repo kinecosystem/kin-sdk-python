@@ -8,11 +8,10 @@ from .blockchain.keypair import Keypair
 from .blockchain.builder import Builder
 from .blockchain.horizon import Horizon
 from .monitors import SingleMonitor, MultiMonitor
-from .transactions import OperationTypes
+from .transactions import OperationTypes, SimplifiedTransaction, RawTransaction
 from .account import KinAccount, AccountStatus
-from .blockchain.horizon_models import AccountData, TransactionData
+from .blockchain.horizon_models import AccountData
 from .blockchain.utils import is_valid_address, is_valid_transaction_hash, is_valid_secret_key
-from .transactions import SimplifiedTransaction
 from .version import __version__
 
 import logging
@@ -176,19 +175,13 @@ class KinClient(object):
             raise ValueError('invalid transaction hash: {}'.format(tx_hash))
 
         try:
-            tx = self.horizon.transaction(tx_hash)
-
-            # get transaction operations
-            tx_ops = self.horizon.transaction_operations(tx['hash'], params={'limit': 100})
-            tx['operations'] = tx_ops['_embedded']['records']
-
-            tx_data = TransactionData(tx, strict=False)
+            raw_tx = RawTransaction(self.horizon.transaction(tx_hash))
         except Exception as e:
             raise KinErrors.translate_error(e)
 
         if simple:
-            return SimplifiedTransaction(tx_data, self.kin_asset)
-        return tx_data
+            return SimplifiedTransaction(raw_tx, self.kin_asset)
+        return raw_tx
 
     def verify_kin_payment(self, tx_hash, source, destination, amount, memo=None, check_memo=False):
         """

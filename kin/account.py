@@ -352,7 +352,7 @@ class KinAccount:
         :return: the finished memo
         :rtype: str
         """
-        if not self.app_id:
+        if self.app_id is not None:
             finished_memo = MEMO_TEMPLATE.format(self.app_id)
             if memo is not None:
                 finished_memo += memo

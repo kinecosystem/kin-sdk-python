@@ -169,3 +169,9 @@ def test_memo(test_client, test_account):
     assert tx1_data.memo == 'Hello'
     assert tx2_data.memo == MEMO_TEMPLATE.format('test') + 'Hello'
 
+    with pytest.raises(KinErrors.MemoTooLongError):
+        test_account.create_account(recipient1, memo_text='a'*30)
+
+    with pytest.raises(KinErrors.MemoTooLongError):
+        account2.create_account(recipient2, memo_text='a'*25)
+

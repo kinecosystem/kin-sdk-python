@@ -354,7 +354,7 @@ class KinAccount:
         """
         if not self.app_id:
             finished_memo = MEMO_TEMPLATE.format(self.app_id)
-            if not memo:
+            if memo is not None:
                 finished_memo += memo
 
             if len(finished_memo) > MEMO_CAP:

@@ -72,7 +72,7 @@ class SimplifiedTransaction:
 
         if len(raw_tx.tx.operations) > 1:
             raise CantSimplifyError('Cant simplify tx with {} operations'.format(raw_tx.operation_count))
-        self.operation = SimplifiedOperation(raw_tx.operations[0], kin_asset)
+        self.operation = SimplifiedOperation(raw_tx.tx.operations[0], kin_asset)
 
         # Override tx source with operation source if it exists.
         self.source = raw_tx.tx.operations[0].source or raw_tx.tx.source.decode()

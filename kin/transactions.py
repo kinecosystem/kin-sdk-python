@@ -28,7 +28,7 @@ class Transaction:
         """
         self.builder = builder
         self.channel_manager = channel_manager
-        self.hash = self.calculate_tx_hash(builder.te, builder.te.network_id)
+        self.hash = self.calculate_tx_hash(builder.tx, builder.te.network_id)
 
     def release(self):
         """
@@ -39,7 +39,7 @@ class Transaction:
             self.channel_manager.channel_builders.put(self.builder, timeout=0.5)
 
     @staticmethod
-    def calculate_tx_hash(te, network_passphrase_hash):
+    def calculate_tx_hash(tx, network_passphrase_hash):
         """
         Calculate a tx hash.
 
@@ -47,13 +47,13 @@ class Transaction:
         1. A sha256 hash of the network_id +
         2. The xdr representation of ENVELOP_TYPE_TX +
         3. The xdr representation of the transaction
-        :param te: The transaction envelop
+        :param te: The builder's transaction object
         :param network_passphrase_hash: The network passphrase hash
         :return:
         """
         # Pack the transaction to xdr
         packer = Xdr.StellarXDRPacker()
-        packer.pack_Transaction(te.to_xdr_object())
+        packer.pack_Transaction(tx.to_xdr_object())
         packed_tx = packer.get_buffer()
         return hexlify(sha256(network_passphrase_hash + PACKED_ENVELOP_TYPE + packed_tx).digest()).decode()
 

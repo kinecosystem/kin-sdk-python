@@ -103,7 +103,7 @@ def test_get_account_data(test_client, test_account):
 
 def test_get_transaction_data(test_client):
     from kin import OperationTypes
-    from kin.blockchain.horizon_models import TransactionData
+    from kin.transactions import RawTransaction
 
     with pytest.raises(ValueError, match='invalid transaction hash: bad'):
         test_client.get_transaction_data('bad')
@@ -126,7 +126,7 @@ def test_get_transaction_data(test_client):
     assert tx_data.operation.starting_balance == 10
 
     tx_data = test_client.get_transaction_data(tx_hash, simple=False)
-    assert isinstance(tx_data, TransactionData)
+    assert isinstance(tx_data, RawTransaction)
 
 
 def test_friendbot(test_client):

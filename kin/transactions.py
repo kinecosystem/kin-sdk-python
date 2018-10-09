@@ -68,7 +68,7 @@ class SimplifiedTransaction:
         # If the memo is not a text/none memo
         if not isinstance(raw_tx.tx.memo, (TextMemo, NoneMemo)):
             raise CantSimplifyError('Cant simplify tx with memo type: {}'.format(type(raw_tx.tx.memo)))
-        self.memo = raw_tx.txmemo
+        self.memo = raw_tx.tx.memo
 
         if len(raw_tx.tx.operations) > 1:
             raise CantSimplifyError('Cant simplify tx with {} operations'.format(raw_tx.operation_count))

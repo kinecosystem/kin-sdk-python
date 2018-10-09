@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "c36bb18e7a6437889dff6e1161619c3277f0b68bdb184257d0a194b092043669"
+            "sha256": "8da9750d4dd8563012d495393924b92c9ca811aab49d684535fbba3e55887731"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -138,10 +138,10 @@
         },
         "stellar-base": {
             "hashes": [
-                "sha256:24c0bf87e83407d0b480097c63ed04fc86c184849797d6d6fdad0b8c7e4f450e",
-                "sha256:8f01dcd38dd018b8a2871728bd3062a82d8f244ab3d74ea8f71731d4b483fc5c"
+                "sha256:269283151f931624e315a9f5a5bf03b7017521886e69a23568db6c37ee9d14f9",
+                "sha256:8971305f9fa06d5d66a42f92a35089537a1614b55494609db02a87fbc4702252"
             ],
-            "version": "==0.1.9.4"
+            "version": "==0.1.9.1"
         },
         "toml": {
             "hashes": [

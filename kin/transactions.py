@@ -63,7 +63,7 @@ class SimplifiedTransaction:
 
     def __init__(self, raw_tx, kin_asset):
         self.id = raw_tx.hash
-        self.timestamp = raw_tx.created_at
+        self.timestamp = raw_tx.timestamp
 
         # If the memo is not a text/none memo
         if not isinstance(raw_tx.tx.memo, (TextMemo, NoneMemo)):

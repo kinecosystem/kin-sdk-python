@@ -3,8 +3,8 @@ from kin import KinErrors
 from kin import Keypair
 from kin import AccountStatus
 from kin.config import BASE_RESERVE, DEFAULT_FEE, MEMO_TEMPLATE
-
 from kin.blockchain.utils import is_valid_transaction_hash
+from time import sleep
 
 SDK_PUBLIC = 'GAIDUTTQ5UIZDW7VZ2S3ZAFLY6LCRT5ZVHF5X3HDJVDQ4OJWYGJVJDZB'
 SDK_SEED = 'SBKI7MEF62NHHH3AOXBHII46K2FD3LVH63FYHUDLTBUYT3II6RAFLZ7B'

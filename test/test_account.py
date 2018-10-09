@@ -162,6 +162,7 @@ def test_memo(test_client, test_account):
     tx1 = test_account.create_account(recipient1, memo_text='Hello')
     account2 = test_client.kin_account(test_account.keypair.secret_seed, app_id='test')
     tx2 = account2.create_account(recipient2, memo_text='Hello')
+    sleep(5)
 
     tx1_data = test_client.get_transaction_data(tx1)
     tx2_data = test_client.get_transaction_data(tx2)

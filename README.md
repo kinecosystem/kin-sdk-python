@@ -97,7 +97,7 @@ AccountStatuses.ACTIVATED
 # Get information about a specific transaction
 # The 'simple' flag is enabled by defualt, and dectates what object should be returned
 # For simple=False: A 'kin.TransactionData' object will return,
-# containing many fields that may be confusing and of no use to the user.
+# containig many fields that may be confusing and of no use to the user.
 
 # For simple=True: A 'kin.SimpleTransaction' object will return,
 # containing only the data that the user will need.
@@ -128,58 +128,36 @@ client.verify_kin_payment('tx_hash','addr1','addr2',10) >> False
 client.verify_kin_payment('tx_hash','addr1','addr3',10) >> False
 ```
 
-### Kin Payment Monitoring
-```python
-# This method allows you to monitor the kin payments that an account is reciving/sending
-# Transaction that are too complex to simplify will not be shown.
-# Currently, sometimes you will also get a callback for 1 transaction that happened before starting the monitoring
-
-# define a callback function that receives an address and a kin.SimpleTransaction object
-def print_callback(address, tx_data):
-    print(address, tx_data)
-    
-# Create a list of addresses to monitor
-addresses = ['addr1','addr2','addr3']
-
-# Start monitoring kin payments for these addresses
-stop_event = client.monitor_accounts_payments(addresses, print_callback)
-
-# The method will start a background thread, once you wish to stop it you can use:
-stop_event.set()
-```
-
 ### Checking configuration
 The handy `get_config` method will return some parameters the client was configured with, along with Horizon status:
 ```python
 status = client.get_config()
-print (status)
-```
-```json
-#{
-#  "horizon": {
-#    "uri": "https://horizon-playground.kininfrastructure.com",
-#    "online": true,
-#    "error": null
-#  },
-#  "sdk_version": "2.0.0",
-#  "environment": "PLAYGROUND",
-#  "kin_asset": {
-#    "code": "KIN",
-#    "issuer": "GBC3SG6NGTSZ2OMH3FFGB7UVRQWILW367U4GSOOF4TFSZONV42UJXUH7"
-#  },
-#  "transport": {
-#    "pool_size": 10,
-#    "request_timeout": 11,
-#    "backoff_factor": 0.5,
-#    "num_retries": 5,
-#    "retry_statuses": [
-#      503,
-#      413,
-#      429,
-#      504
-#    ]
-#  }
-#}
+print status
+{
+  "horizon": {
+    "uri": "https://horizon-playground.kininfrastructure.com",
+    "online": true,
+    "error": null
+  },
+  "sdk_version": "2.0.0",
+  "environment": "PLAYGROUND",
+  "kin_asset": {
+    "code": "KIN",
+    "issuer": "GBC3SG6NGTSZ2OMH3FFGB7UVRQWILW367U4GSOOF4TFSZONV42UJXUH7"
+  },
+  "transport": {
+    "pool_size": 10,
+    "request_timeout": 11,
+    "backoff_factor": 0.5,
+    "num_retries": 5,
+    "retry_statuses": [
+      503,
+      413,
+      429,
+      504
+    ]
+  }
+}
 ```
 - `sdk_version` - the version of this SDK.
 - `address` - the SDK wallet address.
@@ -291,6 +269,47 @@ seed = Keypair.generate_hd_seed('seed','salt')
 
 ### Generate a mnemonic seed:
 **Not implemented yet**
+
+## Monitoring Kin Payments
+These methods can be used to monitor the kin payment that an account or accounts is sending/receiving  
+**Currently, due to a bug on the blockchain frontend, the monitor may also return 1 tx that happened before the monitoring request**
+
+
+The monitor will run in a background thread (accessible via ```monitor.thead```) ,   
+and will call the callback function everytime it finds a kin payment for the given address.
+### Monitor a single account
+Monitoring a single account will continuously get data about this account from the blockchain and filter it.
+
+```python
+def callback_fn(address, tx_data, monitor)
+	print ('Found tx: {} for address: {}'.format(address,tx_data.id))
+    
+monitor = client.monitor_account_payments('address', callback_fn)
+```
+
+### Monitor multiple accounts
+Monitoring multiple accounts will continuously get data about **all** accounts on the blockchain, and will filter it.
+
+```python
+def callback_fn(address, tx_data, monitor)
+	print ('Found tx: {} for address: {}'.format(address,tx_data.id))
+    
+monitor = client.monitor_accounts_payments(['address1','address2'], callback_fn)
+```
+
+You can freely add or remove accounts to this monitor
+
+```python
+monitor.add_address('address3')
+monitor.remove_address('address1')
+```
+
+### Stopping a monitor
+When you are done monitoring, make sure to stop the monitor, to terminate the thread and the connection to the blockchain.
+
+```python
+monitor.stop()
+```
 
 ## Limitations
 

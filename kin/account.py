@@ -274,17 +274,17 @@ class KinAccount:
         finally:
             tx.release()
 
-    def monitor_kin_payments(self, callback_fn):
-        """Monitor KIN payment transactions related to the this KinAccount.
+    def monitor_payments(self, callback_fn):
+        """Monitor KIN payment transactions related to this account
         NOTE: the function starts a background thread.
 
-        :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data)`.
-        :type: callable[[str, :class:`kin.TransactionData`], None]
+        :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data, monitor)`.
+        :type: callable[str,:class:`kin.TransactionData`,:class:`kin.SingleMonitor`]
 
-        :return: an event to stop the monitoring
-        :rtype: threading.Event
+        :return: a monitor instance
+        :rtype: :class:`kin.SingleMonitor`
         """
-        return self._client.monitor_accounts_payments([self.keypair.public_address], callback_fn)
+        return self._client.monitor_account_payments(self.keypair.public_address, callback_fn)
 
     # Internal methods
 

@@ -8,6 +8,7 @@ from . import errors as KinErrors
 from .blockchain.keypair import Keypair
 from .blockchain.builder import Builder
 from .blockchain.horizon import Horizon
+from .monitors import SingleMonitor, MultiMonitor
 from .transactions import OperationTypes
 from .account import KinAccount, AccountStatus
 from .blockchain.horizon_models import AccountData, TransactionData
@@ -268,103 +269,41 @@ class KinClient(object):
 
         return reply['hash']
 
-    def monitor_accounts_payments(self, addresses, callback_fn):
-        """Monitor KIN payment transactions related to the accounts identified by provided addresses.
+    def monitor_account_payments(self, address, callback_fn):
+        """Monitor KIN payment transactions related to the account identified by provided address.
         NOTE: the function starts a background thread.
 
-        :param list of str addresses: the addresses of the accounts to query.
+        :param str address: the address of the account to query.
 
-        :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data)`.
-        :type: callable[[str, :class:`kin.TransactionData`], None]
+        :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data, monitor)`.
+        :type: callable[str,:class:`kin.TransactionData`,:class:`kin.SingleMonitor`]
 
-        :return: an event to stop the monitoring
-        :rtype: threading.Event
+        :return: a monitor instance
+        :rtype: :class:`kin.SingleMonitor`
 
-        :raises: ValueError: when no addresses are given.
-        :raises: ValueError: if one of the provided addresses has a wrong format.
-        :raises: :class:`KinErrors.AccountNotFoundError`: if one of the provided accounts is not yet created.
+        :raises: ValueError: when no address is given.
+        :raises: ValueError: if the address is in the wrong format
+        :raises: :class:`KinErrors.AccountNotActivatedError`: if the account given is not activated
         """
-        if not addresses:
-            raise ValueError('no addresses to monitor')
 
-        for address in addresses:
-            if not is_valid_address(address):
-                raise ValueError('invalid address: {}'.format(address))
+        return SingleMonitor(self, address, callback_fn)
 
-        for address in addresses:
-            if self.get_account_status(address) == AccountStatus.NOT_CREATED:
-                raise KinErrors.AccountNotFoundError(addresses)
+    def monitor_accounts_payments(self, addresses, callback_fn):
+        """Monitor KIN payment transactions related to multiple accounts
+        NOTE: the function starts a background thread.
 
-        # Currently, due to nonstandard SSE implementation in Horizon, using cursor=now will hang.
-        # Instead, we determine the cursor ourselves.
-        # Fix will be for horizon to send any message just to start a connection
-        params = {}
-        if len(addresses) == 1:
-            reply = self.horizon.account_transactions(addresses[0], params={'order': 'desc', 'limit': 2})
-        else:
-            reply = self.horizon.transactions(params={'order': 'desc', 'limit': 2})
+        :param str addresses: the addresses of the accounts to query.
 
-        if len(reply['_embedded']['records']) == 2:
-            cursor = TransactionData(reply['_embedded']['records'][1], strict=False).paging_token
-            params = {'cursor': cursor}
+        :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data, monitor)`.
+        :type: callable[str,:class:`kin.TransactionData`,:class:`kin.MultiMonitor`]
 
-        # make synchronous SSE request (will raise errors in the current thread)
-        if len(addresses) == 1:
-            events = self.horizon.account_transactions(addresses[0], sse=True, params=params)
-        else:
-            events = self.horizon.transactions(sse=True, params=params)
+        :return: a monitor instance
+        :rtype: :class:`kin.MultiMonitor`
 
-        # asynchronous event processor
-        def event_processor(stop_event):
-            import json
-            for event in events:
-                if stop_event.is_set():
-                    return
-                if event.event != 'message':
-                    continue
-                try:
-                    tx = json.loads(event.data)
+        :raises: ValueError: when no address is given.
+        :raises: ValueError: if the addresses are in the wrong format
+        :raises: :class:`KinErrors.AccountNotActivatedError`: if the accounts given are not activated
+        """
 
-                    # get transaction operations
-                    tx_ops = self.horizon.transaction_operations(tx['hash'], params={'limit': 100})
-                    tx['operations'] = tx_ops['_embedded']['records']
+        return MultiMonitor(self, addresses, callback_fn)
 
-                    # deserialize
-                    tx_data = TransactionData(tx, strict=False)
-
-                    # iterate over transaction operations and see if there's a match
-                    for op_data in tx_data.operations:
-                        if op_data.asset_type == 'native':
-                            continue
-                        if op_data.asset_code != self.kin_asset.code or op_data.asset_issuer \
-                                != self.kin_asset.issuer:
-                            continue
-
-                        try:
-                            tx_data = SimplifiedTransaction(tx_data,self.kin_asset)
-                        except KinErrors.CantSimplifyError:
-                            break
-                        if tx_data.operation.type is not OperationTypes.PAYMENT:
-                            break
-
-                        if len(addresses) == 1:
-                            callback_fn(addresses[0], tx_data)
-                            break
-                        elif op_data.from_address in addresses:
-                            callback_fn(op_data.from_address, tx_data)
-                            break
-                        elif op_data.to_address in addresses:
-                            callback_fn(op_data.to_address, tx_data)
-                            break
-
-                except Exception as ex:
-                    logger.exception(ex)
-                    continue
-
-        # start monitoring thread
-        import threading
-        stop_event = threading.Event()
-        t = threading.Thread(target=event_processor,args=(stop_event,))
-        t.daemon = True
-        t.start()
-        return stop_event

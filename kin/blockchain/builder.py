@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*
-
-# Copyright (C) 2018 Kin Foundation
+"""Contains the builder class to build transactions"""
 
 from stellar_base.builder import Builder as BaseBuilder
 from stellar_base.keypair import Keypair
@@ -13,6 +11,7 @@ class Builder(BaseBuilder):
     """
     This class overrides :class:`stellar_base.builder` to provide additional functionality.
     """
+
     def __init__(self, network, horizon, secret=None, address=None):
         if secret:
             if not is_valid_secret_key(secret):

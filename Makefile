@@ -17,12 +17,8 @@ stop:
 	docker stop stellar
 .PHONY: stop
 
-testnet:
-	python -m pytest -v -rs --cov=kin -s -x test --testnet
-.PHONY: testnet
-
 test:
-	python -m pytest -v -rs --cov=kin -s -x test
+	python -m pytest -v -rs --cov=kin -s -x --fulltrace test
 .PHONY: test
 
 wheel:

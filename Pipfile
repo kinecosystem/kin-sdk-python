@@ -7,7 +7,7 @@ name = "pypi"
 
 [requires]
 
-python_version = "3.5"
+python_version = "3.7"
 
 
 [packages]
@@ -18,7 +18,6 @@ chardet = "==3.0.4"
 "ed25519" = "==1.4"
 idna = "==2.6"
 mnemonic = "==0.18"
-numpy = "==1.14.0"
 "pbkdf2" = "==1.3"
 requests = "==2.18.4"
 schematics = "==2.0.1"
@@ -27,6 +26,8 @@ stellar-base = "==0.1.8.1"
 toml = "==0.9.4"
 "urllib3" = "==1.22"
 "enum34" = "*"
+numpy = "==1.15.2"
+"e1839a8" = {path = ".", editable = true}
 
 
 [dev-packages]
@@ -39,3 +40,8 @@ pluggy = "==0.6.0"
 py = "==1.5.2"
 pytest = "==3.4.0"
 pytest-cov = "==2.5.1"
+
+
+[pipenv]
+
+keep_outdated = true

@@ -61,6 +61,10 @@ account = client.kin_account('seed',channels=number, create_channels=True/False)
 
 # Every seed can only send one transaction per ledger (~5 seconds),
 # so using channels will greatly increase your concurrency.
+
+# Additionaly, an unique app-id can be provided, this will mark all of your transactions and allow the Kin Ecosystem to track the kin usage of your app
+# A unique app-id should be recivied from the Kin Ecosystem
+account = client.kin_account('seed',app_id='unique_app_id')
 ```
 
 ## Client Usage

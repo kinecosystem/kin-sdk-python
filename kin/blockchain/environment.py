@@ -1,4 +1,5 @@
 """Contains the Environment class to configure horizon"""
+
 from hashlib import sha256
 
 from stellar_base.network import NETWORKS
@@ -8,8 +9,8 @@ from .utils import is_valid_address
 
 
 class Environment:
-    # Environments holds the parameters that will be used to connect to horizon
-    def __init__(self, name, horizon_endpoint_uri, network_passphrase, kin_issuer, friendbot_url = None):
+    """Environments holds the parameters that will be used to connect to horizon"""
+    def __init__(self, name, horizon_endpoint_uri, network_passphrase, kin_issuer, friendbot_url=None):
         """
 
         :param str name: Name of the environment.
@@ -24,7 +25,7 @@ class Environment:
         """
         # Add the network to the stellar_base network list.
         NETWORKS[name.upper()] = network_passphrase
-        self.name = name
+        self.name = name.upper()
         self.horizon_uri = horizon_endpoint_uri
 
         if not is_valid_address(kin_issuer):

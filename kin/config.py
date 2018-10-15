@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*
-
-# Copyright (C) 2018 Kin Foundation
+"""Contains the config for the Kin SDK"""
 
 from .blockchain.environment import Environment
 
@@ -24,5 +22,7 @@ BASE_RESERVE = 0.5  # in XLM
 MIN_ACCOUNT_BALANCE = (2 + 1) * BASE_RESERVE + 0.1  # 1 additional trustline op + fees
 DEFAULT_FEE = 1e-05  # 0.0000100
 MEMO_CAP = 28
+# Template version - app_id - free text
+MEMO_TEMPLATE = '1-{}-'
 
 SDK_USER_AGENT = 'kin-core-python/{}'.format(__version__)

@@ -16,14 +16,14 @@ def test_create():
 def test_get_config(setup, test_client):
     from kin import Environment
     # bad Horizon endpoint
-    env = Environment('bad','bad','bad','GDZA33STWFOVWLHAFXEOYS46DA2VMIQH3MCCVVGAUENMZMMZJFAHT4KO')
+    env = Environment('bad', 'bad', 'bad', 'GDZA33STWFOVWLHAFXEOYS46DA2VMIQH3MCCVVGAUENMZMMZJFAHT4KO')
     status = KinClient(env).get_config()
     assert status['horizon']
     assert status['horizon']['online'] is False
     assert status['horizon']['error'].startswith("Invalid URL 'bad': No schema supplied")
 
     # no Horizon on endpoint
-    env = Environment('bad','http://localhost:666','bad','GDZA33STWFOVWLHAFXEOYS46DA2VMIQH3MCCVVGAUENMZMMZJFAHT4KO')
+    env = Environment('bad', 'http://localhost:666', 'bad', 'GDZA33STWFOVWLHAFXEOYS46DA2VMIQH3MCCVVGAUENMZMMZJFAHT4KO')
     status = KinClient(env).get_config()
     assert status['horizon']
     assert status['horizon']['online'] is False
@@ -125,7 +125,7 @@ def test_get_transaction_data(test_client):
     assert tx_data.operation.destination == address
     assert tx_data.operation.starting_balance == 10
 
-    tx_data = test_client.get_transaction_data(tx_hash,simple=False)
+    tx_data = test_client.get_transaction_data(tx_hash, simple=False)
     assert isinstance(tx_data, TransactionData)
 
 
@@ -145,16 +145,16 @@ def test_verify_kin_payment(test_client, test_account):
     tx_hash = test_client.friendbot(address)
     sleep(5)
 
-    assert not test_client.verify_kin_payment(tx_hash,'source','destination',123)
+    assert not test_client.verify_kin_payment(tx_hash, 'source', 'destination', 123)
 
     tx_hash = test_client.activate_account(seed)
     sleep(5)
     assert not test_client.verify_kin_payment(tx_hash, 'source', 'destination', 123)
 
-    tx_hash = test_account.send_kin('GCZXR4ILXETTNQMUNF54ILRMPEG3UTUUMYKPUXU5633VCOABZZ63H7FJ',123,'Hello')
+    tx_hash = test_account.send_kin('GCZXR4ILXETTNQMUNF54ILRMPEG3UTUUMYKPUXU5633VCOABZZ63H7FJ', 123, 'Hello')
     sleep(5)
     assert test_client.verify_kin_payment(tx_hash, test_account.get_public_address(), address, 123)
-    assert test_client.verify_kin_payment(tx_hash, test_account.get_public_address(), address,123, 'Hello', True)
+    assert test_client.verify_kin_payment(tx_hash, test_account.get_public_address(), address, 123, 'Hello', True)
 
 
 def test_activate_account(test_client):
@@ -175,4 +175,3 @@ def test_activate_account(test_client):
 
     with pytest.raises(KinErrors.AccountActivatedError):
         test_client.activate_account(seed)
-        

@@ -8,10 +8,13 @@ from .errors import AccountNotActivatedError, CantSimplifyError, StoppedMonitorE
 from .blockchain.horizon_models import TransactionData
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
 class SingleMonitor:
+    """Single Monitor to monitor Kin payment on a single account"""
+
     def __init__(self, kin_client, address, callback_fn):
         """
         Monitors a single account for kin payments
@@ -105,6 +108,8 @@ class SingleMonitor:
 
 
 class MultiMonitor:
+    """Multi Monitor to monitor Kin payment on a multiple accounts"""
+
     def __init__(self, kin_client, addresses, callback_fn):
         """
         Monitors multiple accounts for kin payments

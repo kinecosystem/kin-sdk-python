@@ -11,17 +11,19 @@ from .blockchain.builder import Builder
 from .blockchain.channel_manager import ChannelManager
 from . import errors as KinErrors
 from .transactions import Transaction
-from .blockchain.errors import TransactionResultCode, HorizonErrorType , HorizonError
-from .config import MIN_ACCOUNT_BALANCE, SDK_USER_AGENT, DEFAULT_FEE, MEMO_CAP
+from .blockchain.errors import TransactionResultCode, HorizonErrorType, HorizonError
+from .config import MIN_ACCOUNT_BALANCE, SDK_USER_AGENT, DEFAULT_FEE, MEMO_CAP, MEMO_TEMPLATE
 from .blockchain.utils import is_valid_secret_key, is_valid_address
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
 class KinAccount:
     """Account class to perform authenticated actions on the blockchain"""
-    def __init__(self, seed, client, channels, channel_secret_keys, create_channels):
+
+    def __init__(self, seed, client, channels, channel_secret_keys, create_channels, app_id):
         # Set the internal sdk
         self._client = client
 
@@ -42,14 +44,6 @@ class KinAccount:
 
         if channel_secret_keys is not None:
             # Use given channels
-            for channel_key in channel_secret_keys:
-                # Verify channel seed
-                if not is_valid_secret_key(channel_key):
-                    raise ValueError('invalid channel key: {}'.format(channel_key))
-                # Check that channel accounts exists (they do not have to be activated).
-                channel_address = Keypair.address_from_seed(channel_key)
-                if self._client.get_account_data(channel_address) == AccountStatus.NOT_CREATED:
-                    raise KinErrors.AccountNotFoundError(channel_address)
             self.channel_secret_keys = channel_secret_keys
 
         elif channels is not None:
@@ -66,7 +60,7 @@ class KinAccount:
             # Create the channels using the base account
             if self.channel_secret_keys == [seed]:
                 raise ValueError('There are no channels to create')
-            base_account = KinAccount(seed,self._client, None, None, False)
+            base_account = self._client.kin_account(seed,app_id=app_id)
 
             # Verify that there is enough XLM to create the channels
             # Balance should be at least (Number of channels + yourself) * (Minimum account balance + fees)
@@ -78,18 +72,30 @@ class KinAccount:
             for channel in self.channel_secret_keys:
                 try:
                     # TODO: might want to make it a 1 multi operation tx
-                    base_account.create_account(channel)
+                    base_account.create_account(Keypair.address_from_seed(channel))
                 except KinErrors.AccountExistsError:
                     pass
+
+        for channel_key in self.channel_secret_keys:
+            # Verify channel seed
+            if not is_valid_secret_key(channel_key):
+                raise ValueError('invalid channel key: {}'.format(channel_key))
+            # Check that channel accounts exists (they do not have to be activated).
+            channel_address = Keypair.address_from_seed(channel_key)
+            if self._client.get_account_data(channel_address) == AccountStatus.NOT_CREATED:
+                raise KinErrors.AccountNotFoundError(channel_address)
 
         # set connection pool size for channels + monitoring connection + extra
         pool_size = max(1, len(self.channel_secret_keys)) + 2
 
         # Set an horizon instance with the new pool_size
         self.horizon = Horizon(self._client.environment.horizon_uri,
-                               pool_size=pool_size , user_agent=SDK_USER_AGENT)
+                               pool_size=pool_size, user_agent=SDK_USER_AGENT)
         self.channel_manager = ChannelManager(seed, self.channel_secret_keys,
                                               self._client.environment.name, self.horizon)
+
+        # Set the app_id
+        self.app_id = app_id
 
     def get_public_address(self):
         """Return this KinAccount's public address"""
@@ -133,7 +139,9 @@ class KinAccount:
         :raises: :class:`KinErrors.AccountExistsError`: if the account already exists.
         :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than MEMO_CAP characters
         """
-        tx = self.build_create_account(address, starting_balance=starting_balance, memo_text=memo_text)
+        tx = self.build_create_account(address,
+                                       starting_balance=starting_balance,
+                                       memo_text=memo_text)
         return self.submit_transaction(tx)
 
     def send_xlm(self, address, amount, memo_text=None):
@@ -201,15 +209,12 @@ class KinAccount:
         if not is_valid_address(address):
             raise ValueError('invalid address: {}'.format(address))
 
-        if memo_text is not None and len(memo_text) > MEMO_CAP:
-            raise KinErrors.MemoTooLongError('{} > {}'.format(len(memo_text),MEMO_CAP))
-
         # Build the transaction and send it.
 
         builder = self.channel_manager.build_transaction(lambda builder:
                                                          partial(builder.append_create_account_op, address,
                                                                  starting_balance),
-                                                         memo_text=memo_text)
+                                                         memo_text=self._build_memo(memo_text))
         return Transaction(builder, self.channel_manager)
 
     def build_send_xlm(self, address, amount, memo_text=None):
@@ -248,10 +253,11 @@ class KinAccount:
          """
         return self._build_send_asset(self._client.kin_asset, address, amount, memo_text)
 
-    def submit_transaction(self, tx):
+    def submit_transaction(self, tx, is_re_submitting=False):
         """
         Submit a transaction to the blockchain.
         :param :class: `kin.Transaction` tx: The transaction object to send
+        :param boolean is_re_submitting: is this a re-submission
         :return: The hash of the transaction.
         :rtype: str
         """
@@ -268,11 +274,12 @@ class KinAccount:
 
                 # Insufficient balance is a "fast-fail", the sequence number doesn't increment
                 # so there is no need to build the transaction again
-                self.submit_transaction(tx)
+                self.submit_transaction(tx, is_re_submitting=True)
             else:
                 raise KinErrors.translate_error(e)
         finally:
-            tx.release()
+            if not is_re_submitting:
+                tx.release()
 
     def monitor_payments(self, callback_fn):
         """Monitor KIN payment transactions related to this account
@@ -311,9 +318,6 @@ class KinAccount:
         if not is_valid_address(address):
             raise ValueError('invalid address: {}'.format(address))
 
-        if memo_text is not None and len(memo_text) > MEMO_CAP:
-            raise KinErrors.MemoTooLongError('{} > {}'.format(len(memo_text), MEMO_CAP))
-
         if amount <= 0:
             raise ValueError('amount must be positive')
 
@@ -323,7 +327,7 @@ class KinAccount:
         builder = self.channel_manager.build_transaction(lambda builder:
                                                          partial(builder.append_payment_op, address, amount,
                                                                  asset_type=asset.code, asset_issuer=asset.issuer),
-                                                         memo_text=memo_text)
+                                                         memo_text=self._build_memo(memo_text))
         return Transaction(builder, self.channel_manager)
 
     def _top_up(self, address):
@@ -340,6 +344,26 @@ class KinAccount:
         builder.append_payment_op(address, 1)
         builder.sign()
         builder.submit()
+
+    def _build_memo(self, memo):
+        """
+        Build a memo for a tx that fits the pre-defined template
+        :param memo: The memo to include
+        :return: the finished memo
+        :rtype: str
+        """
+        if self.app_id is not None:
+            finished_memo = MEMO_TEMPLATE.format(self.app_id)
+            if memo is not None:
+                finished_memo += memo
+
+            if len(finished_memo) > MEMO_CAP:
+                raise KinErrors.MemoTooLongError('{} > {}'.format(len(finished_memo), MEMO_CAP))
+            return finished_memo
+
+        if memo is not None and len(memo) > MEMO_CAP:
+            raise KinErrors.MemoTooLongError('{} > {}'.format(len(memo), MEMO_CAP))
+        return memo
 
 
 class AccountStatus(Enum):

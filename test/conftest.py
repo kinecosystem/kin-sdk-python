@@ -1,9 +1,9 @@
 import pytest
 
-
 from kin import Environment, KinClient
 
 import logging
+
 logging.basicConfig()
 
 
@@ -12,15 +12,16 @@ def setup():
     # Set setup values
     class Struct:
         """Handy variable holder"""
+
         def __init__(self, **entries): self.__dict__.update(entries)
 
     # Using a local blockchain, this is the root account
     issuer_seed = 'SDBDJVXHPVQGDXYHEVOBBV4XZUDD7IQTXM5XHZRLXRJVY5YMH4YUCNZC'
     issuer_address = 'GCLBBAIDP34M4JACPQJUYNSPZCQK7IRHV7ETKV6U53JPYYUIIVDVJJFQ'
     docker_environment = Environment('DOCKER', 'http://localhost:8008',
-                                     'private testnet',issuer_address,'http://localhost:8001')
+                                     'private testnet', issuer_address, 'http://localhost:8001')
 
-    print('Testing with environment:' ,docker_environment)
+    print('Testing with environment:', docker_environment)
     return Struct(issuer_address=issuer_address,
                   issuer_seed=issuer_seed,
                   environment=docker_environment)
@@ -45,6 +46,6 @@ def test_account(setup, test_client):
     print('Created the base kin account')
     test_client.activate_account(sdk_seed)
     print('Base kin account activated')
-    root_account.send_kin(sdk_address,1000000)
+    root_account.send_kin(sdk_address, 1000000)
     print('Funded the base kin account')
     return test_client.kin_account(sdk_seed)

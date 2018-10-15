@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*
-
-# Copyright (C) 2018 Kin Foundation
+"""Contains the Horizon class to interact with horizon"""
 
 import requests
 from requests.adapters import HTTPAdapter, DEFAULT_POOLSIZE
@@ -14,6 +12,7 @@ from stellar_base.horizon import HORIZON_LIVE, HORIZON_TEST
 from .errors import HorizonError
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -28,7 +27,6 @@ else:
     # noinspection PyUnresolvedReferences
     from urllib.parse import urlencode
 
-
 DEFAULT_REQUEST_TIMEOUT = 11  # two ledgers + 1 sec, let's retry faster and not wait 60 secs.
 DEFAULT_NUM_RETRIES = 5
 DEFAULT_BACKOFF_FACTOR = 0.5
@@ -42,6 +40,7 @@ class Horizon(object):
         - configurable request retry functionality
         - Horizon error checking and deserialization
     """
+
     def __init__(self, horizon_uri=None, pool_size=DEFAULT_POOLSIZE, num_retries=DEFAULT_NUM_RETRIES,
                  request_timeout=DEFAULT_REQUEST_TIMEOUT, backoff_factor=DEFAULT_BACKOFF_FACTOR, user_agent=USER_AGENT):
         if horizon_uri is None:

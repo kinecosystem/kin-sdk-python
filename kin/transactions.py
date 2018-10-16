@@ -68,7 +68,8 @@ class SimplifiedTransaction:
         # If the memo is not a text/none memo
         if not isinstance(raw_tx.tx.memo, (TextMemo, NoneMemo)):
             raise CantSimplifyError('Cant simplify tx with memo type: {}'.format(type(raw_tx.tx.memo)))
-        self.memo = None if raw_tx.tx.memo is None else raw_tx.tx.memo.text.decode() # will be none if the there is no memo
+        self.memo = None if isinstance(raw_tx.tx.memo, NoneMemo) \
+            else raw_tx.tx.memo.text.decode() # will be none if the there is no memo
 
         if len(raw_tx.tx.operations) > 1:
             raise CantSimplifyError('Cant simplify tx with {} operations'.format(raw_tx.operation_count))

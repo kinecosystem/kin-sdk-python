@@ -36,7 +36,7 @@ class Builder(BaseBuilder):
         self.ops = []
         self.time_bounds = []
         self.memo = NoneMemo()
-        self.fee = None
+        self.fee = 100
         self.tx = None
         self.te = None
 

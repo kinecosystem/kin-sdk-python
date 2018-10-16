@@ -3,9 +3,8 @@ from threading import Thread, Event
 
 from .blockchain.utils import is_valid_address
 from .account import AccountStatus
-from .transactions import OperationTypes
+from .transactions import OperationTypes, SimplifiedTransaction ,RawTransaction
 from .errors import AccountNotActivatedError, CantSimplifyError, StoppedMonitorError
-from .blockchain.horizon_models import TransactionData
 
 import logging
 
@@ -44,7 +43,7 @@ class SingleMonitor:
         params = {}
         reply = self.kin_client.horizon.account_transactions(address, params={'order': 'desc', 'limit': 2})
         if len(reply['_embedded']['records']) == 2:
-            cursor = TransactionData(reply['_embedded']['records'][1], strict=False).paging_token
+            cursor = reply['_embedded']['records'][1]['paging_token']
             params = {'cursor': cursor}
 
         # make synchronous SSE request (will raise errors in the current thread)
@@ -72,7 +71,7 @@ class SingleMonitor:
                     tx = json.loads(event.data)
 
                     try:
-                        tx_data = self.kin_client.get_transaction_data(tx['hash'])
+                        tx_data = SimplifiedTransaction(RawTransaction(tx), self.kin_client.kin_asset)
                     except CantSimplifyError:
                         continue
 
@@ -138,7 +137,7 @@ class MultiMonitor:
         params = {}
         reply = self.kin_client.horizon.transactions(params={'order': 'desc', 'limit': 2})
         if len(reply['_embedded']['records']) == 2:
-            cursor = TransactionData(reply['_embedded']['records'][1], strict=False).paging_token
+            cursor = reply['_embedded']['records'][1]['paging_token']
             params = {'cursor': cursor}
 
         # make synchronous SSE request (will raise errors in the current thread)
@@ -166,7 +165,7 @@ class MultiMonitor:
                     tx = json.loads(event.data)
 
                     try:
-                        tx_data = self.kin_client.get_transaction_data(tx['hash'])
+                        tx_data = SimplifiedTransaction(RawTransaction(tx), self.kin_client.kin_asset)
                     except CantSimplifyError:
                         continue
 

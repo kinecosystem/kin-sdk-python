@@ -62,47 +62,6 @@ class AccountData(PModel):
     signers = ListType(ModelType(Signer), default=[])
 
 
-class OperationData(PModel):
-    id = StringType()
-    source_account = StringType()
-    type = StringType()
-    created_at = UTCDateTimeType()
-    transaction_hash = StringType()
-    asset_type = StringType()
-    asset_code = StringType()
-    asset_issuer = StringType()
-    limit = FloatType()
-    trustor = StringType()
-    trustee = StringType()
-    from_address = StringType(serialized_name='from')
-    to_address = StringType(serialized_name='to')
-    amount = FloatType()
-    #  account is the created account in create_account op
-    account = StringType()
-    starting_balance = FloatType()
-
-
-class TransactionData(PModel):
-    id = StringType()
-    hash = StringType()
-    created_at = UTCDateTimeType()
-    source_account = StringType()
-    source_account_sequence = StringType()
-    operations = ListType(ModelType(OperationData), default=[])
-    operation_count = IntType()
-    ledger = StringType()
-    memo_type = StringType()
-    memo = StringType()
-    fee_paid = FloatType()
-    signatures = ListType(StringType, default=[])
-    paging_token = StringType()
-    envelope_xdr = StringType()
-    result_xdr = StringType()
-    result_meta_xdr = StringType()
-    fee_meta_xdr = StringType()
-    time_bounds = ListType(IntType, default=[])
-
-
 class TransactionResultCodes(PModel):
     transaction = StringType()
     operations = ListType(StringType, default=[])

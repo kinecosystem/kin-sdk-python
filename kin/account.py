@@ -326,7 +326,7 @@ class KinAccount:
 
         builder = self.channel_manager.build_transaction(lambda builder:
                                                          partial(builder.append_payment_op, address, amount,
-                                                                 asset_type=asset.code, asset_issuer=asset.issuer),
+                                                                 asset_code=asset.code, asset_issuer=asset.issuer),
                                                          memo_text=self._build_memo(memo_text))
         return Transaction(builder, self.channel_manager)
 

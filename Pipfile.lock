@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "a0e95981f515c9915c2d3e1bbc792ec5d43ca75ca5baa7ac8ec99a3a778b6513"
+            "sha256": "8da9750d4dd8563012d495393924b92c9ca811aab49d684535fbba3e55887731"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -41,10 +41,6 @@
                 "sha256:eb47b9cec9818b684537d05552ff10404c92d9dcdd455156456b19e7423855bc"
             ],
             "version": "==0.1.1"
-        },
-        "e1839a8": {
-            "editable": true,
-            "path": "."
         },
         "ed25519": {
             "hashes": [
@@ -142,9 +138,10 @@
         },
         "stellar-base": {
             "hashes": [
-                "sha256:fdba272c38c0b8437baf6930db612e39d874428f68418b33b8c827ed83403982"
+                "sha256:269283151f931624e315a9f5a5bf03b7017521886e69a23568db6c37ee9d14f9",
+                "sha256:8971305f9fa06d5d66a42f92a35089537a1614b55494609db02a87fbc4702252"
             ],
-            "version": "==0.1.8.1"
+            "version": "==0.1.9.1"
         },
         "toml": {
             "hashes": [

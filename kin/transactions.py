@@ -92,7 +92,7 @@ class SimplifiedOperation:
                                             format(op_data.asset.code, op_data.asset.issuer))
 
             self.asset = 'XLM' if op_data.asset.type == 'native' else op_data.asset.code
-            self.amount = op_data.amount
+            self.amount = float(op_data.amount)
             self.destination = op_data.destination
             self.type = OperationTypes.PAYMENT
         elif isinstance(op_data, ChangeTrust):
@@ -105,7 +105,7 @@ class SimplifiedOperation:
             self.type = OperationTypes.ACTIVATION
         elif isinstance(op_data, CreateAccount):
             self.destination = op_data.destination
-            self.starting_balance = op_data.starting_balance
+            self.starting_balance = float(op_data.starting_balance)
             self.type = OperationTypes.CREATE_ACCOUNT
         else:
             raise CantSimplifyError('Cant simplify operation with {} operation'.format(op_data.type))

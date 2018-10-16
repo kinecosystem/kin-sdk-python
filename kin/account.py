@@ -12,7 +12,7 @@ from .blockchain.horizon import Horizon
 from .blockchain.builder import Builder
 from .blockchain.channel_manager import ChannelManager
 from . import errors as KinErrors
-from .transactions import Transaction
+from .transactions import Transaction, build_memo
 from .blockchain.errors import TransactionResultCode, HorizonErrorType, HorizonError
 from .config import MIN_ACCOUNT_BALANCE, SDK_USER_AGENT, DEFAULT_FEE, MEMO_CAP, MEMO_TEMPLATE, APP_ID_REGEX
 from .blockchain.utils import is_valid_secret_key, is_valid_address
@@ -220,7 +220,7 @@ class KinAccount:
         builder = self.channel_manager.build_transaction(lambda builder:
                                                          partial(builder.append_create_account_op, address,
                                                                  starting_balance),
-                                                         memo_text=self._build_memo(memo_text))
+                                                         memo_text=build_memo(self.app_id, memo_text))
         return Transaction(builder, self.channel_manager)
 
     def build_send_xlm(self, address, amount, memo_text=None):
@@ -333,7 +333,7 @@ class KinAccount:
         builder = self.channel_manager.build_transaction(lambda builder:
                                                          partial(builder.append_payment_op, address, amount,
                                                                  asset_code=asset.code, asset_issuer=asset.issuer),
-                                                         memo_text=self._build_memo(memo_text))
+                                                         memo_text=build_memo(self.app_id, memo_text))
         return Transaction(builder, self.channel_manager)
 
     def _top_up(self, address):
@@ -350,27 +350,6 @@ class KinAccount:
         builder.append_payment_op(address, 1)
         builder.sign()
         builder.submit()
-
-    def _build_memo(self, memo):
-        """
-        Build a memo for a tx that fits the pre-defined template
-        :param memo: The memo to include
-        :return: the finished memo
-        :rtype: str
-        """
-        finished_memo = MEMO_TEMPLATE.format(self.app_id)
-        if memo is not None:
-            finished_memo += memo
-
-        # Need to count the length in bytes
-        if sys.version[0] == '2': # python 2
-            if len(finished_memo) > MEMO_CAP:
-                raise KinErrors.MemoTooLongError('{} > {}'.format(len(finished_memo), MEMO_CAP))
-
-        elif len(finished_memo.encode()) > MEMO_CAP:
-            raise KinErrors.MemoTooLongError('{} > {}'.format(len(finished_memo), MEMO_CAP))
-
-        return finished_memo
 
 
 class AccountStatus(Enum):

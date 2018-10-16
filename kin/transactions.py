@@ -1,4 +1,5 @@
 """Contains classes and methods related to transactions and operations"""
+import sys
 from hashlib import sha256
 from binascii import hexlify
 import base64
@@ -9,7 +10,9 @@ from stellar_base.transaction import Transaction as BaseTransaction
 from stellar_base.memo import TextMemo, NoneMemo
 from stellar_base.operation import Payment, ChangeTrust, CreateAccount
 
-from .errors import CantSimplifyError
+from .errors import CantSimplifyError, MemoTooLongError
+from .config import MEMO_TEMPLATE, MEMO_CAP
+
 
 # This is needed in order to calculate transaction hash.
 # It is the xdr representation of stellar_base.XDR.const.ENVELOP_TYPE_TX (2)
@@ -124,7 +127,6 @@ class RawTransaction:
         self.hash = horizon_tx_response['hash']
 
 
-
 class OperationTypes(Enum):
     """Possible operation types for a simple operation"""
 
@@ -132,3 +134,24 @@ class OperationTypes(Enum):
     CREATE_ACCOUNT = 2
     ACTIVATION = 3
 
+
+def build_memo(app_id, memo):
+    """
+    Build a memo for a tx that fits the pre-defined template
+    :param memo: The memo to include
+    :return: the finished memo
+    :rtype: str
+    """
+    finished_memo = MEMO_TEMPLATE.format(app_id)
+    if memo is not None:
+        finished_memo += memo
+
+    # Need to count the length in bytes
+    if sys.version[0] == '2':  # python 2
+        if len(finished_memo) > MEMO_CAP:
+            raise MemoTooLongError('{} > {}'.format(len(finished_memo), MEMO_CAP))
+
+    elif len(finished_memo.encode()) > MEMO_CAP:
+        raise MemoTooLongError('{} > {}'.format(len(finished_memo), MEMO_CAP))
+
+    return finished_memo

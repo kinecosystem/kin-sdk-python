@@ -8,7 +8,7 @@ from .blockchain.keypair import Keypair
 from .blockchain.builder import Builder
 from .blockchain.horizon import Horizon
 from .monitors import SingleMonitor, MultiMonitor
-from .transactions import OperationTypes, SimplifiedTransaction, RawTransaction
+from .transactions import OperationTypes, SimplifiedTransaction, RawTransaction, build_memo
 from .account import KinAccount, AccountStatus
 from .blockchain.horizon_models import AccountData
 from .blockchain.utils import is_valid_address, is_valid_transaction_hash, is_valid_secret_key
@@ -183,7 +183,7 @@ class KinClient(object):
             return SimplifiedTransaction(raw_tx, self.kin_asset)
         return raw_tx
 
-    def verify_kin_payment(self, tx_hash, source, destination, amount, memo=None, check_memo=False):
+    def verify_kin_payment(self, tx_hash, source, destination, amount, memo=None, check_memo=False, app_id=ANON_APP_ID):
         """
         Verify that a give tx matches the desired parameters
         :param str tx_hash: The hash of the transaction to query
@@ -192,6 +192,7 @@ class KinClient(object):
         :param float amount: The expected amount
         :param str memo: (optional) The expected memo
         :param boolean check_memo: (optional) Should the memo match
+        :param the id of the app that sent the tx
         :return: True/False
         :rtype: boolean
         """
@@ -204,7 +205,7 @@ class KinClient(object):
             return False
         if source != tx.source or destination != operation.destination or amount != operation.amount:
             return False
-        if check_memo and memo != tx.memo:
+        if check_memo and build_memo(app_id, memo) != tx.memo:
             return False
 
         return True

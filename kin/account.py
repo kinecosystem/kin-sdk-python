@@ -359,7 +359,8 @@ class KinAccount:
         :rtype: str
         """
         finished_memo = MEMO_TEMPLATE.format(self.app_id)
-        finished_memo += memo
+        if memo is not None:
+            finished_memo += memo
 
         # Need to count the length in bytes
         if sys.version[0] == '2': # python 2

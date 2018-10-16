@@ -2,7 +2,7 @@ import pytest
 from kin import KinErrors
 from kin import Keypair
 from kin import AccountStatus
-from kin.config import BASE_RESERVE, DEFAULT_FEE, MEMO_TEMPLATE
+from kin.config import BASE_RESERVE, DEFAULT_FEE, MEMO_TEMPLATE, ANON_APP_ID
 from kin.blockchain.utils import is_valid_transaction_hash
 from time import sleep
 
@@ -167,11 +167,8 @@ def test_memo(test_client, test_account):
     tx1_data = test_client.get_transaction_data(tx1)
     tx2_data = test_client.get_transaction_data(tx2)
 
-    assert tx1_data.memo == 'Hello'
+    assert tx1_data.memo == MEMO_TEMPLATE.format(ANON_APP_ID) + 'Hello'
     assert tx2_data.memo == MEMO_TEMPLATE.format('test') + 'Hello'
-
-    with pytest.raises(KinErrors.MemoTooLongError):
-        test_account.create_account(recipient1, memo_text='a'*30)
 
     with pytest.raises(KinErrors.MemoTooLongError):
         account2.create_account(recipient2, memo_text='a'*25)

@@ -2,7 +2,7 @@
 
 import requests
 
-from .config import SDK_USER_AGENT
+from .config import SDK_USER_AGENT, ANON_APP_ID
 from . import errors as KinErrors
 from .blockchain.keypair import Keypair
 from .blockchain.builder import Builder
@@ -42,7 +42,7 @@ class KinClient(object):
         self.horizon = Horizon(horizon_uri=environment.horizon_uri, user_agent=SDK_USER_AGENT)
         logger.info('Kin SDK inited on network {}, horizon endpoint {}'.format(self.network, self.horizon.horizon_uri))
 
-    def kin_account(self, seed, channels=None, channel_secret_keys=None, create_channels=False, app_id=None):
+    def kin_account(self, seed, channels=None, channel_secret_keys=None, create_channels=False, app_id=ANON_APP_ID):
         """
         Create a new instance of a KinAccount to perform authenticated operations on the blockchain.
         :param str seed: The secret seed of the account that will be used

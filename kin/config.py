@@ -24,5 +24,9 @@ DEFAULT_FEE = 1e-05  # 0.0000100
 MEMO_CAP = 28
 # Template version - app_id - free text
 MEMO_TEMPLATE = '1-{}-'
+# hardcoded id for anonymous users
+ANON_APP_ID = 'anon'
+# 4 letters/numbers
+APP_ID_REGEX = '^[a-zA-Z0-9]{4}$'
 
 SDK_USER_AGENT = 'kin-core-python/{}'.format(__version__)

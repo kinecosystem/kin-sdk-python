@@ -1,5 +1,7 @@
 """Contains the KinAccount and AccountStatus classes."""
 
+import sys
+import re
 from functools import partial
 
 from enum import Enum
@@ -12,7 +14,7 @@ from .blockchain.channel_manager import ChannelManager
 from . import errors as KinErrors
 from .transactions import Transaction
 from .blockchain.errors import TransactionResultCode, HorizonErrorType, HorizonError
-from .config import MIN_ACCOUNT_BALANCE, SDK_USER_AGENT, DEFAULT_FEE, MEMO_CAP, MEMO_TEMPLATE
+from .config import MIN_ACCOUNT_BALANCE, SDK_USER_AGENT, DEFAULT_FEE, MEMO_CAP, MEMO_TEMPLATE, APP_ID_REGEX
 from .blockchain.utils import is_valid_secret_key, is_valid_address
 
 import logging
@@ -26,6 +28,13 @@ class KinAccount:
     def __init__(self, seed, client, channels, channel_secret_keys, create_channels, app_id):
         # Set the internal sdk
         self._client = client
+
+        # Set the app_id
+        self.app_id = app_id
+
+        # Verify the app_id is ok
+        if re.match(APP_ID_REGEX, app_id) is None:
+            raise ValueError('invalid app id: {}'.format(app_id))
 
         # Verify seed
         if not is_valid_secret_key(seed):
@@ -93,9 +102,6 @@ class KinAccount:
                                pool_size=pool_size, user_agent=SDK_USER_AGENT)
         self.channel_manager = ChannelManager(seed, self.channel_secret_keys,
                                               self._client.environment.name, self.horizon)
-
-        # Set the app_id
-        self.app_id = app_id
 
     def get_public_address(self):
         """Return this KinAccount's public address"""
@@ -352,18 +358,18 @@ class KinAccount:
         :return: the finished memo
         :rtype: str
         """
-        if self.app_id is not None:
-            finished_memo = MEMO_TEMPLATE.format(self.app_id)
-            if memo is not None:
-                finished_memo += memo
+        finished_memo = MEMO_TEMPLATE.format(self.app_id)
+        finished_memo += memo
 
+        # Need to count the length in bytes
+        if sys.version[0] == '2': # python 2
             if len(finished_memo) > MEMO_CAP:
                 raise KinErrors.MemoTooLongError('{} > {}'.format(len(finished_memo), MEMO_CAP))
-            return finished_memo
 
-        if memo is not None and len(memo) > MEMO_CAP:
-            raise KinErrors.MemoTooLongError('{} > {}'.format(len(memo), MEMO_CAP))
-        return memo
+        elif len(finished_memo.encode()) > MEMO_CAP:
+            raise KinErrors.MemoTooLongError('{} > {}'.format(len(finished_memo), MEMO_CAP))
+
+        return finished_memo
 
 
 class AccountStatus(Enum):

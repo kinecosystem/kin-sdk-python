@@ -2,13 +2,13 @@
 
 import requests
 
-from .config import SDK_USER_AGENT
+from .config import SDK_USER_AGENT, ANON_APP_ID
 from . import errors as KinErrors
 from .blockchain.keypair import Keypair
 from .blockchain.builder import Builder
 from .blockchain.horizon import Horizon
 from .monitors import SingleMonitor, MultiMonitor
-from .transactions import OperationTypes, SimplifiedTransaction, RawTransaction
+from .transactions import OperationTypes, SimplifiedTransaction, RawTransaction, build_memo
 from .account import KinAccount, AccountStatus
 from .blockchain.horizon_models import AccountData
 from .blockchain.utils import is_valid_address, is_valid_transaction_hash, is_valid_secret_key
@@ -42,7 +42,7 @@ class KinClient(object):
         self.horizon = Horizon(horizon_uri=environment.horizon_uri, user_agent=SDK_USER_AGENT)
         logger.info('Kin SDK inited on network {}, horizon endpoint {}'.format(self.network, self.horizon.horizon_uri))
 
-    def kin_account(self, seed, channels=None, channel_secret_keys=None, create_channels=False, app_id=None):
+    def kin_account(self, seed, channels=None, channel_secret_keys=None, create_channels=False, app_id=ANON_APP_ID):
         """
         Create a new instance of a KinAccount to perform authenticated operations on the blockchain.
         :param str seed: The secret seed of the account that will be used
@@ -183,7 +183,7 @@ class KinClient(object):
             return SimplifiedTransaction(raw_tx, self.kin_asset)
         return raw_tx
 
-    def verify_kin_payment(self, tx_hash, source, destination, amount, memo=None, check_memo=False):
+    def verify_kin_payment(self, tx_hash, source, destination, amount, memo=None, check_memo=False, app_id=ANON_APP_ID):
         """
         Verify that a give tx matches the desired parameters
         :param str tx_hash: The hash of the transaction to query
@@ -192,6 +192,7 @@ class KinClient(object):
         :param float amount: The expected amount
         :param str memo: (optional) The expected memo
         :param boolean check_memo: (optional) Should the memo match
+        :param the id of the app that sent the tx
         :return: True/False
         :rtype: boolean
         """
@@ -204,7 +205,7 @@ class KinClient(object):
             return False
         if source != tx.source or destination != operation.destination or amount != operation.amount:
             return False
-        if check_memo and memo != tx.memo:
+        if check_memo and build_memo(app_id, memo) != tx.memo:
             return False
 
         return True

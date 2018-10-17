@@ -203,11 +203,9 @@ class KinClient(object):
 
         tx_list = []
 
-        # If 250 tx were requested, i will need to get 50 more
-        remaining_txs = 0 if MAX_RECORDS_PER_REQUEST >= amount else MAX_RECORDS_PER_REQUEST
-
+        requested_amount = amount if amount < MAX_RECORDS_PER_REQUEST else MAX_RECORDS_PER_REQUEST
         params = {
-            'limit': amount,
+            'limit': requested_amount,
             'order': 'desc' if descending else 'asc'
         }
 
@@ -229,7 +227,7 @@ class KinClient(object):
                 tx_list.append(raw_tx)
             last_cursor = transaction['paging_token']
 
-        remaining_txs -= len(tx_list)
+        remaining_txs = amount - len(tx_list)
         # if we got all the txs that we wanted, or there are no more txs
         if remaining_txs <= 0 or len(horizon_response['_embedded']['records']) < amount:
             return tx_list

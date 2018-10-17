@@ -230,7 +230,8 @@ class KinClient(object):
             last_cursor = transaction['paging_token']
 
         remaining_txs -= len(tx_list)
-        if remaining_txs <= 0:
+        # if we got all the txs that we wanted, or there are no more txs
+        if remaining_txs <= 0 or len(horizon_response['_embedded']['records']) < amount:
             return tx_list
         # If there are anymore transactions, recursively get the next transaction page
         return tx_list.extend(self.get_account_tx_history(address, remaining_txs, descending, last_cursor, simple))

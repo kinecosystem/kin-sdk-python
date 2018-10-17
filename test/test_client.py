@@ -2,6 +2,7 @@ import pytest
 from time import sleep
 
 from kin import KinClient, TEST_ENVIRONMENT, KinErrors
+from kin import config
 
 
 def test_create():
@@ -175,3 +176,24 @@ def test_activate_account(test_client):
 
     with pytest.raises(KinErrors.AccountActivatedError):
         test_client.activate_account(seed)
+
+def test_tx_history(test_client,test_account):
+    txs = []
+    for _ in range(6):
+        txs.append(test_account.send_xlm('GA4GDLBEWVT5IZZ6JKR4BF3B6JJX5S6ISFC2QCC7B6ZVZWJDMR77HYP6',1))
+
+    tx_history = test_client.get_tx_history(test_account.get_public_address(), limit=6)
+
+    history_ids = [tx.id for tx in tx_history]
+    # tx history goes from latest to oldest
+    txs.reverse()
+
+    assert txs == history_ids
+
+    # test paging
+    config.MAX_RECORDS_PER_REQUEST = 2
+
+    tx_history = test_client.get_tx_history(test_account.get_public_address(), limit=6)
+    history_ids = [tx.id for tx in tx_history]
+
+    assert txs == history_ids

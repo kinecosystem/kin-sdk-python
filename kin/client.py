@@ -2,7 +2,7 @@
 
 import requests
 
-from .config import SDK_USER_AGENT, ANON_APP_ID
+from .config import SDK_USER_AGENT, ANON_APP_ID, MAX_RECORDS_PER_REQUEST
 from . import errors as KinErrors
 from .blockchain.keypair import Keypair
 from .blockchain.builder import Builder
@@ -182,6 +182,60 @@ class KinClient(object):
         if simple:
             return SimplifiedTransaction(raw_tx, self.kin_asset)
         return raw_tx
+
+    def get_account_tx_history(self, address, amount=10, descending=True, cursor=None, simple=True):
+        """
+        Get the transaction history for a given account.
+        :param str address: The public address of the account to query
+        :param int amount: The maximum number of transactions to get
+        :param bool descending: The order of the transactions, True will start from the latest one
+        :param int cursor: The horizon paging token
+        :param bool simple: Should the returned txs be simplified, if True, complicated txs will be ignored
+        :return: A list of transactions
+        :rtype: list
+        """
+
+        if not is_valid_address(address):
+            raise ValueError('invalid address: {}'.format(address))
+
+        if amount <= 0:
+            raise ValueError('Limit must be bigger than 0')
+
+        tx_list = []
+
+        # If 250 tx were requested, i will need to get 50 more
+        remaining_txs = 0 if MAX_RECORDS_PER_REQUEST >= amount else MAX_RECORDS_PER_REQUEST
+
+        params = {
+            'limit': amount,
+            'order': 'desc' if descending else 'asc'
+        }
+
+        # cursor is optional
+        if cursor is not None:
+            params['cursor'] = cursor
+
+        horizon_response = self.horizon.account_transactions(address, params)
+
+        for transaction in horizon_response['_embedded']['records']:
+            raw_tx = RawTransaction(transaction)
+            if simple:
+                try:
+                    simple_tx = SimplifiedTransaction(raw_tx, self.kin_asset)
+                    tx_list.append(simple_tx)
+                except KinErrors.CantSimplifyError:
+                    pass
+            else:
+                tx_list.append(raw_tx)
+            last_cursor = transaction['paging_token']
+
+        remaining_txs -= len(tx_list)
+        if remaining_txs <= 0:
+            return tx_list
+        # If there are anymore transactions, recursively get the next transaction page
+        return tx_list.extend(self.get_account_tx_history(address, remaining_txs, descending, last_cursor, simple))
+
+
 
     def verify_kin_payment(self, tx_hash, source, destination, amount, memo=None, check_memo=False, app_id=ANON_APP_ID):
         """

@@ -182,7 +182,7 @@ def test_tx_history(test_client,test_account):
     for _ in range(6):
         txs.append(test_account.send_xlm('GA4GDLBEWVT5IZZ6JKR4BF3B6JJX5S6ISFC2QCC7B6ZVZWJDMR77HYP6',1))
 
-    tx_history = test_client.get_tx_history(test_account.get_public_address(), limit=6)
+    tx_history = test_client.get_account_tx_history(test_account.get_public_address(), limit=6)
 
     history_ids = [tx.id for tx in tx_history]
     # tx history goes from latest to oldest
@@ -193,7 +193,7 @@ def test_tx_history(test_client,test_account):
     # test paging
     config.MAX_RECORDS_PER_REQUEST = 2
 
-    tx_history = test_client.get_tx_history(test_account.get_public_address(), limit=6)
+    tx_history = test_client.get_account_tx_history(test_account.get_public_address(), limit=6)
     history_ids = [tx.id for tx in tx_history]
 
     assert txs == history_ids

@@ -29,4 +29,6 @@ ANON_APP_ID = 'anon'
 # 4 letters/numbers
 APP_ID_REGEX = '^[a-zA-Z0-9]{4}$'
 
+MAX_RECORDS_PER_REQUEST = 200
+
 SDK_USER_AGENT = 'kin-core-python/{}'.format(__version__)

@@ -127,6 +127,23 @@ class KinAccount:
         """
         return self._client.get_account_data(self.keypair.public_address)
 
+    def get_transaction_history(self, amount=10, descending=True, cursor=None, simple=True):
+        """
+        Get the transaction history for this kin account
+        :param int amount: The maximum number of transactions to get
+        :param bool descending: The order of the transactions, True will start from the latest one
+        :param int cursor: The horizon paging token
+        :param bool simple: Should the returned txs be simplified, if True, complicated txs will be ignored
+        :return: A list of transactions
+        :rtype: list
+        """
+
+        return self._client.get_account_tx_history(self.get_public_address(),
+                                                   amount=10,
+                                                   descending=True,
+                                                   cursor=None,
+                                                   simple=True)
+
     def create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, memo_text=None):
         """Create an account identified by the provided address.
 

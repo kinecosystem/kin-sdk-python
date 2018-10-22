@@ -71,6 +71,10 @@ def test_create_account(test_client, test_account):
 
     test_account.create_account('GDN7KB72OO7G6VBD3CXNRFXVELLW6F36PS42N7ASZHODV7Q5GYPETQ74')
     status = test_client.get_account_status('GDN7KB72OO7G6VBD3CXNRFXVELLW6F36PS42N7ASZHODV7Q5GYPETQ74')
+    assert status == AccountStatus.ACTIVATED
+
+    test_account.create_account('GCDK5QWODFQZLGL53L7RBBERKZW2I7Y6MLYK627P7KVC52RDWFQ5YGV6',activate=False)
+    status = test_client.get_account_status('GCDK5QWODFQZLGL53L7RBBERKZW2I7Y6MLYK627P7KVC52RDWFQ5YGV6')
     assert status == AccountStatus.NOT_ACTIVATED
 
 
@@ -145,7 +149,6 @@ def test_auto_top_up(test_client, test_account):
     channel = 'SBYU2EBGTTGIFR4O4K4SQXTD4ISMVX4R5TX2TTB4SWVIA5WVRS2MHN4K'
     public = 'GBKZAXTDJRYBK347KDTOFWEBDR7OW3U67XV2BOF2NLBNEGRQ2WN6HFK6'
     test_account.create_account(public, starting_balance=3 * BASE_RESERVE + DEFAULT_FEE)
-    test_client.activate_account(channel)
 
     account = test_client.kin_account(test_account.keypair.secret_seed, channel_secret_keys=[channel])
     account.send_kin(public, 10)
@@ -159,9 +162,9 @@ def test_memo(test_client, test_account):
     recipient1 = 'GCT3YLKNVEILHUOZYK3QPOVZWWVLF5AE5D24Y6I4VH7WGZYBFU2HSXYX'
     recipient2 = 'GDR375ZLWHZUFH2SWXFEH7WVPK5G3EQBLXPZKYEFJ5EAW4WE4WIQ5BP3'
 
-    tx1 = test_account.create_account(recipient1, memo_text='Hello')
+    tx1 = test_account.create_account(recipient1, memo_text='Hello', activate=False)
     account2 = test_client.kin_account(test_account.keypair.secret_seed, app_id='test')
-    tx2 = account2.create_account(recipient2, memo_text='Hello')
+    tx2 = account2.create_account(recipient2, memo_text='Hello', activate=False)
     sleep(5)
 
     tx1_data = test_client.get_transaction_data(tx1)

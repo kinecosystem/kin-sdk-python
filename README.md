@@ -110,10 +110,9 @@ tx_data = sdk.get_transaction_data(tx_hash, simple=True/False)
 
 # A transaction will not be simplifed if:
 # 1. It contains a memo that is not a text memo
-# 2. It contains multiple operations
-# 3. It contains a payment that is not of KIN/XLM
-# 4. It contains activation to anything other than KIN
-# 5. Its operation type is not one of 'Payment'/'Activation'/'Create account'.
+# 2. It contains a payment that is not of KIN/XLM
+# 3. It contains activation to anything other than KIN
+# 4. Its operation type is not one of 'Payment'/'Activation'/'Create account'.
 
 # Given the use case of our blockchain, and the tools that we currently provied to interact with it, these conditions should not occur.
 ```

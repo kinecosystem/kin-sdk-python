@@ -120,11 +120,11 @@ def test_get_transaction_data(test_client):
     assert tx_data.id == tx_hash
     assert tx_data.timestamp
     assert tx_data.memo is None
-    assert tx_data.operation
+    assert tx_data.operations
     assert tx_data.source == test_client.kin_asset.issuer  # root account
-    assert tx_data.operation.type == OperationTypes.CREATE_ACCOUNT
-    assert tx_data.operation.destination == address
-    assert tx_data.operation.starting_balance == 10
+    assert tx_data.operations[0].type == OperationTypes.CREATE_ACCOUNT
+    assert tx_data.operations[0].destination == address
+    assert tx_data.operations[0].starting_balance == 10
 
     tx_data = test_client.get_transaction_data(tx_hash, simple=False)
     assert isinstance(tx_data, RawTransaction)

@@ -75,10 +75,10 @@ class SingleMonitor:
                     except CantSimplifyError:
                         continue
 
-                    if tx_data.operation.type != OperationTypes.PAYMENT:
+                    if tx_data.operations[0].type != OperationTypes.PAYMENT:
                         continue
 
-                    if tx_data.operation.asset != self.kin_client.environment.kin_asset.code:
+                    if tx_data.operations[0].asset != self.kin_client.environment.kin_asset.code:
                         continue
 
                     self.callback_fn(self.address, tx_data, self)
@@ -169,16 +169,17 @@ class MultiMonitor:
                     except CantSimplifyError:
                         continue
 
-                    if tx_data.operation.type != OperationTypes.PAYMENT:
+                    print(tx_data.operations[0])
+                    if tx_data.operations[0].type != OperationTypes.PAYMENT:
                         continue
 
-                    if tx_data.operation.asset != self.kin_client.environment.kin_asset.code:
+                    if tx_data.operations[0].asset != self.kin_client.environment.kin_asset.code:
                         continue
 
                     if tx_data.source in self.addresses:
                         self.callback_fn(tx_data.source, tx_data, self)
-                    if tx_data.operation.destination in self.addresses:
-                        self.callback_fn(tx_data.operation.destination, tx_data, self)
+                    if tx_data.operations[0].destination in self.addresses:
+                        self.callback_fn(tx_data.operations[0].destination, tx_data, self)
 
                 except Exception as ex:
                     logger.exception(ex)

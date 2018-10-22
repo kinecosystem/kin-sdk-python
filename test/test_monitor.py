@@ -66,17 +66,17 @@ def test_multi_monitor(test_client, test_account):
 
     # pay from sdk to the account
     hash1 = test_account.send_kin(address1, 1)
-    sleep(5)
+    sleep(10)
     assert hash1 in txs_found1
 
     hash2 = test_account.send_kin(address2, 2)
-    sleep(5)
+    sleep(10)
     # The second address is not being watched
     assert hash2 not in txs_found2
 
     monitor.add_address(address2)
     hash3 = test_account.send_kin(address2, 3)
-    sleep(5)
+    sleep(10)
     assert hash3 in txs_found2
 
     # stop monitoring

@@ -175,7 +175,7 @@ def test_transaction(test_client, test_account):
     assert reply
     assert reply['id'] == tx_id
 
-    assert reply['operation_count'] == 1
+    assert reply['operation_count'] == 2
 
 
 def test_transaction_effects(test_client, test_account):

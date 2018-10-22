@@ -148,7 +148,8 @@ def test_build_send_kin(test_account):
 def test_auto_top_up(test_client, test_account):
     channel = 'SBYU2EBGTTGIFR4O4K4SQXTD4ISMVX4R5TX2TTB4SWVIA5WVRS2MHN4K'
     public = 'GBKZAXTDJRYBK347KDTOFWEBDR7OW3U67XV2BOF2NLBNEGRQ2WN6HFK6'
-    test_account.create_account(public, starting_balance=3 * BASE_RESERVE + DEFAULT_FEE)
+    test_account.create_account(public, starting_balance=3 * BASE_RESERVE + DEFAULT_FEE, activate=False)
+    test_client.activate_account(channel)
 
     account = test_client.kin_account(test_account.keypair.secret_seed, channel_secret_keys=[channel])
     account.send_kin(public, 10)

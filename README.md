@@ -64,6 +64,7 @@ account = client.kin_account('seed',channels=number, create_channels=True/False)
 
 # Additionaly, an unique app-id can be provided, this will mark all of your transactions and allow the Kin Ecosystem to track the kin usage of your app
 # A unique app-id should be recivied from the Kin Ecosystem
+# If no app-id is given, an 'anonymous' app-id will be used
 account = client.kin_account('seed',app_id='unique_app_id')
 ```
 
@@ -129,6 +130,20 @@ client.verify_kin_payment('tx_hash','addr1','addr2',15,'Hello',True) >> False
 client.verify_kin_payment('tx_hash','addr1','addr2',15) >> True
 client.verify_kin_payment('tx_hash','addr1','addr2',10) >> False
 client.verify_kin_payment('tx_hash','addr1','addr3',10) >> False
+```
+
+### Getting transaction history
+This method allows you to receive a list of transactions that are related to an account
+```python
+tx_history = client.get_account_transaction_history('address')
+
+# several optional parameters are avilable:
+# simple=(True)/False - Should the the resulting transactions be simplified. A transaction that cannot be simplified will be skipped
+# descending=(True)/False - The order of the transactions
+# cursor=None/Number - A paging token to get a specific transaction list
+
+# Note that currently the maximum amount of tranactions you can get in a single request from the blockchain is 200,
+# if the requested amount is bigger than 200, the function will run recursivly until it got the requested amount
 ```
 
 ### Checking configuration
@@ -210,7 +225,14 @@ tx_hash = account.create_account('address')
 tx_hash = account.create_account('address', starting_balance=1000)
 
 # a text memo can also be provided:
+# the text memo can fit up to 21 bytes of utf-8 text
 tx_hash = account.create_account('address', starting_balance=1000,memo_text='Account creation example')
+
+# Note:
+# By defualt, created accounts are also activated on creation,
+this can be overriden by setting the 'activate' falg to False
+
+tx_hash = account.create_account('address', activate=False)
 ```
 
 ### Sending Currency

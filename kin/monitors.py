@@ -169,7 +169,6 @@ class MultiMonitor:
                     except CantSimplifyError:
                         continue
 
-                    print(tx_data.operations[0])
                     if tx_data.operations[0].type != OperationTypes.PAYMENT:
                         continue
 

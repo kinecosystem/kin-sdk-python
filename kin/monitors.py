@@ -163,7 +163,6 @@ class MultiMonitor:
                     continue
                 try:
                     tx = json.loads(event.data)
-                    print(tx)
                     try:
                         tx_data = SimplifiedTransaction(RawTransaction(tx), self.kin_client.kin_asset)
                     except CantSimplifyError:

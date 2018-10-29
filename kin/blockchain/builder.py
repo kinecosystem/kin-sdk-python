@@ -59,3 +59,14 @@ class Builder(BaseBuilder):
         if not secret:  # only get the new sequence for my own account
             self.sequence = self.get_sequence()
         super(Builder, self).sign(secret)
+
+    def append_create_account_op(self, destination, starting_balance, source=None, kin_asset=None):
+        """
+        Alternative implementation that allows to create a trustline
+        in addition to the create account operation
+        Needs to be supported by the blockchain
+        """
+        super(Builder, self).append_create_account_op(destination, starting_balance, source)
+        if kin_asset:
+            # Source for the trust op should be the created account
+            super(Builder, self).append_trust_op(kin_asset.issuer, kin_asset.code, source=destination)

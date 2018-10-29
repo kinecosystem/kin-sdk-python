@@ -41,10 +41,10 @@ class SingleMonitor:
         # Fix will be for horizon to send any message just to start a connection.
         # This will cause a tx
         params = {}
-        reply = self.kin_client.horizon.account_transactions(address, params={'order': 'desc', 'limit': 2})
-        if len(reply['_embedded']['records']) == 2:
-            cursor = reply['_embedded']['records'][1]['paging_token']
-            params = {'cursor': cursor}
+        reply = self.kin_client.horizon.account_transactions(address, params={'order': 'desc', 'limit': 1})
+        cursor = reply['_embedded']['records'][0]['paging_token']
+        # Decrease the cursor by one to get an immediate response
+        params = {'cursor': str(int(cursor) - 1)}
 
         # make synchronous SSE request (will raise errors in the current thread)
         self.sse_client = self.kin_client.horizon.account_transactions(address, sse=True, params=params)
@@ -75,10 +75,10 @@ class SingleMonitor:
                     except CantSimplifyError:
                         continue
 
-                    if tx_data.operation.type != OperationTypes.PAYMENT:
+                    if tx_data.operations[0].type != OperationTypes.PAYMENT:
                         continue
 
-                    if tx_data.operation.asset != self.kin_client.environment.kin_asset.code:
+                    if tx_data.operations[0].asset != self.kin_client.environment.kin_asset.code:
                         continue
 
                     self.callback_fn(self.address, tx_data, self)
@@ -135,10 +135,10 @@ class MultiMonitor:
         # Instead, we determine the cursor ourselves.
         # Fix will be for horizon to send any message just to start a connection
         params = {}
-        reply = self.kin_client.horizon.transactions(params={'order': 'desc', 'limit': 2})
-        if len(reply['_embedded']['records']) == 2:
-            cursor = reply['_embedded']['records'][1]['paging_token']
-            params = {'cursor': cursor}
+        reply = self.kin_client.horizon.transactions(params={'order': 'desc', 'limit': 1})
+        cursor = reply['_embedded']['records'][0]['paging_token']
+        # Decrease the cursor by one to get an immediate response
+        params = {'cursor': str(int(cursor) - 1)}
 
         # make synchronous SSE request (will raise errors in the current thread)
         self.sse_client = self.kin_client.horizon.transactions(sse=True, params=params)
@@ -163,22 +163,21 @@ class MultiMonitor:
                     continue
                 try:
                     tx = json.loads(event.data)
-
                     try:
                         tx_data = SimplifiedTransaction(RawTransaction(tx), self.kin_client.kin_asset)
                     except CantSimplifyError:
                         continue
 
-                    if tx_data.operation.type != OperationTypes.PAYMENT:
+                    if tx_data.operations[0].type != OperationTypes.PAYMENT:
                         continue
 
-                    if tx_data.operation.asset != self.kin_client.environment.kin_asset.code:
+                    if tx_data.operations[0].asset != self.kin_client.environment.kin_asset.code:
                         continue
 
                     if tx_data.source in self.addresses:
                         self.callback_fn(tx_data.source, tx_data, self)
-                    if tx_data.operation.destination in self.addresses:
-                        self.callback_fn(tx_data.operation.destination, tx_data, self)
+                    if tx_data.operations[0].destination in self.addresses:
+                        self.callback_fn(tx_data.operations[0].destination, tx_data, self)
 
                 except Exception as ex:
                     logger.exception(ex)

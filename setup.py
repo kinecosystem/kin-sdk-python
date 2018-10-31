@@ -10,7 +10,7 @@ with open('requirements-dev.txt') as f:
     tests_requires = [line.split(' ')[0] for line in f]
 
 setup(
-    name='kin',
+    name='kin-sdk',
     version=__version__,
     description='KIN SDK for Python',
     author='Kin Ecosystem',

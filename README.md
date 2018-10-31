@@ -14,8 +14,7 @@ Python 2 > 2.7.9 / 3 > 3.4
 ## Installation 
 
 ```bash
-pip install git+https://github.com/kinecosystem/kin-core-python.git
-# TODO: add to pypi after PR is done
+pip install kin-sdk
 ```
 
 ## Usage

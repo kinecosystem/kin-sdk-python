@@ -251,9 +251,7 @@ class KinClient(object):
         """
 
         tx = self.get_transaction_data(tx_hash)
-        if len(tx.operations) > 1:
-            return False
-        operation = tx.operations[0]
+        operation = tx.operation
         if operation.type != OperationTypes.PAYMENT:
             return False
         if operation.asset != self.kin_asset.code:

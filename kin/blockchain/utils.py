@@ -1,6 +1,6 @@
 """Contains useful methods to be used across the sdk"""
 
-from stellar_base.utils import decode_check
+from kin_base.utils import decode_check
 
 
 def is_valid_address(address):

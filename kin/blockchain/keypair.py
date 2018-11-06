@@ -2,7 +2,7 @@
 
 from hashlib import sha256
 
-from stellar_base.keypair import Keypair as BaseKeypair
+from kin_base.keypair import Keypair as BaseKeypair
 
 from .utils import is_valid_secret_key
 

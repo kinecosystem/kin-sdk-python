@@ -1,7 +1,7 @@
 import pytest
 from requests.adapters import DEFAULT_POOLSIZE
 
-from stellar_base.horizon import HORIZON_TEST, HORIZON_LIVE
+from kin_base.horizon import HORIZON_TEST, HORIZON_LIVE
 from kin.blockchain.errors import *
 from kin.blockchain.horizon import (
     Horizon,

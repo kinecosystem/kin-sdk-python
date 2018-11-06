@@ -1,15 +1,15 @@
 """Contains the builder class to build transactions"""
 
-from stellar_base.builder import Builder as BaseBuilder
-from stellar_base.keypair import Keypair
-from stellar_base.memo import NoneMemo
+from kin_base.builder import Builder as BaseBuilder
+from kin_base.keypair import Keypair
+from kin_base.memo import NoneMemo
 
 from .utils import is_valid_address, is_valid_secret_key
 
 
 class Builder(BaseBuilder):
     """
-    This class overrides :class:`stellar_base.builder` to provide additional functionality.
+    This class overrides :class:`kin_base.builder` to provide additional functionality.
     """
 
     def __init__(self, network, horizon, secret=None, address=None):
@@ -34,7 +34,7 @@ class Builder(BaseBuilder):
     def clear(self):
         """"Clears the builder so it can be reused."""
         self.ops = []
-        self.time_bounds = []
+        self.time_bounds = None
         self.memo = NoneMemo()
         self.fee = 100
         self.tx = None

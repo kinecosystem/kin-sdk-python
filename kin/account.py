@@ -81,7 +81,7 @@ class KinAccount:
             for channel in self.channel_secret_keys:
                 try:
                     # TODO: might want to make it a 1 multi operation tx
-                    base_account.create_account(Keypair.address_from_seed(channel), activate=False)
+                    base_account.create_account(Keypair.address_from_seed(channel))
                 except KinErrors.AccountExistsError:
                     pass
 
@@ -144,7 +144,7 @@ class KinAccount:
                                                    cursor=None,
                                                    simple=True)
 
-    def create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, memo_text=None, activate=True):
+    def create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, memo_text=None):
         """Create an account identified by the provided address.
 
         :param str address: the address of the account to create.
@@ -154,7 +154,7 @@ class KinAccount:
 
         # TODO: might want to limit this if we use tx_coloring
         :param str memo_text: (optional) a text to put into transaction memo, up to MEMO_CAP chars.
-        :param bool activate: (optional) should the created account be activated
+
         :return: the hash of the transaction
         :rtype: str
 
@@ -162,10 +162,9 @@ class KinAccount:
         :raises: :class:`KinErrors.AccountExistsError`: if the account already exists.
         :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than MEMO_CAP characters
         """
-
         tx = self.build_create_account(address,
                                        starting_balance=starting_balance,
-                                       memo_text=memo_text, activate=activate)
+                                       memo_text=memo_text)
         return self.submit_transaction(tx)
 
     def send_xlm(self, address, amount, memo_text=None):
@@ -213,8 +212,7 @@ class KinAccount:
         tx = self._build_send_asset(self._client.kin_asset, address, amount, memo_text)
         return self.submit_transaction(tx)
 
-    def build_create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, memo_text=None,
-                             activate=True):
+    def build_create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, memo_text=None):
         """Build a tx that will create an account identified by the provided address.
 
         :param str address: the address of the account to create.
@@ -224,7 +222,7 @@ class KinAccount:
 
         # TODO: might want to limit this if we use tx_coloring
         :param str memo_text: (optional) a text to put into transaction memo, up to MEMO_CAP chars.
-        :param bool activate: (optional) should the created account be activated
+
         :return: a transaction object
         :rtype: :class: `Kin.Transaction`
 
@@ -236,11 +234,9 @@ class KinAccount:
 
         # Build the transaction and send it.
 
-        pretrusted_asset = self._client.kin_asset if activate else None
-
         builder = self.channel_manager.build_transaction(lambda builder:
                                                          partial(builder.append_create_account_op, address,
-                                                                 starting_balance, kin_asset=pretrusted_asset),
+                                                                 starting_balance),
                                                          memo_text=build_memo(self.app_id, memo_text))
         return Transaction(builder, self.channel_manager)
 

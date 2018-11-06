@@ -67,7 +67,6 @@ class SimplifiedTransaction:
     def __init__(self, raw_tx, kin_asset):
         self.id = raw_tx.hash
         self.timestamp = raw_tx.timestamp
-        self.operations = []
 
         # If the memo is not a text/none memo
         if not isinstance(raw_tx.tx.memo, (TextMemo, NoneMemo)):
@@ -75,8 +74,9 @@ class SimplifiedTransaction:
         self.memo = None if isinstance(raw_tx.tx.memo, NoneMemo) \
             else raw_tx.tx.memo.text.decode() # will be none if the there is no memo
 
-        for operation in raw_tx.tx.operations:
-            self.operations.append(SimplifiedOperation(operation, kin_asset))
+        if len(raw_tx.tx.operations) > 1:
+            raise CantSimplifyError('Cant simplify tx with {} operations'.format(raw_tx.operation_count))
+        self.operation = SimplifiedOperation(raw_tx.tx.operations[0], kin_asset)
 
         # Override tx source with operation source if it exists.
         self.source = raw_tx.tx.operations[0].source or raw_tx.tx.source.decode()

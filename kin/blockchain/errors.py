@@ -90,7 +90,6 @@ class OperationResultCode:
     BAD_AUTH = 'op_bad_auth'
     NO_ACCOUNT = 'op_no_source_account'
     NOT_SUPPORTED = 'op_not_supported'
-    SUCCESS = 'op_success'
 
 
 # noinspection PyClassHasNoInit

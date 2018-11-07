@@ -70,14 +70,11 @@ class SingleMonitor:
                     tx = json.loads(event.data)
 
                     try:
-                        tx_data = SimplifiedTransaction(RawTransaction(tx), self.kin_client.kin_asset)
+                        tx_data = SimplifiedTransaction(RawTransaction(tx))
                     except CantSimplifyError:
                         continue
 
                     if tx_data.operation.type != OperationTypes.PAYMENT:
-                        continue
-
-                    if tx_data.operation.asset != self.kin_client.environment.kin_asset.code:
                         continue
 
                     self.callback_fn(self.address, tx_data, self)
@@ -164,14 +161,11 @@ class MultiMonitor:
                     tx = json.loads(event.data)
 
                     try:
-                        tx_data = SimplifiedTransaction(RawTransaction(tx), self.kin_client.kin_asset)
+                        tx_data = SimplifiedTransaction(RawTransaction(tx))
                     except CantSimplifyError:
                         continue
 
                     if tx_data.operation.type != OperationTypes.PAYMENT:
-                        continue
-
-                    if tx_data.operation.asset != self.kin_client.environment.kin_asset.code:
                         continue
 
                     if tx_data.source in self.addresses:

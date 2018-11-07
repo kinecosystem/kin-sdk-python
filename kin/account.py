@@ -3,8 +3,6 @@
 import re
 from functools import partial
 
-from kin_base.asset import Asset
-
 from .blockchain.keypair import Keypair
 from .blockchain.horizon import Horizon
 from .blockchain.builder import Builder
@@ -66,13 +64,13 @@ class KinAccount:
             # Create the channels using the base account
             if self.channel_secret_keys == [seed]:
                 raise ValueError('There are no channels to create')
-            base_account = self._client.kin_account(seed,app_id=app_id)
+            base_account = self._client.kin_account(seed, app_id=app_id)
 
-            # Verify that there is enough XLM to create the channels
+            # Verify that there is enough Kin to create the channels
             # Balance should be at least (Number of channels + yourself) * (Minimum account balance + fees)
             if (len(self.channel_secret_keys) + 1) * (MIN_ACCOUNT_BALANCE + DEFAULT_FEE) > \
-                    base_account.get_balances()['XLM']:
-                raise KinErrors.LowBalanceError('The base account does not have enough XLM to create the channels')
+                    base_account.get_balance():
+                raise KinErrors.LowBalanceError('The base account does not have enough KIN to create the channels')
 
             # Create the channels, pass if the channel already exists
             for channel in self.channel_secret_keys:
@@ -104,14 +102,15 @@ class KinAccount:
         """Return this KinAccount's public address"""
         return self.keypair.public_address
 
-    def get_balances(self):
+    def get_balance(self):
         """
-        Get the KIN and XLM balance of this KinAccount
-        :return: a dictionary containing the balances
+        Get the KIN balance of this KinAccount
+        :return: the kin balance
+        :rtype: float
 
         :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
         """
-        return self._client.get_account_balances(self.keypair.public_address)
+        return self._client.get_account_balance(self.keypair.public_address)
 
     def get_data(self):
         """
@@ -136,17 +135,17 @@ class KinAccount:
         """
 
         return self._client.get_account_tx_history(self.get_public_address(),
-                                                   amount=10,
-                                                   descending=True,
-                                                   cursor=None,
-                                                   simple=True)
+                                                   amount=amount,
+                                                   descending=descending,
+                                                   cursor=cursor,
+                                                   simple=simple)
 
     def create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, memo_text=None):
         """Create an account identified by the provided address.
 
         :param str address: the address of the account to create.
 
-        :param number starting_balance: (optional) the starting XLM balance of the account.
+        :param number starting_balance: (optional) the starting KIN balance of the account.
         If not provided, a default MIN_ACCOUNT_BALANCE will be used.
 
         # TODO: might want to limit this if we use tx_coloring
@@ -165,29 +164,6 @@ class KinAccount:
                                        memo_text=memo_text)
         return self.submit_transaction(tx)
 
-    def send_xlm(self, address, amount, memo_text=None):
-        """Send XLM to the account identified by the provided address.
-
-        :param str address: the account to send XLM to.
-
-        :param number amount: the number of XLM to send.
-
-        # TODO: might want to limit this if we do tx coloring
-        :param str memo_text: (optional) a text to put into transaction memo.
-
-        :return: the hash of the transaction
-        :rtype: str
-
-        :raises: ValueError: if the provided address has a wrong format.
-        :raises: ValueError: if the amount is not positive.
-        :raises: KinErrors.NotValidParamError: if the amount is too precise
-        :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
-        :raises: :class:`KinErrors.LowBalanceError`: if there is not enough XLM to send and pay transaction fee.
-        :raises: :class:`KinErrors.NotValidParamError`: if the memo is longer than MEMO_CAP characters
-        """
-        tx = self._build_send_asset(Asset.native(), address, amount, memo_text)
-        return self.submit_transaction(tx)
-
     def send_kin(self, address, amount, memo_text=None):
         """Send KIN to the account identified by the provided address.
 
@@ -195,7 +171,6 @@ class KinAccount:
 
         :param number amount: the amount of KIN to send.
 
-        # TODO: might want to limit this if we do tx coloring
         :param str memo_text: (optional) a text to put into transaction memo.
 
         :return: the hash of the transaction
@@ -209,7 +184,7 @@ class KinAccount:
         :raises: :class:`KinErrors.LowBalanceError`: if there is not enough KIN and XLM to send and pay transaction fee.
         :raises: :class:`KinErrors.NotValidParamError`: if the memo is longer than MEMO_CAP characters
         """
-        tx = self._build_send_asset(self._client.kin_asset, address, amount, memo_text)
+        tx = self.build_send_kin(address, amount, memo_text)
         return self.submit_transaction(tx)
 
     def build_create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, memo_text=None):
@@ -243,12 +218,12 @@ class KinAccount:
                                                          memo_text=build_memo(self.app_id, memo_text))
         return Transaction(builder, self.channel_manager)
 
-    def build_send_xlm(self, address, amount, memo_text=None):
-        """Send XLM to the account identified by the provided address.
+    def build_send_kin(self, address, amount, memo_text=None):
+        """Build a tx to send asset to the account identified by the provided address.
 
-        :param str address: the account to send XLM to.
+        :param str address: the account to send asset to.
 
-        :param number amount: the number of XLM to send.
+        :param number amount: the asset amount to send.
 
         :param str memo_text: (optional) a text to put into transaction memo.
 
@@ -259,25 +234,17 @@ class KinAccount:
         :raises: ValueError: if the amount is not positive.
         :raises: KinErrors.NotValidParamError: if the amount is too precise
         """
-        return self._build_send_asset(Asset.native(), address, amount, memo_text)
 
-    def build_send_kin(self, address, amount, memo_text=None):
-        """Send KIN to the account identified by the provided address.
+        if not is_valid_address(address):
+            raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
 
-         :param str address: the account to send KIN to.
+        if float(amount) <= 0:
+            raise ValueError('Amount : {} must be positive'.format(amount))
 
-         :param number amount: the amount of KIN to send.
-
-         :param str memo_text: (optional) a text to put into transaction memo.
-
-        :return: a transaction object
-        :rtype: :class: `Kin.Transaction`
-
-         :raises: ValueError: if the provided address has a wrong format.
-         :raises: ValueError: if the amount is not positive.
-         :raises: KinErrors.NotValidParamError: if the amount is too precise
-         """
-        return self._build_send_asset(self._client.kin_asset, address, amount, memo_text)
+        builder = self.channel_manager.build_transaction(lambda builder:
+                                                         partial(builder.append_payment_op, address, str(amount)),
+                                                         memo_text=build_memo(self.app_id, memo_text))
+        return Transaction(builder, self.channel_manager)
 
     def submit_transaction(self, tx, is_re_submitting=False):
         """
@@ -320,38 +287,6 @@ class KinAccount:
         return self._client.monitor_account_payments(self.keypair.public_address, callback_fn)
 
     # Internal methods
-
-    def _build_send_asset(self, asset, address, amount, memo_text=None):
-        """Build a tx to send asset to the account identified by the provided address.
-
-        :param str address: the account to send asset to.
-
-        :param asset: asset to send
-        :type: :class:`kin_base.asset.Asset`
-
-        :param number amount: the asset amount to send.
-
-        :param str memo_text: (optional) a text to put into transaction memo.
-
-        :return: a transaction object
-        :rtype: :class: `Kin.Transaction`
-
-        :raises: ValueError: if the provided address has a wrong format.
-        :raises: ValueError: if the amount is not positive.
-        :raises: KinErrors.NotValidParamError: if the amount is too precise
-        """
-
-        if not is_valid_address(address):
-            raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
-
-        if float(amount) <= 0:
-            raise ValueError('Amount : {} must be positive'.format(amount))
-
-        builder = self.channel_manager.build_transaction(lambda builder:
-                                                         partial(builder.append_payment_op, address, str(amount),
-                                                                 asset_code=asset.code, asset_issuer=asset.issuer),
-                                                         memo_text=build_memo(self.app_id, memo_text))
-        return Transaction(builder, self.channel_manager)
 
     def _top_up(self, address):
         """

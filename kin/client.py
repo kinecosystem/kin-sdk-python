@@ -4,14 +4,12 @@ import requests
 
 from .config import SDK_USER_AGENT, ANON_APP_ID, MAX_RECORDS_PER_REQUEST
 from . import errors as KinErrors
-from .blockchain.keypair import Keypair
-from .blockchain.builder import Builder
 from .blockchain.horizon import Horizon
 from .monitors import SingleMonitor, MultiMonitor
 from .transactions import OperationTypes, SimplifiedTransaction, RawTransaction, build_memo
 from .account import KinAccount
 from .blockchain.horizon_models import AccountData
-from .blockchain.utils import is_valid_address, is_valid_transaction_hash, is_valid_secret_key
+from .blockchain.utils import is_valid_address, is_valid_transaction_hash
 from .version import __version__
 
 import logging
@@ -36,9 +34,6 @@ class KinClient(object):
         self.environment = environment
         self.network = environment.name
 
-        # init our asset
-        self.kin_asset = environment.kin_asset
-
         self.horizon = Horizon(horizon_uri=environment.horizon_uri, user_agent=SDK_USER_AGENT)
         logger.info('Kin SDK inited on network {}, horizon endpoint {}'.format(self.network, self.horizon.horizon_uri))
 
@@ -54,7 +49,6 @@ class KinClient(object):
         :rtype: :class:`kin.KinAccount`
 
         :raises: :class:`KinErrors.AccountNotFoundError`: if SDK wallet or channel account is not yet created.
-        :raises: :class:`KinErrors.AccountNotActivatedError`: if SDK wallet account is not yet activated.
         """
 
         # Create a new kin account, using self as the KinClient to be used
@@ -68,10 +62,6 @@ class KinClient(object):
         status = {
             'sdk_version': __version__,
             'environment': self.environment.name,
-            'kin_asset': {
-                'code': self.kin_asset.code,
-                'issuer': self.kin_asset.issuer
-            },
             'horizon': {
                 'uri': self.horizon.horizon_uri,
                 'online': False,
@@ -95,26 +85,24 @@ class KinClient(object):
 
         return status
 
-    def get_account_balances(self, address):
+    def get_account_balance(self, address):
         """
-        Get the KIN and XLM balance of a given account
+        Get the KIN balance of a given account
         :param str address: the public address of the account to query
         :return: a dictionary containing the balances
-        :rtype: dict
+        :rtype: float
 
         :raises: ValueError: if the provided address has the wrong format.
         :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
         """
-        account_data = self.get_account_data(address)
-        balances = {}
-        for balance in account_data.balances:
-            if balance.asset_code == self.kin_asset.code and \
-                            balance.asset_issuer == self.kin_asset.issuer:
-                balances['KIN'] = balance.balance
-            elif balance.asset_type == 'native':
-                balances['XLM'] = balance.balance
 
-        return balances
+        if not is_valid_address(address):
+            raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
+        account_data = self.get_account_data(address)
+        for balance in account_data.balances:
+            # accounts will always have native asset
+            if balance.asset_type == 'native':
+                return balance.balance
 
     def does_account_exists(self, address):
         """
@@ -130,7 +118,7 @@ class KinClient(object):
             raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
 
         try:
-            self.get_account_balances(address)
+            self.get_account_balance(address)
             return True
         except KinErrors.AccountNotFoundError:
             return False
@@ -143,7 +131,7 @@ class KinClient(object):
         :return: account data
         :rtype: :class:`kin.AccountData`
 
-        :raises: ValueError: if the provided address has a wrong format.
+        :raises: StellarAddressInvalidError: if the provided address has a wrong format.
         :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
         """
         # TODO: might want to simplify the returning data
@@ -180,7 +168,7 @@ class KinClient(object):
             raise KinErrors.translate_error(e)
 
         if simple:
-            return SimplifiedTransaction(raw_tx, self.kin_asset)
+            return SimplifiedTransaction(raw_tx)
         return raw_tx
 
     def get_account_tx_history(self, address, amount=10, descending=True, cursor=None, simple=True):
@@ -219,7 +207,7 @@ class KinClient(object):
             raw_tx = RawTransaction(transaction)
             if simple:
                 try:
-                    simple_tx = SimplifiedTransaction(raw_tx, self.kin_asset)
+                    simple_tx = SimplifiedTransaction(raw_tx)
                     tx_list.append(simple_tx)
                 except KinErrors.CantSimplifyError:
                     pass
@@ -243,23 +231,25 @@ class KinClient(object):
         :param float amount: The expected amount
         :param str memo: (optional) The expected memo
         :param boolean check_memo: (optional) Should the memo match
-        :param the id of the app that sent the tx
+        :param str app_id: the id of the app that sent the tx
         :return: True/False
         :rtype: boolean
         """
 
-        tx = self.get_transaction_data(tx_hash)
-        operation = tx.operation
-        if operation.type != OperationTypes.PAYMENT:
-            return False
-        if operation.asset != self.kin_asset.code:
-            return False
-        if source != tx.source or destination != operation.destination or amount != operation.amount:
-            return False
-        if check_memo and build_memo(app_id, memo) != tx.memo:
-            return False
+        try:
+            tx = self.get_transaction_data(tx_hash)
+            operation = tx.operation
+            if operation.type != OperationTypes.PAYMENT:
+                return False
+            if source != tx.source or destination != operation.destination or amount != operation.amount:
+                return False
+            if check_memo and build_memo(app_id, memo) != tx.memo:
+                return False
 
-        return True
+            return True
+
+        except KinErrors.CantSimplifyError:
+            return False
 
     def friendbot(self, address):
         """

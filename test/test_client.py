@@ -139,14 +139,9 @@ def test_friendbot(test_client):
 
 def test_verify_kin_payment(test_client, test_account):
     address = 'GCZXR4ILXETTNQMUNF54ILRMPEG3UTUUMYKPUXU5633VCOABZZ63H7FJ'
-    seed = 'SCJQYWGJTL3NUEJ4H2QRDGQHO4HW3RX4IAZEEUDGLTIE5I4MEFR4UZYZ'
     tx_hash = test_client.friendbot(address)
     sleep(5)
 
-    assert not test_client.verify_kin_payment(tx_hash, 'source', 'destination', 123)
-
-    tx_hash = test_client.activate_account(seed)
-    sleep(5)
     assert not test_client.verify_kin_payment(tx_hash, 'source', 'destination', 123)
 
     tx_hash = test_account.send_kin('GCZXR4ILXETTNQMUNF54ILRMPEG3UTUUMYKPUXU5633VCOABZZ63H7FJ', 123, 'Hello')
@@ -154,24 +149,6 @@ def test_verify_kin_payment(test_client, test_account):
     assert test_client.verify_kin_payment(tx_hash, test_account.get_public_address(), address, 123)
     assert test_client.verify_kin_payment(tx_hash, test_account.get_public_address(), address, 123, 'Hello', True)
 
-
-def test_activate_account(test_client):
-
-    seed = 'SBHR6N6GZ5AFDS6JELO2PFDAD5OIABQ4MMWTYNKBGJEDNM5JVPJFG3AF'
-    address = 'GA4GDLBEWVT5IZZ6JKR4BF3B6JJX5S6ISFC2QCC7B6ZVZWJDMR77HYP6'
-
-    with pytest.raises(ValueError):
-        test_client.activate_account('bad')
-
-    with pytest.raises(KinErrors.AccountNotFoundError):
-        test_client.activate_account(seed)
-
-    test_client.friendbot(address)
-    test_client.activate_account(seed)
-    assert test_client.does_account_exists(address)
-
-    with pytest.raises(KinErrors.AccountActivatedError):
-        test_client.activate_account(seed)
 
 def test_tx_history(test_client,test_account):
     txs = []

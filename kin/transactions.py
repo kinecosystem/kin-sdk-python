@@ -8,10 +8,10 @@ from enum import Enum
 from kin_base.stellarxdr import Xdr
 from kin_base.transaction import Transaction as BaseTransaction
 from kin_base.memo import TextMemo, NoneMemo
-from kin_base.operation import Payment, ChangeTrust, CreateAccount
+from kin_base.operation import Payment, CreateAccount
 
-from .errors import CantSimplifyError, MemoTooLongError
-from .config import MEMO_TEMPLATE, MEMO_CAP
+from .errors import CantSimplifyError
+from .config import MEMO_TEMPLATE
 
 
 # This is needed in order to calculate transaction hash.
@@ -50,7 +50,7 @@ class Transaction:
         1. A sha256 hash of the network_id +
         2. The xdr representation of ENVELOP_TYPE_TX +
         3. The xdr representation of the transaction
-        :param te: The builder's transaction object
+        :param tx: The builder's transaction object
         :param network_passphrase_hash: The network passphrase hash
         :return:
         """
@@ -64,7 +64,7 @@ class Transaction:
 class SimplifiedTransaction:
     """Class to hold simplified info about a transaction"""
 
-    def __init__(self, raw_tx, kin_asset):
+    def __init__(self, raw_tx):
         self.id = raw_tx.hash
         self.timestamp = raw_tx.timestamp
 
@@ -72,11 +72,11 @@ class SimplifiedTransaction:
         if not isinstance(raw_tx.tx.memo, (TextMemo, NoneMemo)):
             raise CantSimplifyError('Cant simplify tx with memo type: {}'.format(type(raw_tx.tx.memo)))
         self.memo = None if isinstance(raw_tx.tx.memo, NoneMemo) \
-            else raw_tx.tx.memo.text.decode() # will be none if the there is no memo
+            else raw_tx.tx.memo.text.decode()  # will be none if the there is no memo
 
         if len(raw_tx.tx.operations) > 1:
             raise CantSimplifyError('Cant simplify tx with {} operations'.format(raw_tx.operation_count))
-        self.operation = SimplifiedOperation(raw_tx.tx.operations[0], kin_asset)
+        self.operation = SimplifiedOperation(raw_tx.tx.operations[0])
 
         # Override tx source with operation source if it exists.
         self.source = raw_tx.tx.operations[0].source or raw_tx.tx.source.decode()
@@ -85,27 +85,17 @@ class SimplifiedTransaction:
 class SimplifiedOperation:
     """Class to hold simplified info about a operation"""
 
-    def __init__(self, op_data, kin_asset):
+    def __init__(self, op_data):
         if isinstance(op_data, Payment):
             # Raise error if asset is not KIN or XLM
             if op_data.asset.type != 'native':
-                if op_data.asset.code != kin_asset.code \
-                        or op_data.asset.issuer != kin_asset.issuer:
-                    raise CantSimplifyError('Cant simplify operation with asset {} issued by {}'.
-                                            format(op_data.asset.code, op_data.asset.issuer))
+                raise CantSimplifyError('Cant simplify operation with asset {} issued by {}'.
+                                        format(op_data.asset.code, op_data.asset.issuer))
 
-            self.asset = 'XLM' if op_data.asset.type == 'native' else op_data.asset.code
             self.amount = float(op_data.amount)
             self.destination = op_data.destination
             self.type = OperationTypes.PAYMENT
-        elif isinstance(op_data, ChangeTrust):
-            # Raise error if asset is not KIN
-            if op_data.line.code != kin_asset.code \
-                    or op_data.line.issuer != kin_asset.issuer:
-                raise CantSimplifyError('Cant simplify operation with asset {} issued by {}'.
-                                        format(op_data.line.code, op_data.line.issuer))
 
-            self.type = OperationTypes.ACTIVATION
         elif isinstance(op_data, CreateAccount):
             self.destination = op_data.destination
             self.starting_balance = float(op_data.starting_balance)
@@ -132,12 +122,12 @@ class OperationTypes(Enum):
 
     PAYMENT = 1
     CREATE_ACCOUNT = 2
-    ACTIVATION = 3
 
 
 def build_memo(app_id, memo):
     """
     Build a memo for a tx that fits the pre-defined template
+    :param app_id: The app_id to include in the memo
     :param memo: The memo to include
     :return: the finished memo
     :rtype: str

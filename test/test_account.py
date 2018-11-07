@@ -71,22 +71,12 @@ def test_create_account(test_client, test_account):
     assert test_client.does_account_exists('GDN7KB72OO7G6VBD3CXNRFXVELLW6F36PS42N7ASZHODV7Q5GYPETQ74')
 
 
-def test_send_xlm(test_client, test_account):
-    recipient = 'GAXEQOJBLECPIZMU6LDLFZYRM46GWTQ6ZT462ZFUMYSLTGM2D6ZFYQ7T'
-    test_client.friendbot(recipient)
-    xlm_balance = test_client.get_account_balances(recipient)['XLM']
-    test_account.send_xlm(recipient, 5)
-    new_balance = test_client.get_account_balances(recipient)['XLM']
-    assert xlm_balance + 5 == new_balance
-
-
 def test_send_kin(test_client, test_account):
     recipient = 'GBZWWLRJRWL4DLYOJMCHXJUOJJY5NLNJHQDRQHVQH43KFCPC3LEOWPYM'
     test_client.friendbot(recipient)
-    test_client.activate_account('SARPTF6PRFJVZV3BUKKMYB54Z6KVXK4W23U3TGW2545MIOTH2BQ4TRLK')
 
     test_account.send_kin(recipient, 10)
-    balance = test_client.get_account_balances(recipient)['KIN']
+    balance = test_client.get_account_balance(recipient)
     assert balance == 10
 
 
@@ -94,7 +84,7 @@ def test_build_create_account(test_account):
     recipient = 'GBZWWLRJRWL4DLYOJMCHXJUOJJY5NLNJHQDRQHVQH43KFCPC3LEOWPYM'
     with pytest.raises(KinErrors.StellarSecretInvalidError):
         test_account.build_create_account('bad address')
-    with pytest.raises(KinErrors.MemoTooLongError):
+    with pytest.raises(KinErrors.NotValidParamError):
         test_account.build_create_account(recipient, memo_text='a' * 50)
 
     tx = test_account.build_create_account(recipient, starting_balance=10)
@@ -116,7 +106,7 @@ def test_build_send_kin(test_account):
     recipient = 'GBZWWLRJRWL4DLYOJMCHXJUOJJY5NLNJHQDRQHVQH43KFCPC3LEOWPYM'
     with pytest.raises(KinErrors.StellarAddressInvalidError):
         test_account.build_send_kin('bad address')
-    with pytest.raises(KinErrors.MemoTooLongError):
+    with pytest.raises(KinErrors.NotValidParamError):
         test_account.build_send_kin(recipient, 10, memo_text='a' * 50)
     with pytest.raises(ValueError):
         test_account.build_send_kin(recipient, -50)
@@ -141,8 +131,7 @@ def test_build_send_kin(test_account):
 def test_auto_top_up(test_client, test_account):
     channel = 'SBYU2EBGTTGIFR4O4K4SQXTD4ISMVX4R5TX2TTB4SWVIA5WVRS2MHN4K'
     public = 'GBKZAXTDJRYBK347KDTOFWEBDR7OW3U67XV2BOF2NLBNEGRQ2WN6HFK6'
-    test_account.create_account(public, starting_balance=3 * BASE_RESERVE + DEFAULT_FEE)
-    test_client.activate_account(channel)
+    test_account.create_account(public)
 
     account = test_client.kin_account(test_account.keypair.secret_seed, channel_secret_keys=[channel])
     account.send_kin(public, 10)

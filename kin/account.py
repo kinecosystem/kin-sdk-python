@@ -10,7 +10,7 @@ from .blockchain.channel_manager import ChannelManager
 from . import errors as KinErrors
 from .transactions import Transaction, build_memo
 from .blockchain.errors import TransactionResultCode, HorizonErrorType, HorizonError
-from .config import MIN_ACCOUNT_BALANCE, SDK_USER_AGENT, DEFAULT_FEE, APP_ID_REGEX
+from .config import SDK_USER_AGENT, APP_ID_REGEX
 from .blockchain.utils import is_valid_secret_key, is_valid_address
 
 import logging
@@ -67,8 +67,10 @@ class KinAccount:
             base_account = self._client.kin_account(seed, app_id=app_id)
 
             # Verify that there is enough Kin to create the channels
-            # Balance should be at least (Number of channels + yourself) * (Minimum account balance + fees)
-            if (len(self.channel_secret_keys) + 1) * (MIN_ACCOUNT_BALANCE + DEFAULT_FEE) > \
+            # Balance should be at least number of channels * (1000 * minimum fee)
+            # TODO: move this to utils as an optional method
+            minimum_fee = self._client.get_minimum_fee()
+            if len(self.channel_secret_keys) * minimum_fee * 1000 > \
                     base_account.get_balance():
                 raise KinErrors.LowBalanceError('The base account does not have enough KIN to create the channels')
 
@@ -140,16 +142,16 @@ class KinAccount:
                                                    cursor=cursor,
                                                    simple=simple)
 
-    def create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, memo_text=None):
+    def create_account(self, address, starting_balance, fee, memo_text=None):
         """Create an account identified by the provided address.
 
         :param str address: the address of the account to create.
 
-        :param number starting_balance: (optional) the starting KIN balance of the account.
-        If not provided, a default MIN_ACCOUNT_BALANCE will be used.
+        :param number starting_balance: the starting KIN balance of the account.
 
-        # TODO: might want to limit this if we use tx_coloring
         :param str memo_text: (optional) a text to put into transaction memo, up to MEMO_CAP chars.
+
+        :param float fee: fee to be deducted for the tx
 
         :return: the hash of the transaction
         :rtype: str
@@ -161,10 +163,11 @@ class KinAccount:
         """
         tx = self.build_create_account(address,
                                        starting_balance=starting_balance,
+                                       fee=fee,
                                        memo_text=memo_text)
         return self.submit_transaction(tx)
 
-    def send_kin(self, address, amount, memo_text=None):
+    def send_kin(self, address, amount, fee, memo_text=None):
         """Send KIN to the account identified by the provided address.
 
         :param str address: the account to send KIN to.
@@ -172,6 +175,8 @@ class KinAccount:
         :param number amount: the amount of KIN to send.
 
         :param str memo_text: (optional) a text to put into transaction memo.
+
+        :param float fee: fee to be deducted
 
         :return: the hash of the transaction
         :rtype: str
@@ -184,18 +189,19 @@ class KinAccount:
         :raises: :class:`KinErrors.LowBalanceError`: if there is not enough KIN and XLM to send and pay transaction fee.
         :raises: :class:`KinErrors.NotValidParamError`: if the memo is longer than MEMO_CAP characters
         """
-        tx = self.build_send_kin(address, amount, memo_text)
+        tx = self.build_send_kin(address, amount, fee, memo_text)
         return self.submit_transaction(tx)
 
-    def build_create_account(self, address, starting_balance=MIN_ACCOUNT_BALANCE, memo_text=None):
+    def build_create_account(self, address, starting_balance, fee, memo_text=None):
         """Build a tx that will create an account identified by the provided address.
 
         :param str address: the address of the account to create.
 
-        :param number starting_balance: (optional) the starting XLM balance of the account.
-        If not provided, a default MIN_ACCOUNT_BALANCE will be used.
+        :param number starting_balance: the starting XLM balance of the account.
 
         :param str memo_text: (optional) a text to put into transaction memo, up to MEMO_CAP chars.
+
+        :param float fee: fee to be deducted for the tx
 
         :return: a transaction object
         :rtype: :class: `Kin.Transaction`
@@ -207,18 +213,19 @@ class KinAccount:
         if not is_valid_address(address):
             raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
 
-        if float(starting_balance) <= 0:
-            raise ValueError('Starting balance : {} must be positive'.format(starting_balance))
+        if float(starting_balance) < 0:
+            raise ValueError('Starting balance : {} cant be negative'.format(starting_balance))
 
         # Build the transaction and send it.
 
         builder = self.channel_manager.build_transaction(lambda builder:
                                                          partial(builder.append_create_account_op, address,
                                                                  str(starting_balance)),
+                                                         fee,
                                                          memo_text=build_memo(self.app_id, memo_text))
         return Transaction(builder, self.channel_manager)
 
-    def build_send_kin(self, address, amount, memo_text=None):
+    def build_send_kin(self, address, amount, fee, memo_text=None):
         """Build a tx to send asset to the account identified by the provided address.
 
         :param str address: the account to send asset to.
@@ -226,6 +233,8 @@ class KinAccount:
         :param number amount: the asset amount to send.
 
         :param str memo_text: (optional) a text to put into transaction memo.
+
+        :param float fee: fee to be deducted for the tx
 
         :return: a transaction object
         :rtype: :class: `Kin.Transaction`
@@ -243,6 +252,7 @@ class KinAccount:
 
         builder = self.channel_manager.build_transaction(lambda builder:
                                                          partial(builder.append_payment_op, address, str(amount)),
+                                                         fee,
                                                          memo_text=build_memo(self.app_id, memo_text))
         return Transaction(builder, self.channel_manager)
 
@@ -256,7 +266,7 @@ class KinAccount:
         """
         try:
             return tx.builder.submit()['hash']
-        # If the channel is out of XLM, top it up and try again
+        # If the channel is out of KIN, top it up and try again
         except HorizonError as e:
             logging.warning('send transaction error with channel {}: {}'.format(tx.builder.address, str(e)))
             if e.type == HorizonErrorType.TRANSACTION_FAILED \
@@ -298,7 +308,9 @@ class KinAccount:
         # there is a chance for a bad_sequence error,
         # however it is virtually impossible that this situation will occur.
 
-        builder = Builder(self._client.environment.name, self._client.horizon, self.keypair.secret_seed)
-        builder.append_payment_op(address, '1')
+        # TODO: let user config the amount of kin to top up
+        builder = Builder(self._client.environment.name, self._client.horizon,
+                          self._client.get_minimum_fee(), self.keypair.secret_seed)
+        builder.append_payment_op(address, str(self._client.get_minimum_fee()) * 1000)
         builder.sign()
         builder.submit()

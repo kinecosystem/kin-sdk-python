@@ -13,7 +13,7 @@ class Builder(BaseBuilder):
     This class overrides :class:`kin_base.builder` to provide additional functionality.
     """
 
-    def __init__(self, network, horizon, secret=None, address=None):
+    def __init__(self, network, horizon, fee, secret=None, address=None):
         if secret:
             if not is_valid_secret_key(secret):
                 raise ValueError('invalid secret key')
@@ -25,7 +25,7 @@ class Builder(BaseBuilder):
             raise Exception('either secret or address must be provided')
 
         # call baseclass constructor to init base class variables
-        super(Builder, self).__init__(secret=secret, address=address, sequence=1)
+        super(Builder, self).__init__(secret=secret, address=address, sequence=1, fee=fee)
 
         # custom overrides
 
@@ -37,7 +37,6 @@ class Builder(BaseBuilder):
         self.ops = []
         self.time_bounds = None
         self.memo = NoneMemo()
-        self.fee = 100
         self.tx = None
         self.te = None
 

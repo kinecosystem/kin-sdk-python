@@ -6,9 +6,9 @@ from kin.blockchain.horizon import Horizon
 
 def test_create_fail():
     with pytest.raises(Exception, match='invalid secret key'):
-        Builder(secret='bad', network=None, horizon=None)
+        Builder(secret='bad', network=None, horizon=None, fee=0.1)
     with pytest.raises(Exception, match='invalid address'):
-        Builder(address='bad', network=None, horizon=None)
+        Builder(address='bad', network=None, horizon=None, fee=0.1)
 
 
 def test_create():
@@ -16,13 +16,13 @@ def test_create():
     address = 'GCAZ7QXD6UJ5NOVWYTNKLNP36DPJZMRO67LQ4X5CH2IHY3OG5QGECGYQ'
 
     # with secret
-    builder = Builder(secret=seed, network=None, horizon=None)
+    builder = Builder(secret=seed, network=None, horizon=None, fee=0.1)
     assert builder
     assert builder.keypair.seed().decode() == seed
     assert builder.address == address
 
     # with address
-    builder = Builder(address=address, network=None, horizon=None)
+    builder = Builder(address=address, network=None, horizon=None, fee=0.1)
     assert builder
     assert builder.address == address
 
@@ -32,7 +32,7 @@ def test_create_custom(test_client):
     address = 'GCAZ7QXD6UJ5NOVWYTNKLNP36DPJZMRO67LQ4X5CH2IHY3OG5QGECGYQ'
 
     horizon = Horizon()
-    builder = Builder(secret=seed, horizon=horizon, network='custom')
+    builder = Builder(secret=seed, horizon=horizon, network='custom', fee=0.1)
     assert builder
     assert builder.horizon
     assert builder.network == 'custom'
@@ -42,7 +42,7 @@ def test_create_custom(test_client):
     # with horizon fixture
     builder = Builder(secret=seed,
                       horizon=test_client.horizon,
-                      network=test_client.environment.name)
+                      network=test_client.environment.name, fee=0.1)
     assert builder
 
 
@@ -50,7 +50,7 @@ def test_create_custom(test_client):
 def test_builder(test_client, test_account):
     builder = Builder(secret=test_account.keypair.secret_seed,
                       horizon=test_account.horizon,
-                      network=test_client.environment.name)
+                      network=test_client.environment.name, fee=0.1)
     assert builder
     return builder
 

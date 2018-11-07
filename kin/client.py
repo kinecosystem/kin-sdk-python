@@ -85,6 +85,16 @@ class KinClient(object):
 
         return status
 
+    def get_minimum_fee(self):
+        """
+        Get the current minimum fee acceptable for a tx
+        :return: The minimum fee
+        :type: float
+        """
+        params = {'order': 'desc',
+                  'limit': 1}
+        return self.horizon.ledgers(params=params)['_embedded']['records'][0]['base_fee_in_stroops']
+
     def get_account_balance(self, address):
         """
         Get the KIN balance of a given account

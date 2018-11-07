@@ -32,10 +32,11 @@ class ChannelManager(object):
         self.low_balance_builders = []
         for channel_key in channel_keys:
             # create a channel transaction builder.
-            builder = Builder(secret=channel_key, network=network, horizon=horizon)
+            # fee gets updated once a transaction is being built
+            builder = Builder(secret=channel_key, network=network, horizon=horizon, fee=0.01)
             self.channel_builders.put(builder)
 
-    def build_transaction(self, add_ops_fn, memo_text=None):
+    def build_transaction(self, add_ops_fn, fee, memo_text=None):
         """Send a transaction using an available channel account.
 
         :param add_ops_fn: a function to call, that will add operations to the transaction. The function should be
@@ -58,6 +59,8 @@ class ChannelManager(object):
 
         # add operation (using external partial) and sign
         add_ops_fn(builder)(source=source)
+        # update fee
+        builder.fee = fee
         if memo_text:
             builder.add_text_memo(memo_text)  # max memo length is 28
 

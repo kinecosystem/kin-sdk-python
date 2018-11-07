@@ -14,10 +14,6 @@ HORIZON_PASSPHRASE_TEST = 'Kin Playground Network ; June 2018'
 FRIENDBOT_URL_TEST = "http://friendbot-playground.kininfrastructure.com"
 TEST_ENVIRONMENT = Environment('PLAYGROUND', HORIZON_URI_TEST, HORIZON_PASSPHRASE_TEST, FRIENDBOT_URL_TEST)
 
-# https://www.stellar.org/developers/guides/concepts/fees.html
-BASE_RESERVE = 0.5  # in KIN
-MIN_ACCOUNT_BALANCE = 2 * BASE_RESERVE + 0.1  # + fees
-DEFAULT_FEE = 0.0100
 MEMO_CAP = 28
 # Template version - app_id - free text
 MEMO_TEMPLATE = '1-{}-'

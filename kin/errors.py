@@ -3,6 +3,7 @@
 from requests.exceptions import RequestException
 
 from .blockchain.errors import *
+from kin_base.exceptions import NotValidParamError
 
 
 # All exceptions should subclass from SdkError in this module.

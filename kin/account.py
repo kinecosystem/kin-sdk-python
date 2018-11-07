@@ -161,6 +161,7 @@ class KinAccount:
         :raises: ValueError: if the supplied address has a wrong format.
         :raises: :class:`KinErrors.AccountExistsError`: if the account already exists.
         :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than MEMO_CAP characters
+        :raises: KinErrors.NotValidParamError: if the amount is too precise
         """
         tx = self.build_create_account(address,
                                        starting_balance=starting_balance,
@@ -182,6 +183,7 @@ class KinAccount:
 
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
+        :raises: KinErrors.NotValidParamError: if the amount is too precise
         :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
         :raises: :class:`KinErrors.LowBalanceError`: if there is not enough XLM to send and pay transaction fee.
         :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than MEMO_CAP characters
@@ -204,6 +206,7 @@ class KinAccount:
 
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
+        :raises: KinErrors.NotValidParamError: if the amount is too precise
         :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
         :raises: :class:`KinErrors.AccountNotActivatedError`: if the account is not activated.
         :raises: :class:`KinErrors.LowBalanceError`: if there is not enough KIN and XLM to send and pay transaction fee.
@@ -220,7 +223,6 @@ class KinAccount:
         :param number starting_balance: (optional) the starting XLM balance of the account.
         If not provided, a default MIN_ACCOUNT_BALANCE will be used.
 
-        # TODO: might want to limit this if we use tx_coloring
         :param str memo_text: (optional) a text to put into transaction memo, up to MEMO_CAP chars.
 
         :return: a transaction object
@@ -228,9 +230,13 @@ class KinAccount:
 
         :raises: ValueError: if the supplied address has a wrong format.
         :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than MEMO_CAP characters
+        :raises: KinErrors.NotValidParamError: if the amount is too precise
         """
         if not is_valid_address(address):
             raise ValueError('invalid address: {}'.format(address))
+
+        if float(starting_balance) <= 0:
+            raise ValueError('Starting balance : {} must be positive'.format(starting_balance))
 
         # Build the transaction and send it.
 
@@ -247,7 +253,6 @@ class KinAccount:
 
         :param number amount: the number of XLM to send.
 
-        # TODO: might want to limit this if we do tx coloring
         :param str memo_text: (optional) a text to put into transaction memo.
 
         :return: a transaction object
@@ -255,6 +260,7 @@ class KinAccount:
 
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
+        :raises: KinErrors.NotValidParamError: if the amount is too precise
         """
         return self._build_send_asset(Asset.native(), address, amount, memo_text)
 
@@ -265,7 +271,6 @@ class KinAccount:
 
          :param number amount: the amount of KIN to send.
 
-         # TODO: might want to limit this if we do tx coloring
          :param str memo_text: (optional) a text to put into transaction memo.
 
         :return: a transaction object
@@ -273,6 +278,7 @@ class KinAccount:
 
          :raises: ValueError: if the provided address has a wrong format.
          :raises: ValueError: if the amount is not positive.
+         :raises: KinErrors.NotValidParamError: if the amount is too precise
          """
         return self._build_send_asset(self._client.kin_asset, address, amount, memo_text)
 
@@ -335,17 +341,14 @@ class KinAccount:
 
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
-        :raises: ValueError: if the amount is too precise
+        :raises: KinErrors.NotValidParamError: if the amount is too precise
         """
 
         if not is_valid_address(address):
             raise ValueError('invalid address: {}'.format(address))
 
-        if amount <= 0:
-            raise ValueError('amount must be positive')
-
-        if amount * 1e7 % 1 != 0:
-            raise ValueError('Number of digits after the decimal point in the amount exceeded the limit(7).')
+        if float(amount) <= 0:
+            raise ValueError('Amount : {} must be positive'.format(amount))
 
         builder = self.channel_manager.build_transaction(lambda builder:
                                                          partial(builder.append_payment_op, address, str(amount),

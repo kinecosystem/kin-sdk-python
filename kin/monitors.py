@@ -2,9 +2,8 @@
 from threading import Thread, Event
 
 from .blockchain.utils import is_valid_address
-from .account import AccountStatus
 from .transactions import OperationTypes, SimplifiedTransaction ,RawTransaction
-from .errors import AccountNotActivatedError, CantSimplifyError, StoppedMonitorError, StellarAddressInvalidError
+from .errors import AccountNotFoundError, CantSimplifyError, StoppedMonitorError, StellarAddressInvalidError
 
 import logging
 
@@ -30,8 +29,8 @@ class SingleMonitor:
         if not is_valid_address(address):
             raise StellarAddressInvalidError('invalid address: {}'.format(address))
 
-        if self.kin_client.get_account_status(address) != AccountStatus.ACTIVATED:
-            raise AccountNotActivatedError(address)
+        if not self.kin_client.does_account_exists(address):
+            raise AccountNotFoundError(address)
 
         self.address = address
 
@@ -125,8 +124,8 @@ class MultiMonitor:
         for address in addresses:
             if not is_valid_address(address):
                 raise StellarAddressInvalidError('invalid address: {}'.format(address))
-            if self.kin_client.get_account_status(address) != AccountStatus.ACTIVATED:
-                raise AccountNotActivatedError(address)
+            if not self.kin_client.does_account_exists(address):
+                raise AccountNotFoundError(address)
 
         self.addresses = addresses
 
@@ -216,8 +215,8 @@ class MultiMonitor:
         if not is_valid_address(address):
             raise StellarAddressInvalidError('invalid address: {}'.format(address))
 
-        if self.kin_client.get_account_status(address) != AccountStatus.ACTIVATED:
-            raise AccountNotActivatedError(address)
+        if not self.kin_client.does_account_exists(address):
+            raise AccountNotFoundError(address)
 
         self.addresses.append(address)
 

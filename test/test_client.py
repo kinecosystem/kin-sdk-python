@@ -51,16 +51,14 @@ def test_get_balance(test_client, test_account):
     assert balances['KIN'] > 0
 
 
-def test_get_account_status(test_client, test_account):
-    from kin import AccountStatus
+def test_does_account_exists(test_client, test_account):
 
     with pytest.raises(ValueError, match='invalid address: bad'):
-        test_client.get_account_status('bad')
+        test_client.does_account_exists('bad')
 
     address = 'GB7F23F7235ADJ7T2L4LJZT46LA3256QAXIU56ANKPX5LSAAS3XVA465'
-    assert test_client.get_account_status(address) == AccountStatus.NOT_CREATED
-    assert test_client.get_account_status(test_client.kin_asset.issuer) == AccountStatus.NOT_ACTIVATED
-    assert test_client.get_account_status(test_account.get_public_address()) == AccountStatus.ACTIVATED
+    assert not test_client.does_account_exists(address)
+    assert test_client.does_account_exists(test_account.get_public_address())
 
 
 def test_get_account_data(test_client, test_account):
@@ -131,10 +129,9 @@ def test_get_transaction_data(test_client):
 
 
 def test_friendbot(test_client):
-    from kin import AccountStatus
     address = 'GDIPKVWPVCL5E5MX4UWMLCGXMDWEMEYAZGCI3TPJPVDG5ZFA6VJAA7RA'
     test_client.friendbot(address)
-    assert test_client.get_account_status(address) == AccountStatus.NOT_ACTIVATED
+    assert test_client.does_account_exists(address)
 
     with pytest.raises(ValueError):
         test_client.friendbot('bad')
@@ -159,7 +156,6 @@ def test_verify_kin_payment(test_client, test_account):
 
 
 def test_activate_account(test_client):
-    from kin import AccountStatus
 
     seed = 'SBHR6N6GZ5AFDS6JELO2PFDAD5OIABQ4MMWTYNKBGJEDNM5JVPJFG3AF'
     address = 'GA4GDLBEWVT5IZZ6JKR4BF3B6JJX5S6ISFC2QCC7B6ZVZWJDMR77HYP6'
@@ -172,7 +168,7 @@ def test_activate_account(test_client):
 
     test_client.friendbot(address)
     test_client.activate_account(seed)
-    assert test_client.get_account_status(address) == AccountStatus.ACTIVATED
+    assert test_client.does_account_exists(address)
 
     with pytest.raises(KinErrors.AccountActivatedError):
         test_client.activate_account(seed)

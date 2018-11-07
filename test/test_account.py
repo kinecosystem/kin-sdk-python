@@ -1,7 +1,6 @@
 import pytest
 from kin import KinErrors
 from kin import Keypair
-from kin import AccountStatus
 from kin.config import BASE_RESERVE, DEFAULT_FEE, MEMO_TEMPLATE, ANON_APP_ID
 from kin.blockchain.utils import is_valid_transaction_hash
 from time import sleep
@@ -57,8 +56,7 @@ def test_create_new_channels(test_client, test_account):
     assert account
     assert len(account.channel_secret_keys) == 4
     for channel in account.channel_secret_keys:
-        assert test_client.get_account_status(Keypair.address_from_seed(channel)) \
-               == AccountStatus.NOT_ACTIVATED
+        assert test_client.does_account_exists(Keypair.address_from_seed(channel))
 
 
 def test_get_address(test_client, test_account):
@@ -70,8 +68,7 @@ def test_create_account(test_client, test_account):
         test_account.create_account(test_client.kin_asset.issuer)
 
     test_account.create_account('GDN7KB72OO7G6VBD3CXNRFXVELLW6F36PS42N7ASZHODV7Q5GYPETQ74')
-    status = test_client.get_account_status('GDN7KB72OO7G6VBD3CXNRFXVELLW6F36PS42N7ASZHODV7Q5GYPETQ74')
-    assert status == AccountStatus.NOT_ACTIVATED
+    assert test_client.does_account_exists('GDN7KB72OO7G6VBD3CXNRFXVELLW6F36PS42N7ASZHODV7Q5GYPETQ74')
 
 
 def test_send_xlm(test_client, test_account):

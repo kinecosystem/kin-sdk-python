@@ -9,7 +9,7 @@ from .blockchain.builder import Builder
 from .blockchain.horizon import Horizon
 from .monitors import SingleMonitor, MultiMonitor
 from .transactions import OperationTypes, SimplifiedTransaction, RawTransaction, build_memo
-from .account import KinAccount, AccountStatus
+from .account import KinAccount
 from .blockchain.horizon_models import AccountData
 from .blockchain.utils import is_valid_address, is_valid_transaction_hash, is_valid_secret_key
 from .version import __version__
@@ -116,24 +116,24 @@ class KinClient(object):
 
         return balances
 
-    def get_account_status(self, address):
+    def does_account_exists(self, address):
         """
-        Get a given account status
-        :param str address: The public address of the account to query.
-        :return: One the possible account statuses.
-        :rtype: :enum:`kin.AccountStatus`
+        Find out if a given account exists on the blockchain
+        :param str address: The kin account to query about
+        :return: does the account exists on the blockchain
+        :rtype boolean
+
+        :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
         """
+
+        if not is_valid_address(address):
+            raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
+
         try:
-            balances = self.get_account_balances(address)
+            self.get_account_balances(address)
+            return True
         except KinErrors.AccountNotFoundError:
-            return AccountStatus.NOT_CREATED
-
-        try:
-            balances['KIN']
-        except KeyError:
-            return AccountStatus.NOT_ACTIVATED
-
-        return AccountStatus.ACTIVATED
+            return False
 
     def get_account_data(self, address):
         """Get account data.
@@ -234,8 +234,6 @@ class KinClient(object):
         # If there are anymore transactions, recursively get the next transaction page
         return tx_list.extend(self.get_account_tx_history(address, remaining_txs, descending, last_cursor, simple))
 
-
-
     def verify_kin_payment(self, tx_hash, source, destination, amount, memo=None, check_memo=False, app_id=ANON_APP_ID):
         """
         Verify that a give tx matches the desired parameters
@@ -281,7 +279,7 @@ class KinClient(object):
 
         if not is_valid_address(address):
             raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
-        if self.get_account_status(address) != AccountStatus.NOT_CREATED:
+        if self.does_account_exists(address):
             raise KinErrors.AccountExistsError(address)
 
         response = requests.get(self.environment.friendbot_url, params={'addr': address})
@@ -289,33 +287,6 @@ class KinClient(object):
             return response.json()['hash']
         else:
             raise KinErrors.FriendbotError(response.status_code, response.text)
-
-    def activate_account(self, seed):
-        """
-        Activate an account.
-        :param str seed: The secret seed of the account to activate
-        :return: the hash of the transaction
-        :rtype: str
-        """
-
-        # Check seed
-        if not is_valid_secret_key(seed):
-            raise ValueError('invalid seed {}'.format(seed))
-        # Check the account status
-        address = Keypair.address_from_seed(seed)
-        status = self.get_account_status(address)
-
-        if status == AccountStatus.NOT_CREATED:
-            raise KinErrors.AccountNotFoundError(address)
-        if status == AccountStatus.ACTIVATED:
-            raise KinErrors.AccountActivatedError(address)
-
-        builder = Builder(self.environment.name, self.horizon, seed)
-        builder.append_trust_op(self.kin_asset.issuer, self.kin_asset.code)
-        builder.sign()
-        reply = builder.submit()
-
-        return reply['hash']
 
     def monitor_account_payments(self, address, callback_fn):
         """Monitor KIN payment transactions related to the account identified by provided address.

@@ -1,10 +1,8 @@
 """Contains the KinAccount and AccountStatus classes."""
 
-import sys
 import re
 from functools import partial
 
-from enum import Enum
 from kin_base.asset import Asset
 
 from .blockchain.keypair import Keypair
@@ -14,7 +12,7 @@ from .blockchain.channel_manager import ChannelManager
 from . import errors as KinErrors
 from .transactions import Transaction, build_memo
 from .blockchain.errors import TransactionResultCode, HorizonErrorType, HorizonError
-from .config import MIN_ACCOUNT_BALANCE, SDK_USER_AGENT, DEFAULT_FEE, MEMO_CAP, MEMO_TEMPLATE, APP_ID_REGEX
+from .config import MIN_ACCOUNT_BALANCE, SDK_USER_AGENT, DEFAULT_FEE, APP_ID_REGEX
 from .blockchain.utils import is_valid_secret_key, is_valid_address
 
 import logging
@@ -43,9 +41,8 @@ class KinAccount:
         # Set keypair
         self.keypair = Keypair(seed)
         # check that sdk wallet account exists and is activated, issuer should continue without activation
-        if self._client.get_account_status(self.keypair.public_address) != AccountStatus.ACTIVATED and \
-                        self.keypair.public_address != self._client.kin_asset.issuer:
-            raise KinErrors.AccountNotActivatedError(self.keypair.public_address)
+        if not self._client.does_account_exists(self.keypair.public_address):
+            raise KinErrors.AccountNotFoundError(self.keypair.public_address)
 
         if channels is not None and channel_secret_keys is not None:
             raise ValueError("Account cannot be initialized with both 'channels'"
@@ -91,7 +88,7 @@ class KinAccount:
                 raise ValueError('invalid channel key: {}'.format(channel_key))
             # Check that channel accounts exists (they do not have to be activated).
             channel_address = Keypair.address_from_seed(channel_key)
-            if self._client.get_account_data(channel_address) == AccountStatus.NOT_CREATED:
+            if not self._client.does_account_exists:
                 raise KinErrors.AccountNotFoundError(channel_address)
 
         # set connection pool size for channels + monitoring connection + extra
@@ -370,10 +367,3 @@ class KinAccount:
         builder.append_payment_op(address, '1')
         builder.sign()
         builder.submit()
-
-
-class AccountStatus(Enum):
-    # Account statuses enum
-    NOT_CREATED = 1
-    NOT_ACTIVATED = 2
-    ACTIVATED = 3

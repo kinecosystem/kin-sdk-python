@@ -3,7 +3,7 @@
 from requests.exceptions import RequestException
 
 from .blockchain.errors import *
-from kin_base.exceptions import NotValidParamError
+from kin_base.exceptions import NotValidParamError, StellarAddressInvalidError, StellarSecretInvalidError
 
 
 # All exceptions should subclass from SdkError in this module.
@@ -125,13 +125,6 @@ class CantSimplifyError(SdkError):
 
     def __init__(self, error_code=None, extra=None):
         super(CantSimplifyError, self).__init__('Tx simplification error', error_code, extra)
-
-
-class MemoTooLongError(SdkError):
-    """The memo is too long"""
-
-    def __init__(self, error_code=None, extra=None):
-        super(MemoTooLongError, self).__init__('Memo is too long', error_code, extra)
 
 
 class StoppedMonitorError(SdkError):

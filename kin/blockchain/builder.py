@@ -3,6 +3,7 @@
 from kin_base.builder import Builder as BaseBuilder
 from kin_base.keypair import Keypair
 from kin_base.memo import NoneMemo
+from kin_base.exceptions import StellarAddressInvalidError
 
 from .utils import is_valid_address, is_valid_secret_key
 
@@ -19,7 +20,7 @@ class Builder(BaseBuilder):
             address = Keypair.from_seed(secret).address().decode()
         elif address:
             if not is_valid_address(address):
-                raise ValueError('invalid address')
+                raise StellarAddressInvalidError('invalid address: {}'.format(address))
         else:
             raise Exception('either secret or address must be provided')
 

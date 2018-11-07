@@ -160,7 +160,7 @@ class KinAccount:
 
         :raises: ValueError: if the supplied address has a wrong format.
         :raises: :class:`KinErrors.AccountExistsError`: if the account already exists.
-        :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than MEMO_CAP characters
+        :raises: :class:`KinErrors.NotValidParamError`: if the memo is longer than MEMO_CAP characters
         :raises: KinErrors.NotValidParamError: if the amount is too precise
         """
         tx = self.build_create_account(address,
@@ -186,7 +186,7 @@ class KinAccount:
         :raises: KinErrors.NotValidParamError: if the amount is too precise
         :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
         :raises: :class:`KinErrors.LowBalanceError`: if there is not enough XLM to send and pay transaction fee.
-        :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than MEMO_CAP characters
+        :raises: :class:`KinErrors.NotValidParamError`: if the memo is longer than MEMO_CAP characters
         """
         tx = self._build_send_asset(Asset.native(), address, amount, memo_text)
         return self.submit_transaction(tx)
@@ -210,7 +210,7 @@ class KinAccount:
         :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
         :raises: :class:`KinErrors.AccountNotActivatedError`: if the account is not activated.
         :raises: :class:`KinErrors.LowBalanceError`: if there is not enough KIN and XLM to send and pay transaction fee.
-        :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than MEMO_CAP characters
+        :raises: :class:`KinErrors.NotValidParamError`: if the memo is longer than MEMO_CAP characters
         """
         tx = self._build_send_asset(self._client.kin_asset, address, amount, memo_text)
         return self.submit_transaction(tx)
@@ -229,11 +229,11 @@ class KinAccount:
         :rtype: :class: `Kin.Transaction`
 
         :raises: ValueError: if the supplied address has a wrong format.
-        :raises: :class:`KinErrors.MemoTooLongError`: if the memo is longer than MEMO_CAP characters
+        :raises: :class:`KinErrors.NotValidParamError`: if the memo is longer than MEMO_CAP characters
         :raises: KinErrors.NotValidParamError: if the amount is too precise
         """
         if not is_valid_address(address):
-            raise ValueError('invalid address: {}'.format(address))
+            raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
 
         if float(starting_balance) <= 0:
             raise ValueError('Starting balance : {} must be positive'.format(starting_balance))
@@ -345,7 +345,7 @@ class KinAccount:
         """
 
         if not is_valid_address(address):
-            raise ValueError('invalid address: {}'.format(address))
+            raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
 
         if float(amount) <= 0:
             raise ValueError('Amount : {} must be positive'.format(amount))

@@ -146,12 +146,4 @@ def build_memo(app_id, memo):
     if memo is not None:
         finished_memo += memo
 
-    # Need to count the length in bytes
-    if sys.version[0] == '2':  # python 2
-        if len(finished_memo) > MEMO_CAP:
-            raise MemoTooLongError('{} > {}'.format(len(finished_memo), MEMO_CAP))
-
-    elif len(finished_memo.encode()) > MEMO_CAP:
-        raise MemoTooLongError('{} > {}'.format(len(finished_memo), MEMO_CAP))
-
     return finished_memo

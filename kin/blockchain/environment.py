@@ -4,6 +4,7 @@ from hashlib import sha256
 
 from kin_base.network import NETWORKS
 from kin_base.asset import Asset
+from kin_base.exceptions import StellarAddressInvalidError
 
 from .utils import is_valid_address
 
@@ -29,7 +30,7 @@ class Environment:
         self.horizon_uri = horizon_endpoint_uri
 
         if not is_valid_address(kin_issuer):
-            raise ValueError('invalid issuer {}'.format(kin_issuer))
+            raise StellarAddressInvalidError('invalid address: {}'.format(kin_issuer))
         self.kin_asset = Asset('KIN', kin_issuer)
         self.friendbot_url = friendbot_url
 

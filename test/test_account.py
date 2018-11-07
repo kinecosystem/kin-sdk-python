@@ -35,7 +35,7 @@ def test_create_exisitng_channels(test_client, test_account):
     with pytest.raises(KinErrors.AccountNotFoundError):
         account = test_client.kin_account(SDK_SEED, channel_secret_keys=channels)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(KinErrors.StellarSecretInvalidError):
         account = test_client.kin_account(SDK_SEED, channel_secret_keys=['bad'])
 
     with pytest.raises(ValueError):
@@ -95,7 +95,7 @@ def test_send_kin(test_client, test_account):
 
 def test_build_create_account(test_account):
     recipient = 'GBZWWLRJRWL4DLYOJMCHXJUOJJY5NLNJHQDRQHVQH43KFCPC3LEOWPYM'
-    with pytest.raises(ValueError):
+    with pytest.raises(KinErrors.StellarSecretInvalidError):
         test_account.build_create_account('bad address')
     with pytest.raises(KinErrors.MemoTooLongError):
         test_account.build_create_account(recipient, memo_text='a' * 50)
@@ -117,13 +117,13 @@ def test_build_create_account(test_account):
 
 def test_build_send_kin(test_account):
     recipient = 'GBZWWLRJRWL4DLYOJMCHXJUOJJY5NLNJHQDRQHVQH43KFCPC3LEOWPYM'
-    with pytest.raises(ValueError):
-        test_account.build_create_account('bad address')
+    with pytest.raises(KinErrors.StellarAddressInvalidError):
+        test_account.build_send_kin('bad address')
     with pytest.raises(KinErrors.MemoTooLongError):
         test_account.build_send_kin(recipient, 10, memo_text='a' * 50)
     with pytest.raises(ValueError):
         test_account.build_send_kin(recipient, -50)
-    with pytest.raises(ValueError):
+    with pytest.raises(KinErrors.NotValidParamError):
         test_account.build_send_kin(recipient, 1.1234567898765)
 
     tx = test_account.build_send_kin(recipient, 10)
@@ -170,6 +170,6 @@ def test_memo(test_client, test_account):
     assert tx1_data.memo == MEMO_TEMPLATE.format(ANON_APP_ID) + 'Hello'
     assert tx2_data.memo == MEMO_TEMPLATE.format('test') + 'Hello'
 
-    with pytest.raises(KinErrors.MemoTooLongError):
+    with pytest.raises(KinErrors.NotValidParamError):
         account2.create_account(recipient2, memo_text='a'*25)
 

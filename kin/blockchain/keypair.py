@@ -3,6 +3,7 @@
 from hashlib import sha256
 
 from kin_base.keypair import Keypair as BaseKeypair
+from kin_base.exceptions import StellarSecretInvalidError
 
 from .utils import is_valid_secret_key
 
@@ -17,7 +18,7 @@ class Keypair:
         """
         self.secret_seed = seed or self.generate_seed()
         if not is_valid_secret_key(self.secret_seed):
-            raise ValueError('invalid seed {}'.format(self.secret_seed))
+            raise StellarSecretInvalidError('invalid seed {}'.format(self.secret_seed))
         self.public_address = Keypair.address_from_seed(self.secret_seed)
 
     @staticmethod

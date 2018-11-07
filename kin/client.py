@@ -148,7 +148,7 @@ class KinClient(object):
         """
         # TODO: might want to simplify the returning data
         if not is_valid_address(address):
-            raise ValueError('invalid address: {}'.format(address))
+            raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
 
         try:
             acc = self.horizon.account(address)
@@ -196,7 +196,7 @@ class KinClient(object):
         """
 
         if not is_valid_address(address):
-            raise ValueError('invalid address: {}'.format(address))
+            raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
 
         if amount <= 0:
             raise ValueError('Limit must be bigger than 0')
@@ -280,7 +280,7 @@ class KinClient(object):
             raise ValueError("No friendbot service was configured for this client's environments")
 
         if not is_valid_address(address):
-            raise ValueError('invalid address: {}'.format(address))
+            raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
         if self.get_account_status(address) != AccountStatus.NOT_CREATED:
             raise KinErrors.AccountExistsError(address)
 

@@ -4,7 +4,7 @@ from threading import Thread, Event
 from .blockchain.utils import is_valid_address
 from .account import AccountStatus
 from .transactions import OperationTypes, SimplifiedTransaction ,RawTransaction
-from .errors import AccountNotActivatedError, CantSimplifyError, StoppedMonitorError
+from .errors import AccountNotActivatedError, CantSimplifyError, StoppedMonitorError, StellarAddressInvalidError
 
 import logging
 
@@ -28,7 +28,7 @@ class SingleMonitor:
             raise ValueError('no address to monitor')
 
         if not is_valid_address(address):
-            raise ValueError('invalid address: {}'.format(address))
+            raise StellarAddressInvalidError('invalid address: {}'.format(address))
 
         if self.kin_client.get_account_status(address) != AccountStatus.ACTIVATED:
             raise AccountNotActivatedError(address)
@@ -124,7 +124,7 @@ class MultiMonitor:
 
         for address in addresses:
             if not is_valid_address(address):
-                raise ValueError('invalid address: {}'.format(address))
+                raise StellarAddressInvalidError('invalid address: {}'.format(address))
             if self.kin_client.get_account_status(address) != AccountStatus.ACTIVATED:
                 raise AccountNotActivatedError(address)
 
@@ -214,7 +214,7 @@ class MultiMonitor:
             raise StoppedMonitorError()
 
         if not is_valid_address(address):
-            raise ValueError('invalid address {}'.format(address))
+            raise StellarAddressInvalidError('invalid address: {}'.format(address))
 
         if self.kin_client.get_account_status(address) != AccountStatus.ACTIVATED:
             raise AccountNotActivatedError(address)

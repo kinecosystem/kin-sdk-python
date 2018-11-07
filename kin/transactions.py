@@ -5,17 +5,17 @@ from binascii import hexlify
 import base64
 
 from enum import Enum
-from stellar_base.stellarxdr import Xdr
-from stellar_base.transaction import Transaction as BaseTransaction
-from stellar_base.memo import TextMemo, NoneMemo
-from stellar_base.operation import Payment, ChangeTrust, CreateAccount
+from kin_base.stellarxdr import Xdr
+from kin_base.transaction import Transaction as BaseTransaction
+from kin_base.memo import TextMemo, NoneMemo
+from kin_base.operation import Payment, ChangeTrust, CreateAccount
 
 from .errors import CantSimplifyError, MemoTooLongError
 from .config import MEMO_TEMPLATE, MEMO_CAP
 
 
 # This is needed in order to calculate transaction hash.
-# It is the xdr representation of stellar_base.XDR.const.ENVELOP_TYPE_TX (2)
+# It is the xdr representation of kin_base.XDR.const.ENVELOP_TYPE_TX (2)
 PACKED_ENVELOP_TYPE = b'\x00\x00\x00\x02'
 
 

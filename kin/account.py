@@ -5,7 +5,7 @@ import re
 from functools import partial
 
 from enum import Enum
-from stellar_base.asset import Asset
+from kin_base.asset import Asset
 
 from .blockchain.keypair import Keypair
 from .blockchain.horizon import Horizon
@@ -236,7 +236,7 @@ class KinAccount:
 
         builder = self.channel_manager.build_transaction(lambda builder:
                                                          partial(builder.append_create_account_op, address,
-                                                                 starting_balance),
+                                                                 str(starting_balance)),
                                                          memo_text=build_memo(self.app_id, memo_text))
         return Transaction(builder, self.channel_manager)
 
@@ -324,7 +324,7 @@ class KinAccount:
         :param str address: the account to send asset to.
 
         :param asset: asset to send
-        :type: :class:`stellar_base.asset.Asset`
+        :type: :class:`kin_base.asset.Asset`
 
         :param number amount: the asset amount to send.
 
@@ -348,7 +348,7 @@ class KinAccount:
             raise ValueError('Number of digits after the decimal point in the amount exceeded the limit(7).')
 
         builder = self.channel_manager.build_transaction(lambda builder:
-                                                         partial(builder.append_payment_op, address, amount,
+                                                         partial(builder.append_payment_op, address, str(amount),
                                                                  asset_code=asset.code, asset_issuer=asset.issuer),
                                                          memo_text=build_memo(self.app_id, memo_text))
         return Transaction(builder, self.channel_manager)
@@ -364,7 +364,7 @@ class KinAccount:
         # however it is virtually impossible that this situation will occur.
 
         builder = Builder(self._client.environment.name, self._client.horizon, self.keypair.secret_seed)
-        builder.append_payment_op(address, 1)
+        builder.append_payment_op(address, '1')
         builder.sign()
         builder.submit()
 

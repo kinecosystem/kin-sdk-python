@@ -2,7 +2,7 @@
 
 import sys
 
-from stellar_base.keypair import Keypair
+from kin_base.keypair import Keypair
 
 from .builder import Builder
 from .errors import ChannelsBusyError

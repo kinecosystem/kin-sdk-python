@@ -2,8 +2,8 @@
 
 from hashlib import sha256
 
-from stellar_base.network import NETWORKS
-from stellar_base.asset import Asset
+from kin_base.network import NETWORKS
+from kin_base.asset import Asset
 
 from .utils import is_valid_address
 
@@ -23,7 +23,7 @@ class Environment:
 
         :raises: ValueError: is the kin_issuer is invalid
         """
-        # Add the network to the stellar_base network list.
+        # Add the network to the kin_base network list.
         NETWORKS[name.upper()] = network_passphrase
         self.name = name.upper()
         self.horizon_uri = horizon_endpoint_uri

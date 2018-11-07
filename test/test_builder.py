@@ -18,7 +18,7 @@ def test_create():
     # with secret
     builder = Builder(secret=seed, network=None, horizon=None)
     assert builder
-    assert builder.key_pair.seed().decode() == seed
+    assert builder.keypair.seed().decode() == seed
     assert builder.address == address
 
     # with address
@@ -58,7 +58,7 @@ def test_builder(test_client, test_account):
 def test_sign(test_builder):
     address = 'GCAZ7QXD6UJ5NOVWYTNKLNP36DPJZMRO67LQ4X5CH2IHY3OG5QGECGYQ'
 
-    test_builder.append_create_account_op(address, 100)
+    test_builder.append_create_account_op(address, '100')
     assert len(test_builder.ops) == 1
     test_builder.sign()
     assert test_builder.te
@@ -80,7 +80,7 @@ def test_next(test_builder):
     address = 'GCAZ7QXD6UJ5NOVWYTNKLNP36DPJZMRO67LQ4X5CH2IHY3OG5QGECGYQ'
 
     sequence = test_builder.get_sequence()
-    test_builder.append_create_account_op(address, 100)
+    test_builder.append_create_account_op(address, '100')
     test_builder.sign()
     test_builder.next()
     assert not test_builder.tx

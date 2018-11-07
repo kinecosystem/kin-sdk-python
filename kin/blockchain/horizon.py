@@ -7,7 +7,7 @@ import sys
 from time import sleep
 from urllib3.util import Retry
 
-from stellar_base.horizon import HORIZON_LIVE, HORIZON_TEST
+from kin_base.horizon import HORIZON_LIVE, HORIZON_TEST
 
 from .errors import HorizonError
 
@@ -35,7 +35,7 @@ USER_AGENT = 'py-stellar-base'
 
 class Horizon(object):
     """
-    This class redefines :class:`stellar_base.horizon.Horizon` to provide additional functionality:
+    This class redefines :class:`kin_base.horizon.Horizon` to provide additional functionality:
         - persistent connection to Horizon and connection pool
         - configurable request retry functionality
         - Horizon error checking and deserialization

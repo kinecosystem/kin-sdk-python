@@ -39,6 +39,7 @@ def test_single_monitor(test_client, test_account):
     assert not hash4 in txs_found
 
 
+@pytest.mark.skip(reason='Known broken feature on the blockchain')
 def test_multi_monitor(test_client, test_account):
     address1 = 'GBMU6NALXWCGEVAU2KKG4KIR3WVRSRRKDQB54VED4MKZZPV653ZVUCNB'
     seed1 = 'SCIVPFA3NFG5Q7W7U3EOP2P33GOETCDMYYIM72BNBD4HKY6WF5J3IE5G'

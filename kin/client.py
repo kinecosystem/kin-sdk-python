@@ -89,7 +89,7 @@ class KinClient(object):
         """
         Get the current minimum fee acceptable for a tx
         :return: The minimum fee
-        :type: float
+        :type: int
         """
         params = {'order': 'desc',
                   'limit': 1}

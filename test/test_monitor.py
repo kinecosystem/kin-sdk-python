@@ -18,12 +18,12 @@ def test_single_monitor(test_client, test_account):
     assert monitor.thread.is_alive()
 
     # pay from sdk to the account
-    hash1 = test_account.send_kin(address, 1, fee=0.1)
-    hash2 = test_account.send_kin(address, 2, fee=0.1)
+    hash1 = test_account.send_kin(address, 1, fee=100)
+    hash2 = test_account.send_kin(address, 2, fee=100)
     sleep(20)
 
     # Horizon should timeout after 10 seconds of no traffic, make sure we reconnected
-    hash3 = test_account.send_kin(address, 3, fee=0.1)
+    hash3 = test_account.send_kin(address, 3, fee=100)
 
     sleep(5)
     assert hash1 in txs_found
@@ -32,7 +32,7 @@ def test_single_monitor(test_client, test_account):
 
     monitor.stop()
     # Make sure we stopped monitoring
-    hash4 = test_account.send_kin(address, 4, fee=0.1)
+    hash4 = test_account.send_kin(address, 4, fee=100)
     sleep(10)
     assert not monitor.thread.is_alive()
     assert hash4 not in txs_found
@@ -63,23 +63,23 @@ def test_multi_monitor(test_client, test_account):
     assert monitor.thread.is_alive()
 
     # pay from sdk to the account
-    hash1 = test_account.send_kin(address1, 1, fee=0.1)
+    hash1 = test_account.send_kin(address1, 1, fee=100)
     sleep(5)
     assert hash1 in txs_found1
 
-    hash2 = test_account.send_kin(address2, 2, fee=0.1)
+    hash2 = test_account.send_kin(address2, 2, fee=100)
     sleep(5)
     # The second address is not being watched
     assert hash2 not in txs_found2
 
     monitor.add_address(address2)
-    hash3 = test_account.send_kin(address2, 3, fee=0.1)
+    hash3 = test_account.send_kin(address2, 3, fee=100)
     sleep(5)
     assert hash3 in txs_found2
 
     # stop monitoring
     monitor.stop()
-    hash4 = test_account.send_kin(address2, 4, fee=0.1)
+    hash4 = test_account.send_kin(address2, 4, fee=100)
     sleep(10)
     assert not monitor.thread.is_alive()
     assert hash4 not in txs_found2

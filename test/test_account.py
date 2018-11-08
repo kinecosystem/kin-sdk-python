@@ -65,9 +65,9 @@ def test_get_address(test_client, test_account):
 
 def test_create_account(test_client, test_account):
     with pytest.raises(KinErrors.AccountExistsError):
-        test_account.create_account(test_client.kin_asset.issuer, 0, fee=0.1)
+        test_account.create_account(test_client.kin_asset.issuer, 0, fee=100)
 
-    test_account.create_account('GDN7KB72OO7G6VBD3CXNRFXVELLW6F36PS42N7ASZHODV7Q5GYPETQ74', 0, fee=0.1)
+    test_account.create_account('GDN7KB72OO7G6VBD3CXNRFXVELLW6F36PS42N7ASZHODV7Q5GYPETQ74', 0, fee=100)
     assert test_client.does_account_exists('GDN7KB72OO7G6VBD3CXNRFXVELLW6F36PS42N7ASZHODV7Q5GYPETQ74')
 
 
@@ -75,7 +75,7 @@ def test_send_kin(test_client, test_account):
     recipient = 'GBZWWLRJRWL4DLYOJMCHXJUOJJY5NLNJHQDRQHVQH43KFCPC3LEOWPYM'
     test_client.friendbot(recipient)
 
-    test_account.send_kin(recipient, 10, fee=0.1)
+    test_account.send_kin(recipient, 10, fee=100)
     balance = test_client.get_account_balance(recipient)
     assert balance == 10
 
@@ -83,13 +83,13 @@ def test_send_kin(test_client, test_account):
 def test_build_create_account(test_account):
     recipient = 'GBZWWLRJRWL4DLYOJMCHXJUOJJY5NLNJHQDRQHVQH43KFCPC3LEOWPYM'
     with pytest.raises(KinErrors.StellarSecretInvalidError):
-        test_account.build_create_account('bad address', 0, fee=0.1)
+        test_account.build_create_account('bad address', 0, fee=100)
     with pytest.raises(KinErrors.NotValidParamError):
-        test_account.build_create_account(recipient, 0, memo_text='a' * 50 ,fee=0.1)
+        test_account.build_create_account(recipient, 0, memo_text='a' * 50 ,fee=100)
     with pytest.raises(ValueError):
-        test_account.build_create_account(recipient, -1, fee=0.1)
+        test_account.build_create_account(recipient, -1, fee=100)
 
-    tx = test_account.build_create_account(recipient, 0, starting_balance=10, fee=0.1)
+    tx = test_account.build_create_account(recipient, 0, starting_balance=10, fee=100)
 
     try:
         assert tx
@@ -107,15 +107,15 @@ def test_build_create_account(test_account):
 def test_build_send_kin(test_account):
     recipient = 'GBZWWLRJRWL4DLYOJMCHXJUOJJY5NLNJHQDRQHVQH43KFCPC3LEOWPYM'
     with pytest.raises(KinErrors.StellarAddressInvalidError):
-        test_account.build_send_kin('bad address', 0, fee=0.1)
+        test_account.build_send_kin('bad address', 0, fee=100)
     with pytest.raises(KinErrors.NotValidParamError):
-        test_account.build_send_kin(recipient, 10, memo_text='a' * 50, fee=0.1)
+        test_account.build_send_kin(recipient, 10, memo_text='a' * 50, fee=100)
     with pytest.raises(ValueError):
-        test_account.build_send_kin(recipient, -50, fee=0.1)
+        test_account.build_send_kin(recipient, -50, fee=100)
     with pytest.raises(KinErrors.NotValidParamError):
-        test_account.build_send_kin(recipient, 1.1234567898765, fee=0.1)
+        test_account.build_send_kin(recipient, 1.1234567898765, fee=100)
 
-    tx = test_account.build_send_kin(recipient, 10, fee=0.1)
+    tx = test_account.build_send_kin(recipient, 10, fee=100)
 
     try:
         assert tx
@@ -133,10 +133,10 @@ def test_build_send_kin(test_account):
 def test_auto_top_up(test_client, test_account):
     channel = 'SBYU2EBGTTGIFR4O4K4SQXTD4ISMVX4R5TX2TTB4SWVIA5WVRS2MHN4K'
     public = 'GBKZAXTDJRYBK347KDTOFWEBDR7OW3U67XV2BOF2NLBNEGRQ2WN6HFK6'
-    test_account.create_account(public, 0, fee=0.1)
+    test_account.create_account(public, 0, fee=100)
 
     account = test_client.kin_account(test_account.keypair.secret_seed, channel_secret_keys=[channel])
-    account.send_kin(public, 10, fee=0.1)
+    account.send_kin(public, 10, fee=100)
 
     channel_balance = test_client.get_account_balance(public)
     # channel should have ran out of funds, so the base account should have topped it up
@@ -147,9 +147,9 @@ def test_memo(test_client, test_account):
     recipient1 = 'GCT3YLKNVEILHUOZYK3QPOVZWWVLF5AE5D24Y6I4VH7WGZYBFU2HSXYX'
     recipient2 = 'GDR375ZLWHZUFH2SWXFEH7WVPK5G3EQBLXPZKYEFJ5EAW4WE4WIQ5BP3'
 
-    tx1 = test_account.create_account(recipient1, 0, memo_text='Hello', fee=0.1)
-    account2 = test_client.kin_account(test_account.keypair.secret_seed, app_id='test', fee=0.1)
-    tx2 = account2.create_account(recipient2, 0, memo_text='Hello', fee=0.1)
+    tx1 = test_account.create_account(recipient1, 0, memo_text='Hello', fee=100)
+    account2 = test_client.kin_account(test_account.keypair.secret_seed, app_id='test', fee=100)
+    tx2 = account2.create_account(recipient2, 0, memo_text='Hello', fee=100)
     sleep(5)
 
     tx1_data = test_client.get_transaction_data(tx1)
@@ -159,5 +159,5 @@ def test_memo(test_client, test_account):
     assert tx2_data.memo == MEMO_TEMPLATE.format('test') + 'Hello'
 
     with pytest.raises(KinErrors.NotValidParamError):
-        account2.create_account(recipient2, 0, memo_text='a'*25, fee=0.1)
+        account2.create_account(recipient2, 0, memo_text='a'*25, fee=100)
 

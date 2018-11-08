@@ -58,13 +58,19 @@ class ChannelManager(object):
         source = self.base_address if builder.address != self.base_address else None
 
         # add operation (using external partial) and sign
-        add_ops_fn(builder)(source=source)
-        # update fee
-        builder.fee = fee
-        if memo_text:
-            builder.add_text_memo(memo_text)  # max memo length is 28
+        try:
+            add_ops_fn(builder)(source=source)
+            # update fee
+            builder.fee = fee
+            if memo_text:
+                builder.add_text_memo(memo_text)  # max memo length is 28
 
-        builder.sign()  # always sign with a channel key
-        if source:
-            builder.sign(secret=self.base_key)  # sign with the base key if needed
+            builder.sign()  # always sign with a channel key
+            if source:
+                builder.sign(secret=self.base_key)  # sign with the base key if needed
+        except:
+            # If something fails when building the tx, clear and return the builder to queue.
+            builder.clear()
+            self.channel_builders.put(builder,timeout=0.5)
+            raise
         return builder

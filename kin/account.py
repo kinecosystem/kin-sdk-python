@@ -160,6 +160,7 @@ class KinAccount:
         :raises: :class:`KinErrors.AccountExistsError`: if the account already exists.
         :raises: :class:`KinErrors.NotValidParamError`: if the memo is longer than MEMO_CAP characters
         :raises: KinErrors.NotValidParamError: if the amount is too precise
+        :raises: KinErrors.NotValidParamError: if the fee is not an too precise
         """
         tx = self.build_create_account(address,
                                        starting_balance=starting_balance,
@@ -188,6 +189,7 @@ class KinAccount:
         :raises: :class:`KinErrors.AccountNotActivatedError`: if the account is not activated.
         :raises: :class:`KinErrors.LowBalanceError`: if there is not enough KIN and XLM to send and pay transaction fee.
         :raises: :class:`KinErrors.NotValidParamError`: if the memo is longer than MEMO_CAP characters
+        :raises: KinErrors.NotValidParamError: if the fee is not an too precise
         """
         tx = self.build_send_kin(address, amount, fee, memo_text)
         return self.submit_transaction(tx)
@@ -209,6 +211,7 @@ class KinAccount:
         :raises: ValueError: if the supplied address has a wrong format.
         :raises: :class:`KinErrors.NotValidParamError`: if the memo is longer than MEMO_CAP characters
         :raises: KinErrors.NotValidParamError: if the amount is too precise
+        :raises: KinErrors.NotValidParamError: if the fee is not an too precise
         """
         if not is_valid_address(address):
             raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
@@ -242,6 +245,7 @@ class KinAccount:
         :raises: ValueError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
         :raises: KinErrors.NotValidParamError: if the amount is too precise
+        :raises: KinErrors.NotValidParamError: if the fee is not an too precise
         """
 
         if not is_valid_address(address):

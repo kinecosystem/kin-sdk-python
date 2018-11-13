@@ -4,12 +4,14 @@ from hashlib import sha256
 
 from kin_base.keypair import Keypair as BaseKeypair
 from kin_base.exceptions import StellarSecretInvalidError
+from kin_base.stellarxdr.StellarXDR_type import DecoratedSignature
 
 from .utils import is_valid_secret_key
 
 
 class Keypair:
-    """Keypair holds the public address and secret seed."""
+    """A simpler version of kin_base.Keypair that
+     holds the public address and secret seed."""
 
     def __init__(self, seed=None):
         """
@@ -19,7 +21,22 @@ class Keypair:
         self.secret_seed = seed or self.generate_seed()
         if not is_valid_secret_key(self.secret_seed):
             raise StellarSecretInvalidError('invalid seed {}'.format(self.secret_seed))
-        self.public_address = Keypair.address_from_seed(self.secret_seed)
+        base_keypair = BaseKeypair.from_seed(self.secret_seed)
+        self.public_address = base_keypair.address().decode()
+
+        # Hint and signing key are needed to sign the tx
+        self._hint = base_keypair.signature_hint()
+        self._signing_key = base_keypair.signing_key
+
+    def sign(self, data):
+        """
+        Sign any data using the keypair private key
+        :param bytes data: any data to sign
+        :return: a decorated signature
+        :rtype :class: DecoratedSignature
+        """
+        signature = self._signing_key.sign(data)
+        return DecoratedSignature(self._hint, signature)
 
     @staticmethod
     def address_from_seed(seed):

@@ -134,6 +134,14 @@ class StoppedMonitorError(SdkError):
         super(StoppedMonitorError, self).__init__('Stopped monitor cannot be modified', error_code, extra)
 
 
+class WrongNetworkError(SdkError):
+    """The account is not using the network specified in the tx"""
+
+    def __init__(self, error_code=None, extra=None):
+        super(WrongNetworkError, self).__init__('The account is not using the network specified in the transaction',
+                                                error_code, extra)
+
+
 def translate_error(err):
     """A high-level error translator."""
     if isinstance(err, RequestException):

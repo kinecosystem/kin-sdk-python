@@ -2,6 +2,10 @@
 
 import re
 from functools import partial
+import json
+
+from kin_base.transaction_envelope import TransactionEnvelope
+from kin_base.network import NETWORKS
 
 from .blockchain.keypair import Keypair
 from .blockchain.horizon import Horizon
@@ -299,6 +303,41 @@ class KinAccount:
         :rtype: :class:`kin.SingleMonitor`
         """
         return self._client.monitor_account_payments(self.keypair.public_address, callback_fn)
+
+    def whitelist_transaction(self, payload):
+        """
+        Sign on a transaction to whitelist it
+        :param str payload: the json received from the client
+        :return: a signed transaction encoded as base64
+        :rtype str
+        """
+
+        # load the object from the json
+        if not isinstance(payload, dict):
+            payload = json.loads(payload)
+
+        # If the network the client is using is different from the one we are using
+        if NETWORKS[self._client.environment.name] != payload['network_id']:
+            raise KinErrors.WrongNetworkError()
+
+        # Decode the transaction, from_xdr actually takes a base64 encoded xdr
+        envelop = TransactionEnvelope.from_xdr(payload['envelop'])
+
+        # Add the network_id hash to the envelop
+        envelop.network_id = self._client.environment.passphrase_hash
+
+        # Get the transaction hash (to sign it)
+        tx_hash = envelop.hash_meta()
+
+        # Sign using the hash
+        signature = self.keypair.sign(tx_hash)
+
+        # Add the signature to the envelop
+        envelop.signatures.append(signature)
+
+        # Pack the signed envelop to xdr the return it encoded as base64
+        return envelop.xdr()
+
 
     # Internal methods
 

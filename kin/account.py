@@ -336,7 +336,7 @@ class KinAccount:
         envelop.signatures.append(signature)
 
         # Pack the signed envelop to xdr the return it encoded as base64
-        return envelop.xdr()
+        return envelop.xdr().decode()
 
 
     # Internal methods

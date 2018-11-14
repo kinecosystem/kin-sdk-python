@@ -110,9 +110,7 @@ class RawTransaction:
         """
         :param dict horizon_tx_response: the json response from an horizon query
         """
-        unpacker = Xdr.StellarXDRUnpacker(base64.b64decode(horizon_tx_response['envelope_xdr']))
-        envelop = unpacker.unpack_TransactionEnvelope()
-        self.tx = BaseTransaction.from_xdr_object(envelop.tx)
+        self.tx = decode_transaction(horizon_tx_response['envelope_xdr'])
         self.timestamp = horizon_tx_response['created_at']
         self.hash = horizon_tx_response['hash']
 
@@ -137,3 +135,16 @@ def build_memo(app_id, memo):
         finished_memo += memo
 
     return finished_memo
+
+
+def decode_transaction(b64_tx):
+    """
+    Decode a base64 transaction envelop
+    :param b64_tx: a transaction encoded in base64
+    :return: The simplified transaction
+    :rtype kin.SimplifiedTransaction
+    :raises: KinErrors.CantSimplifyError: if the tx cannot be simplified
+    """
+    unpacker = Xdr.StellarXDRUnpacker(base64.b64decode(b64_tx))
+    envelop = unpacker.unpack_TransactionEnvelope()
+    return BaseTransaction.from_xdr_object(envelop.tx)

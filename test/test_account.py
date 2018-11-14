@@ -161,3 +161,10 @@ def test_memo(test_client, test_account):
     with pytest.raises(KinErrors.NotValidParamError):
         account2.create_account(recipient2, 0, memo_text='a'*25, fee=100)
 
+
+def test_whitelist_transaction(test_account):
+    b64_tx = 'AAAAAMEn3A7DfkYAE259RhMg6JoCLdnK1i47kf3GT4UE0G36AAAAAQAAAMEAAAADAAAAAAAAAAEAAAAHMS1hbm9uLQAAAAABAAAAAAAAAAAAAAAAjEk8J7p+a70GMVmlyXKkfbYKr1zBrmE9Zds3LRCkENwAAAAAAAGGoAAAAAAAAAABBNBt+gAAAEDd/M9PA0Iw9I/DUs0ElPV9FFP/ih5zNYJFKrbecXUaBfbRzjIvdg7BFRycVaJrBkhxy0cYWypPQge+Mku/fXoM'
+    net_id = 'Integration Test Network ; zulucrypto'
+    whitelisted_tx = test_account.whitelist_transaction({'envelop':b64_tx, 'network_id': net_id})
+
+    assert whitelisted_tx == 'AAAAAMEn3A7DfkYAE259RhMg6JoCLdnK1i47kf3GT4UE0G36AAAAAQAAAMEAAAADAAAAAAAAAAEAAAAHMS1hbm9uLQAAAAABAAAAAAAAAAAAAAAAjEk8J7p+a70GMVmlyXKkfbYKr1zBrmE9Zds3LRCkENwAAAAAAAGGoAAAAAAAAAACBNBt+gAAAEDd/M9PA0Iw9I/DUs0ElPV9FFP/ih5zNYJFKrbecXUaBfbRzjIvdg7BFRycVaJrBkhxy0cYWypPQge+Mku/fXoMNsGTVAAAAEDFTrPyqr0ultlwbyceYOc61w381t17UiKgtZrXgdySduKfBxifWDm8R8moOBSfY5pZi3Gfp+vAG7wS9YkU4zcF'

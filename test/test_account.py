@@ -10,7 +10,7 @@ SDK_SEED = 'SBKI7MEF62NHHH3AOXBHII46K2FD3LVH63FYHUDLTBUYT3II6RAFLZ7B'
 
 
 def test_create_basic(test_client, test_account):
-    with pytest.raises(KinErrors.AccountNotActivatedError):
+    with pytest.raises(KinErrors.AccountNotFoundError):
         account = test_client.kin_account('SD6IDZHCMX3Z4QPDIC33PECKLLY572DAA5S3DZDALEVVACJKSZPVPJC6')
 
     with pytest.raises(ValueError):
@@ -63,9 +63,9 @@ def test_get_address(test_client, test_account):
     assert test_account.get_public_address() == SDK_PUBLIC
 
 
-def test_create_account(test_client, test_account):
+def test_create_account(setup, test_client, test_account):
     with pytest.raises(KinErrors.AccountExistsError):
-        test_account.create_account(test_client.kin_asset.issuer, 0, fee=100)
+        test_account.create_account(setup.issuer_address , 0, fee=100)
 
     test_account.create_account('GDN7KB72OO7G6VBD3CXNRFXVELLW6F36PS42N7ASZHODV7Q5GYPETQ74', 0, fee=100)
     assert test_client.does_account_exists('GDN7KB72OO7G6VBD3CXNRFXVELLW6F36PS42N7ASZHODV7Q5GYPETQ74')
@@ -82,14 +82,14 @@ def test_send_kin(test_client, test_account):
 
 def test_build_create_account(test_account):
     recipient = 'GBZWWLRJRWL4DLYOJMCHXJUOJJY5NLNJHQDRQHVQH43KFCPC3LEOWPYM'
-    with pytest.raises(KinErrors.StellarSecretInvalidError):
+    with pytest.raises(KinErrors.StellarAddressInvalidError):
         test_account.build_create_account('bad address', 0, fee=100)
     with pytest.raises(KinErrors.NotValidParamError):
-        test_account.build_create_account(recipient, 0, memo_text='a' * 50 ,fee=100)
+        test_account.build_create_account(recipient, 0, memo_text='a' * 50, fee=100)
     with pytest.raises(ValueError):
         test_account.build_create_account(recipient, -1, fee=100)
 
-    tx = test_account.build_create_account(recipient, 0, starting_balance=10, fee=100)
+    tx = test_account.build_create_account(recipient, starting_balance=10, fee=100)
 
     try:
         assert tx
@@ -148,7 +148,7 @@ def test_memo(test_client, test_account):
     recipient2 = 'GDR375ZLWHZUFH2SWXFEH7WVPK5G3EQBLXPZKYEFJ5EAW4WE4WIQ5BP3'
 
     tx1 = test_account.create_account(recipient1, 0, memo_text='Hello', fee=100)
-    account2 = test_client.kin_account(test_account.keypair.secret_seed, app_id='test', fee=100)
+    account2 = test_client.kin_account(test_account.keypair.secret_seed, app_id='test')
     tx2 = account2.create_account(recipient2, 0, memo_text='Hello', fee=100)
     sleep(5)
 

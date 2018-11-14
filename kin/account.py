@@ -82,17 +82,17 @@ class KinAccount:
             for channel in self.channel_secret_keys:
                 try:
                     # TODO: might want to make it a 1 multi operation tx
-                    base_account.create_account(Keypair.address_from_seed(channel))
+                    base_account.create_account(Keypair.address_from_seed(channel),minimum_fee * 1000, minimum_fee)
                 except KinErrors.AccountExistsError:
                     pass
 
         for channel_key in self.channel_secret_keys:
             # Verify channel seed
             if not is_valid_secret_key(channel_key):
-                raise ValueError('invalid channel key: {}'.format(channel_key))
+                raise KinErrors.StellarSecretInvalidError('invalid channel key: {}'.format(channel_key))
             # Check that channel accounts exists (they do not have to be activated).
             channel_address = Keypair.address_from_seed(channel_key)
-            if not self._client.does_account_exists:
+            if not self._client.does_account_exists(channel_address):
                 raise KinErrors.AccountNotFoundError(channel_address)
 
         # set connection pool size for channels + monitoring connection + extra
@@ -354,6 +354,6 @@ class KinAccount:
         # TODO: let user config the amount of kin to top up
         builder = Builder(self._client.environment.name, self._client.horizon,
                           self._client.get_minimum_fee(), self.keypair.secret_seed)
-        builder.append_payment_op(address, str(self._client.get_minimum_fee()) * 1000)
+        builder.append_payment_op(address, str(self._client.get_minimum_fee() * 1000))
         builder.sign()
         builder.submit()

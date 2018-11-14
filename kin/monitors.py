@@ -131,9 +131,9 @@ class MultiMonitor:
         # Instead, we determine the cursor ourselves.
         # Fix will be for horizon to send any message just to start a connection
         params = {}
-        reply = self.kin_client.horizon.transactions(params={'order': 'desc', 'limit': 2})
-        if len(reply['_embedded']['records']) == 2:
-            cursor = reply['_embedded']['records'][1]['paging_token']
+        reply = self.kin_client.horizon.transactions(params={'order': 'desc', 'limit': 1})
+        if len(reply['_embedded']['records']) == 1:
+            cursor = reply['_embedded']['records'][0]['paging_token']
             params = {'cursor': cursor}
 
         # make synchronous SSE request (will raise errors in the current thread)

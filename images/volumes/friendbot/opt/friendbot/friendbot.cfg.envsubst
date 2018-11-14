@@ -1,5 +1,5 @@
 port = 8000
 friendbot_secret = "$ROOT_ACCOUNT_SEED"
-network_passphrase = "private testnet"
+network_passphrase = "Integration Test Network ; zulucrypto"
 horizon_url = "http://horizon:8000"
-starting_balance = "10.00"
+starting_balance = "0"

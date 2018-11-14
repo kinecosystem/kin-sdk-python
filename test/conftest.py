@@ -16,10 +16,10 @@ def setup():
         def __init__(self, **entries): self.__dict__.update(entries)
 
     # Using a local blockchain, this is the root account
-    issuer_seed = 'SDBDJVXHPVQGDXYHEVOBBV4XZUDD7IQTXM5XHZRLXRJVY5YMH4YUCNZC'
-    issuer_address = 'GCLBBAIDP34M4JACPQJUYNSPZCQK7IRHV7ETKV6U53JPYYUIIVDVJJFQ'
+    issuer_seed = 'SDPTXNTPCU6DXIY2YOAQYFRQZEKHC5FJEWJUF2HQ24DUFLSHOVTCS6B2'
+    issuer_address = 'GA3FLH3EVYHZUHTPQZU63JPX7ECJQL2XZFCMALPCLFYMSYC4JKVLAJWM'
     docker_environment = Environment('DOCKER', 'http://localhost:8008',
-                                     'private testnet', 'http://localhost:8001')
+                                     'Integration Test Network ; zulucrypto', 'http://localhost:8001')
 
     print('Testing with environment:', docker_environment)
     return Struct(issuer_address=issuer_address,

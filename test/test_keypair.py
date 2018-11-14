@@ -1,6 +1,6 @@
 import pytest
 
-from kin import Keypair
+from kin import Keypair, KinErrors
 from kin.blockchain.utils import is_valid_secret_key
 
 
@@ -16,7 +16,7 @@ def test_create_costume():
     assert keys
     assert seed == keys.secret_seed
 
-    with pytest.raises(ValueError):
+    with pytest.raises(KinErrors.StellarSecretInvalidError):
         Keypair('bad')
 
 

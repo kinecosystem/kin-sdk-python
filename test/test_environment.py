@@ -4,11 +4,6 @@ import pytest
 from kin import Environment
 
 
-def test_create_fail():
-    with pytest.raises(ValueError):
-        Environment('1', '2', '3', 'bad account')
-
-
 def test_create_success():
     passphrase = 'passphrase'
     passphrase_hash = sha256(passphrase.encode()).digest()

@@ -34,8 +34,8 @@ sudo docker-compose up -d stellar-core-1 stellar-core-2
 
 # upgrade base reserve balance network setting to 0.5 XLM
 # https://www.stellar.org/developers/stellar-core/software/admin.html#network-configuration
-curl 'localhost:11626/upgrades?mode=set&upgradetime=1970-01-01T00:00:00Z&basereserve=5000000'
-curl 'localhost:11627/upgrades?mode=set&upgradetime=1970-01-01T00:00:00Z&basereserve=5000000'
+curl 'localhost:11626/upgrades?mode=set&upgradetime=1970-01-01T00:00:00Z&basereserve=0'
+curl 'localhost:11627/upgrades?mode=set&upgradetime=1970-01-01T00:00:00Z&basereserve=0'
 
 # setup horizon database
 sudo docker-compose up -d horizon-db

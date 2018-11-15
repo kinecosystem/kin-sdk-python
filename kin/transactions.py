@@ -7,6 +7,7 @@ import base64
 from enum import Enum
 from kin_base.stellarxdr import Xdr
 from kin_base.transaction import Transaction as BaseTransaction
+from kin_base.transaction_envelope import TransactionEnvelope as BaseEnvelop
 from kin_base.memo import TextMemo, NoneMemo
 from kin_base.operation import Payment, CreateAccount
 
@@ -110,7 +111,8 @@ class RawTransaction:
         """
         :param dict horizon_tx_response: the json response from an horizon query
         """
-        self.tx = decode_transaction(horizon_tx_response['envelope_xdr'])
+        # Network_id is left as '' since we override the hash anyway
+        self.tx = decode_transaction(horizon_tx_response['envelope_xdr'], '', simple=False)
         self.timestamp = horizon_tx_response['created_at']
         self.hash = horizon_tx_response['hash']
 
@@ -137,14 +139,26 @@ def build_memo(app_id, memo):
     return finished_memo
 
 
-def decode_transaction(b64_tx):
+def decode_transaction(b64_tx, network_id, simple=True):
     """
     Decode a base64 transaction envelop
-    :param b64_tx: a transaction encoded in base64
-    :return: The simplified transaction
-    :rtype kin.SimplifiedTransaction
+    :param str b64_tx: a transaction envelop encoded in base64
+    :param boolean simple: should the tx be simplified
+    :param network_id: the network_id for the transaction
+    :return: The transaction
+    :rtype kin.SimplifiedTransaction | kin_base.Transaction
     :raises: KinErrors.CantSimplifyError: if the tx cannot be simplified
     """
     unpacker = Xdr.StellarXDRUnpacker(base64.b64decode(b64_tx))
     envelop = unpacker.unpack_TransactionEnvelope()
-    return BaseTransaction.from_xdr_object(envelop.tx)
+    envelop.tx = BaseTransaction.from_xdr_object(envelop.tx)
+    passphrase_hash = sha256(network_id.encode()).digest()
+    base_tx = BaseEnvelop.from_xdr(b64_tx).tx
+
+    envelop.hash = Transaction.calculate_tx_hash(base_tx, passphrase_hash)
+
+    # Time cannot be extracted from the envelop
+    envelop.timestamp = None
+    if simple:
+        return SimplifiedTransaction(envelop)
+    return envelop.tx

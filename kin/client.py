@@ -102,7 +102,7 @@ class KinClient(object):
         :return: the balance of the account
         :rtype: float
 
-        :raises: ValueError: if the provided address has the wrong format.
+        :raises: StellarAddressInvalidError: if the provided address has the wrong format.
         :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
         """
 
@@ -121,7 +121,7 @@ class KinClient(object):
         :return: does the account exists on the blockchain
         :rtype boolean
 
-        :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
+        :raises: :class:`KinErrors.StellarAddressInvalidError`: if the address is not valid.
         """
 
         if not is_valid_address(address):

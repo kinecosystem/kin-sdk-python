@@ -320,6 +320,11 @@ class KinAccount:
         if NETWORKS[self._client.environment.name] != payload['network_id']:
             raise KinErrors.WrongNetworkError()
 
+        # The android stellar sdk spells 'tx-envelope' as 'envelop'
+        try:
+            payload_envelop = payload['envelop']
+        except KeyError:
+            payload_envelop = payload['envelope']
         # Decode the transaction, from_xdr actually takes a base64 encoded xdr
         envelop = TransactionEnvelope.from_xdr(payload['envelop'])
 

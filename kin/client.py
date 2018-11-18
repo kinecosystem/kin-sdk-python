@@ -99,7 +99,7 @@ class KinClient(object):
         """
         Get the KIN balance of a given account
         :param str address: the public address of the account to query
-        :return: a dictionary containing the balances
+        :return: the balance of the account
         :rtype: float
 
         :raises: ValueError: if the provided address has the wrong format.

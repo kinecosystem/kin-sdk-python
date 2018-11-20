@@ -38,7 +38,7 @@ Custom environment can also be used:
 ```python
 from kin import Environment
 
-MY_CUSTOM_ENVIRONMENT = Environemnt('name','horizon endpoint','network passphrase','kin issuer','friendbot url'(optional))
+MY_CUSTOM_ENVIRONMENT = Environemnt('name','horizon endpoint','network passphrase','friendbot url'(optional))
 ```
 
 Once you have a KinClient, you can use it to get a KinAccount object: 
@@ -62,7 +62,7 @@ account = client.kin_account('seed',channels=number, create_channels=True/False)
 # so using channels will greatly increase your concurrency.
 
 # Additionaly, an unique app-id can be provided, this will mark all of your transactions and allow the Kin Ecosystem to track the kin usage of your app
-# A unique app-id should be recivied from the Kin Ecosystem
+# A unique app-id should be received from the Kin Ecosystem
 account = client.kin_account('seed',app_id='unique_app_id')
 ```
 
@@ -72,9 +72,7 @@ Most methods provided by the KinClient to query the blockchain about a specific 
 ### Getting Account Balance
 ```python
 # Get KIN/XLM balance
-balances = client.get_account_balances('address')
-kin_balance = balances['KIN']
-xlm_balance = balances['XLM']
+balance = client.get_account_balance('address')
 ```
 
 ### Getting Account Data
@@ -82,25 +80,24 @@ xlm_balance = balances['XLM']
 account_data = client.get_account_data('address')
 ```
 
-### Checking Account Status
+### Checking If an account exists on the blockchain
 ```python
-from kin import AccountStatuses
-
-status = client.get_account_status('address')
-
-# status can be one of:
-AccountStatuses.NOT_CREATED
-AccountStatuses.NOT_ACTIVATED
-AccountStatuses.ACTIVATED
+client.does_account_exists('address')
 ```
 
+### Getting the minimum acceptable fee from the blockchain
+```python
+# Transactions usually require a fee to be proccessed.
+# To know what is the minimum fee that the blockchain will accept, use:
+minimum_fee = client.get_minimum_fee()
+```
 
 ### Getting Transaction Data
 ```python
 # Get information about a specific transaction
 # The 'simple' flag is enabled by defualt, and dectates what object should be returned
-# For simple=False: A 'kin.TransactionData' object will return,
-# containig many fields that may be confusing and of no use to the user.
+# For simple=False: A 'kin.RawTransaction' object will return,
+# containig some fields that may be confusing and of no use to the user.
 
 # For simple=True: A 'kin.SimpleTransaction' object will return,
 # containing only the data that the user will need.
@@ -110,11 +107,10 @@ tx_data = sdk.get_transaction_data(tx_hash, simple=True/False)
 # A transaction will not be simplifed if:
 # 1. It contains a memo that is not a text memo
 # 2. It contains multiple operations
-# 3. It contains a payment that is not of KIN/XLM
-# 4. It contains activation to anything other than KIN
-# 5. Its operation type is not one of 'Payment'/'Activation'/'Create account'.
+# 3. It contains a payment that is not of KIN
+# 4. Its operation type is not one of 'Payment'/'Create account'.
 
-# Given the use case of our blockchain, and the tools that we currently provied to interact with it, these conditions should not occur.
+# Given the use case of our blockchain, and the tools that we currently provied to interact with it, these conditions should not usually occur.
 ```
 
 ### Verify Kin Payment
@@ -186,40 +182,30 @@ print status
 client.friendbot('address')
 ```
 
-### Activate Account
-**This is the only KinClient method that requires a seed**
-```python
-client.activate_account('seed')
-```
-
 
 ## Account Usage
 
 ### Getting Wallet Details
 ```python
-# Get the public address of my wallet account. The address is derived from the seed the account was inited with.
+# Get the public address of my wallet account. The address is derived from the seed the account was created with.
 address = account.get_public_address()
 ```
 
 ### Creating a New Account
 ```python
-# create a new account prefunded with MIN_ACCOUNT_BALANCE XLM
-tx_hash = account.create_account('address')
-
-# create a new account prefunded with a specified amount of XLM.
-tx_hash = account.create_account('address', starting_balance=1000)
+# Create a new account
+# the KIN amount can be specified in numbers or as a string
+tx_hash = account.create_account('address', starting_balance=1000, fee=100)
 
 # a text memo can also be provided:
-tx_hash = account.create_account('address', starting_balance=1000,memo_text='Account creation example')
+tx_hash = account.create_account('address', starting_balance=1000, fee=100, memo_text='Account creation example')
 ```
 
-### Sending Currency
+### Sending KIN
 ```python
-# send XLM
-tx_hash = account.send_xlm('address', 100, memo_text='order123')
-
 # send KIN
-tx_hash = account.send_kin('address', 1000, memo_text='order123')
+# the KIN amount can be specified in numbers or as a string
+tx_hash = account.send_kin('destination', 1000, fee=100, memo_text='order123')
 ```
 
 ### Build/Submit transactions
@@ -227,7 +213,7 @@ While the previous methods build and send the transaction for you, there is anot
 
 Step 1: Build the transaction
 ```python
-tx = account.build_send_kin('address',100,memo_text='order123')
+tx = account.build_send_kin('destination',1000, fee=100, memo_text='order123')
 ```
 Step 2: Submit the transaction
 ```python
@@ -240,6 +226,32 @@ The transaction object can give you the tx_hash of the transaction before sendin
 **Pay attention** - Building a tx locks a channel for this specific transaction, submiting it releases that lock. However if you wish to build a tx, but decide not to submit it, make sure to release this lock with
 ```python
 tx.release()
+```
+
+### Whitelist a transaction
+```python
+# Assuming you are registered as a whitelisted digital service with the Kin Ecosystem (exact details TBD)
+# You will be able to whitelist transactions for your clients, making it so that their fee will not be deducted
+# Your clients will send an http request to you containing their tx.
+# You can then whitelist it, and return it back to the client to send to the blockchain
+
+whitelisted_tx = account.whitelist_transaction(client_transaction)
+
+# By defualt, any payment sent from you is already considered whitelisted,
+# so there is no need for this step for the server transactions
+```
+
+## Transactions
+These methods are relevant to transactions
+
+### Decode_transaction
+```python
+# When the client sends you a transaction for whitelisting, it will be encoded.
+# If you wish to decode the transaction and verify its details before whitelisting it:
+
+from kin import decode_transaction
+
+decoded_tx = decode_transaction(encoded_tx)
 ```
 
 ## Keypair
@@ -278,7 +290,7 @@ These methods can be used to monitor the kin payment that an account or accounts
 **Currently, due to a bug on the blockchain frontend, the monitor may also return 1 tx that happened before the monitoring request**
 
 
-The monitor will run in a background thread (accessible via ```monitor.thead```) ,   
+The monitor will run in a background thread (accessible via ```monitor.thread```) ,
 and will call the callback function everytime it finds a kin payment for the given address.
 ### Monitor a single account
 Monitoring a single account will continuously get data about this account from the blockchain and filter it.

@@ -70,12 +70,11 @@ class KinAccount:
                 raise ValueError('There are no channels to create')
             base_account = self._client.kin_account(seed, app_id=app_id)
 
-            # Verify that there is enough Kin to create the channels
+            # Verify that there is enough KIN to create the channels
             # Balance should be at least number of channels * (1000 * minimum fee)
             # TODO: move this to utils as an optional method
             minimum_fee = self._client.get_minimum_fee()
-            if len(self.channel_secret_keys) * minimum_fee * 1000 > \
-                    base_account.get_balance():
+            if len(self.channel_secret_keys) * minimum_fee * 1000 > base_account.get_balance():
                 raise KinErrors.LowBalanceError('The base account does not have enough KIN to create the channels')
 
             # Create the channels, pass if the channel already exists
@@ -233,7 +232,7 @@ class KinAccount:
         return Transaction(builder, self.channel_manager)
 
     def build_send_kin(self, address, amount, fee, memo_text=None):
-        """Build a tx to send asset to the account identified by the provided address.
+        """Build a tx to send KIN to the account identified by the provided address.
 
         :param str address: the account to send asset to.
 
@@ -321,27 +320,25 @@ class KinAccount:
             raise KinErrors.WrongNetworkError()
 
         # The android stellar sdk spells 'tx-envelope' as 'envelop'
-        try:
-            payload_envelop = payload['envelop']
-        except KeyError:
-            payload_envelop = payload['envelope']
+        payload_envelope = payload.get('envelop',payload.get('envelope'))
         # Decode the transaction, from_xdr actually takes a base64 encoded xdr
-        envelop = TransactionEnvelope.from_xdr(payload['envelop'])
+        envelope = TransactionEnvelope.from_xdr(payload_envelope)
 
         # Add the network_id hash to the envelop
-        envelop.network_id = self._client.environment.passphrase_hash
+        envelope.network_id = self._client.environment.passphrase_hash
 
         # Get the transaction hash (to sign it)
-        tx_hash = envelop.hash_meta()
+        tx_hash = envelope.hash_meta()
 
         # Sign using the hash
         signature = self.keypair.sign(tx_hash)
 
         # Add the signature to the envelop
-        envelop.signatures.append(signature)
+        envelope.signatures.append(signature)
 
         # Pack the signed envelop to xdr the return it encoded as base64
-        return envelop.xdr().decode()
+        # xdr() returns a bytestring that needs to be decoded
+        return envelope.xdr().decode()
 
 
     # Internal methods

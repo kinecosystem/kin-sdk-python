@@ -10,8 +10,7 @@ from .utils import is_valid_secret_key
 
 
 class Keypair:
-    """A simpler version of kin_base.Keypair that
-     holds the public address and secret seed."""
+    """A simpler version of kin_base.Keypair that holds the public address and secret seed."""
 
     def __init__(self, seed=None):
         """

@@ -18,6 +18,7 @@ else:
     import queue as queue
 
 CHANNEL_QUEUE_TIMEOUT = 11  # how much time to wait until a channel is available, in seconds
+CHANNEL_PUT_TIMEOUT = 0.5  # how much time to wait for a channel to return to the queue
 
 
 class ChannelManager(object):
@@ -60,7 +61,7 @@ class ChannelManager(object):
         # add operation (using external partial) and sign
         try:
             add_ops_fn(builder)(source=source)
-            # update fee
+            # update the previous fee that was only used for initialization
             builder.fee = fee
             if memo_text:
                 builder.add_text_memo(memo_text)  # max memo length is 28
@@ -71,6 +72,6 @@ class ChannelManager(object):
         except:
             # If something fails when building the tx, clear and return the builder to queue.
             builder.clear()
-            self.channel_builders.put(builder,timeout=0.5)
+            self.channel_builders.put(builder,timeout=CHANNEL_PUT_TIMEOUT)
             raise
         return builder

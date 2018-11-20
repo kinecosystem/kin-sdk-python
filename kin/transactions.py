@@ -10,6 +10,7 @@ from kin_base.transaction import Transaction as BaseTransaction
 from kin_base.transaction_envelope import TransactionEnvelope as BaseEnvelop
 from kin_base.memo import TextMemo, NoneMemo
 from kin_base.operation import Payment, CreateAccount
+from .blockchain.channel_manager import CHANNEL_PUT_TIMEOUT
 
 from .errors import CantSimplifyError
 from .config import MEMO_TEMPLATE
@@ -18,6 +19,7 @@ from .config import MEMO_TEMPLATE
 # This is needed in order to calculate transaction hash.
 # It is the xdr representation of kin_base.XDR.const.ENVELOP_TYPE_TX (2)
 PACKED_ENVELOP_TYPE = b'\x00\x00\x00\x02'
+NATIVE_ASSET_TYPE = 'native'
 
 
 class Transaction:
@@ -40,7 +42,7 @@ class Transaction:
         """
         self.builder.clear()
         if self.builder not in self.channel_manager.low_balance_builders:
-            self.channel_manager.channel_builders.put(self.builder, timeout=0.5)
+            self.channel_manager.channel_builders.put(self.builder, timeout=CHANNEL_PUT_TIMEOUT)
 
     @staticmethod
     def calculate_tx_hash(tx, network_passphrase_hash):
@@ -88,8 +90,8 @@ class SimplifiedOperation:
 
     def __init__(self, op_data):
         if isinstance(op_data, Payment):
-            # Raise error if asset is not KIN or XLM
-            if op_data.asset.type != 'native':
+            # Raise error if its not a KIN payment
+            if op_data.asset.type != NATIVE_ASSET_TYPE:
                 raise CantSimplifyError('Cant simplify operation with asset {} issued by {}'.
                                         format(op_data.asset.code, op_data.asset.issuer))
 
@@ -112,7 +114,7 @@ class RawTransaction:
         :param dict horizon_tx_response: the json response from an horizon query
         """
         # Network_id is left as '' since we override the hash anyway
-        self.tx = decode_transaction(horizon_tx_response['envelope_xdr'], '', simple=False)
+        self.tx = decode_transaction(horizon_tx_response['envelope_xdr'], network_id='', simple=False)
         self.timestamp = horizon_tx_response['created_at']
         self.hash = horizon_tx_response['hash']
 

@@ -18,6 +18,7 @@ else:
     import queue as queue
 
 CHANNEL_QUEUE_TIMEOUT = 11  # how much time to wait until a channel is available, in seconds
+CHANNEL_PUT_TIMEOUT = 0.5  # how much time to wait for a channel to return to the queue
 
 
 class ChannelManager(object):
@@ -32,10 +33,11 @@ class ChannelManager(object):
         self.low_balance_builders = []
         for channel_key in channel_keys:
             # create a channel transaction builder.
-            builder = Builder(secret=channel_key, network=network, horizon=horizon)
+            # fee gets updated once a transaction is being built
+            builder = Builder(secret=channel_key, network=network, horizon=horizon, fee=0.01)
             self.channel_builders.put(builder)
 
-    def build_transaction(self, add_ops_fn, memo_text=None):
+    def build_transaction(self, add_ops_fn, fee, memo_text=None):
         """Send a transaction using an available channel account.
 
         :param add_ops_fn: a function to call, that will add operations to the transaction. The function should be
@@ -57,11 +59,19 @@ class ChannelManager(object):
         source = self.base_address if builder.address != self.base_address else None
 
         # add operation (using external partial) and sign
-        add_ops_fn(builder)(source=source)
-        if memo_text:
-            builder.add_text_memo(memo_text)  # max memo length is 28
+        try:
+            add_ops_fn(builder)(source=source)
+            # update the previous fee that was only used for initialization
+            builder.fee = fee
+            if memo_text:
+                builder.add_text_memo(memo_text)  # max memo length is 28
 
-        builder.sign()  # always sign with a channel key
-        if source:
-            builder.sign(secret=self.base_key)  # sign with the base key if needed
+            builder.sign()  # always sign with a channel key
+            if source:
+                builder.sign(secret=self.base_key)  # sign with the base key if needed
+        except:
+            # If something fails when building the tx, clear and return the builder to queue.
+            builder.clear()
+            self.channel_builders.put(builder,timeout=CHANNEL_PUT_TIMEOUT)
+            raise
         return builder

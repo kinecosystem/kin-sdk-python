@@ -9,7 +9,7 @@ python_version = "3.7"
 [packages]
 schematics = "==2.0.1"
 "enum34" = "*"
-kin-base = "==1.0.2"
+kin-base = "==1.0.4"
 
 [dev-packages]
 attrs = "==17.4.0"
@@ -20,6 +20,5 @@ pluggy = "==0.6.0"
 py = "==1.5.2"
 pytest = "==3.4.0"
 pytest-cov = "==2.5.1"
-
 #[pipenv]
 #keep_outdated = true

@@ -87,7 +87,7 @@ def test_account(test_client):
     assert exc_info.value.type == HorizonErrorType.NOT_FOUND
 
     # root blockchain address
-    address = 'GCLBBAIDP34M4JACPQJUYNSPZCQK7IRHV7ETKV6U53JPYYUIIVDVJJFQ'
+    address = 'GA3FLH3EVYHZUHTPQZU63JPX7ECJQL2XZFCMALPCLFYMSYC4JKVLAJWM'
     reply = test_client.horizon.account(address)
     assert reply
     assert reply['id']
@@ -109,7 +109,7 @@ def test_account_offers(test_client):
     # does not raise on nonexistent account!
 
     # root blockchain address
-    address = 'GCLBBAIDP34M4JACPQJUYNSPZCQK7IRHV7ETKV6U53JPYYUIIVDVJJFQ'
+    address = 'GA3FLH3EVYHZUHTPQZU63JPX7ECJQL2XZFCMALPCLFYMSYC4JKVLAJWM'
     reply = test_client.horizon.account_offers(address)
     assert reply
     assert reply['_embedded']
@@ -310,12 +310,6 @@ def test_operation_effects(test_client):
 
 def test_payments(test_client):
     reply = test_client.horizon.payments()
-    assert reply
-    assert reply['_embedded']['records']
-
-
-def test_assets(test_client):
-    reply = test_client.horizon.assets()
     assert reply
     assert reply['_embedded']['records']
 

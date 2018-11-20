@@ -2,7 +2,7 @@ version: "3"
 
 services:
   stellar-core-1:
-    image: kinecosystem/stellar-core:kinecosystem-v1.0.0-stellar-v9.2.0
+    image: kinecosystem/stellar-core:kinecosystem-v1.0.0-stellar-v9.2.0-16-g175d2b5
     ports:
       - 11626:11626
     links:
@@ -26,7 +26,7 @@ services:
       POSTGRES_DB: core
 
   stellar-core-2:
-    image: kinecosystem/stellar-core:kinecosystem-v1.0.0-stellar-v9.2.0
+    image: kinecosystem/stellar-core:kinecosystem-v1.0.0-stellar-v9.2.0-16-g175d2b5
     ports:
       - 11627:11626
     links:
@@ -49,7 +49,7 @@ services:
       POSTGRES_DB: core
 
   horizon:
-    image: kinecosystem/horizon:v0.12.3-sse-pubsub-performance-improvement
+    image: kinecosystem/horizon:ronlocal
     # using nginx-proxy
     ports:
       - 8000:8000

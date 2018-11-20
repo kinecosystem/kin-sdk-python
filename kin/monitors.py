@@ -2,9 +2,8 @@
 from threading import Thread, Event
 
 from .blockchain.utils import is_valid_address
-from .account import AccountStatus
 from .transactions import OperationTypes, SimplifiedTransaction ,RawTransaction
-from .errors import AccountNotActivatedError, CantSimplifyError, StoppedMonitorError
+from .errors import AccountNotFoundError, CantSimplifyError, StoppedMonitorError, StellarAddressInvalidError
 
 import logging
 
@@ -28,10 +27,10 @@ class SingleMonitor:
             raise ValueError('no address to monitor')
 
         if not is_valid_address(address):
-            raise ValueError('invalid address: {}'.format(address))
+            raise StellarAddressInvalidError('invalid address: {}'.format(address))
 
-        if self.kin_client.get_account_status(address) != AccountStatus.ACTIVATED:
-            raise AccountNotActivatedError(address)
+        if not self.kin_client.does_account_exists(address):
+            raise AccountNotFoundError(address)
 
         self.address = address
 
@@ -71,14 +70,11 @@ class SingleMonitor:
                     tx = json.loads(event.data)
 
                     try:
-                        tx_data = SimplifiedTransaction(RawTransaction(tx), self.kin_client.kin_asset)
+                        tx_data = SimplifiedTransaction(RawTransaction(tx))
                     except CantSimplifyError:
                         continue
 
                     if tx_data.operation.type != OperationTypes.PAYMENT:
-                        continue
-
-                    if tx_data.operation.asset != self.kin_client.environment.kin_asset.code:
                         continue
 
                     self.callback_fn(self.address, tx_data, self)
@@ -124,9 +120,9 @@ class MultiMonitor:
 
         for address in addresses:
             if not is_valid_address(address):
-                raise ValueError('invalid address: {}'.format(address))
-            if self.kin_client.get_account_status(address) != AccountStatus.ACTIVATED:
-                raise AccountNotActivatedError(address)
+                raise StellarAddressInvalidError('invalid address: {}'.format(address))
+            if not self.kin_client.does_account_exists(address):
+                raise AccountNotFoundError(address)
 
         self.addresses = addresses
 
@@ -135,9 +131,9 @@ class MultiMonitor:
         # Instead, we determine the cursor ourselves.
         # Fix will be for horizon to send any message just to start a connection
         params = {}
-        reply = self.kin_client.horizon.transactions(params={'order': 'desc', 'limit': 2})
-        if len(reply['_embedded']['records']) == 2:
-            cursor = reply['_embedded']['records'][1]['paging_token']
+        reply = self.kin_client.horizon.transactions(params={'order': 'desc', 'limit': 1})
+        if len(reply['_embedded']['records']) == 1:
+            cursor = reply['_embedded']['records'][0]['paging_token']
             params = {'cursor': cursor}
 
         # make synchronous SSE request (will raise errors in the current thread)
@@ -165,14 +161,11 @@ class MultiMonitor:
                     tx = json.loads(event.data)
 
                     try:
-                        tx_data = SimplifiedTransaction(RawTransaction(tx), self.kin_client.kin_asset)
+                        tx_data = SimplifiedTransaction(RawTransaction(tx))
                     except CantSimplifyError:
                         continue
 
                     if tx_data.operation.type != OperationTypes.PAYMENT:
-                        continue
-
-                    if tx_data.operation.asset != self.kin_client.environment.kin_asset.code:
                         continue
 
                     if tx_data.source in self.addresses:
@@ -214,10 +207,10 @@ class MultiMonitor:
             raise StoppedMonitorError()
 
         if not is_valid_address(address):
-            raise ValueError('invalid address {}'.format(address))
+            raise StellarAddressInvalidError('invalid address: {}'.format(address))
 
-        if self.kin_client.get_account_status(address) != AccountStatus.ACTIVATED:
-            raise AccountNotActivatedError(address)
+        if not self.kin_client.does_account_exists(address):
+            raise AccountNotFoundError(address)
 
         self.addresses.append(address)
 

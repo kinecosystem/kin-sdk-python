@@ -3,6 +3,7 @@
 from kin_base.builder import Builder as BaseBuilder
 from kin_base.keypair import Keypair
 from kin_base.memo import NoneMemo
+from kin_base.exceptions import StellarAddressInvalidError
 
 from .utils import is_valid_address, is_valid_secret_key
 
@@ -12,19 +13,19 @@ class Builder(BaseBuilder):
     This class overrides :class:`kin_base.builder` to provide additional functionality.
     """
 
-    def __init__(self, network, horizon, secret=None, address=None):
+    def __init__(self, network, horizon, fee, secret=None, address=None):
         if secret:
             if not is_valid_secret_key(secret):
                 raise ValueError('invalid secret key')
             address = Keypair.from_seed(secret).address().decode()
         elif address:
             if not is_valid_address(address):
-                raise ValueError('invalid address')
+                raise StellarAddressInvalidError('invalid address: {}'.format(address))
         else:
             raise Exception('either secret or address must be provided')
 
         # call baseclass constructor to init base class variables
-        super(Builder, self).__init__(secret=secret, address=address, sequence=1)
+        super(Builder, self).__init__(secret=secret, address=address, sequence=1, fee=fee)
 
         # custom overrides
 
@@ -36,7 +37,6 @@ class Builder(BaseBuilder):
         self.ops = []
         self.time_bounds = None
         self.memo = NoneMemo()
-        self.fee = 100
         self.tx = None
         self.te = None
 

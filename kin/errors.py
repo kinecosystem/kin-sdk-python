@@ -3,6 +3,7 @@
 from requests.exceptions import RequestException
 
 from .blockchain.errors import *
+from kin_base.exceptions import NotValidParamError, StellarAddressInvalidError, StellarSecretInvalidError
 
 
 # All exceptions should subclass from SdkError in this module.
@@ -126,18 +127,19 @@ class CantSimplifyError(SdkError):
         super(CantSimplifyError, self).__init__('Tx simplification error', error_code, extra)
 
 
-class MemoTooLongError(SdkError):
-    """The memo is too long"""
-
-    def __init__(self, error_code=None, extra=None):
-        super(MemoTooLongError, self).__init__('Memo is too long', error_code, extra)
-
-
 class StoppedMonitorError(SdkError):
     """A stopped monitor cannot be modified"""
 
     def __init__(self, error_code=None, extra=None):
         super(StoppedMonitorError, self).__init__('Stopped monitor cannot be modified', error_code, extra)
+
+
+class WrongNetworkError(SdkError):
+    """The account is not using the network specified in the tx"""
+
+    def __init__(self, error_code=None, extra=None):
+        super(WrongNetworkError, self).__init__('The account is not using the network specified in the transaction',
+                                                error_code, extra)
 
 
 def translate_error(err):

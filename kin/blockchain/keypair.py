@@ -59,7 +59,7 @@ class Keypair:
         """
         Generate a highly deterministic seed from a base seed + salt
         :param base_seed: The base seed to generate a seed from
-        :param salt: A uniqe string that will be used to generate the seed
+        :param salt: A unique string that will be used to generate the seed
         :return: a new seed.
         """
         # Create a new raw seed from the first 32 bytes of this hash

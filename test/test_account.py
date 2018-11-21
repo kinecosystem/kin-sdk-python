@@ -37,27 +37,6 @@ def test_create_exisitng_channels(test_client, test_account):
     with pytest.raises(KinErrors.StellarSecretInvalidError):
         account = test_client.kin_account(SDK_SEED, channel_secret_keys=['bad'])
 
-    with pytest.raises(ValueError):
-        account = test_client.kin_account(SDK_SEED, channel_secret_keys=channels, create_channels=True)
-
-    for channel in channels:
-        test_client.friendbot(Keypair.address_from_seed(channel))
-
-    account = test_client.kin_account(SDK_SEED, channel_secret_keys=channels)
-    assert account
-    assert set(channels) == set(account.channel_secret_keys)
-
-
-def test_create_new_channels(test_client, test_account):
-    with pytest.raises(KinErrors.AccountNotFoundError):
-        account = test_client.kin_account(SDK_SEED, channels=2, create_channels=False)
-
-    account = test_client.kin_account(SDK_SEED, channels=4, create_channels=True)
-    assert account
-    assert len(account.channel_secret_keys) == 4
-    for channel in account.channel_secret_keys:
-        assert test_client.does_account_exists(Keypair.address_from_seed(channel))
-
 
 def test_get_address(test_client, test_account):
     assert test_account.get_public_address() == SDK_PUBLIC

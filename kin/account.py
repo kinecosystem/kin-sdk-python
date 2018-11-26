@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class KinAccount:
     """Account class to perform authenticated actions on the blockchain"""
 
-    def __init__(self, seed, client, channels, channel_secret_keys, create_channels, app_id):
+    def __init__(self, seed, client, channel_secret_keys, app_id):
         # Set the internal sdk
         self._client = client
 
@@ -42,54 +42,22 @@ class KinAccount:
 
         # Set keypair
         self.keypair = Keypair(seed)
-        # check that sdk wallet account exists and is activated, issuer should continue without activation
+        # check that sdk wallet account exists
         if not self._client.does_account_exists(self.keypair.public_address):
             raise KinErrors.AccountNotFoundError(self.keypair.public_address)
-
-        if channels is not None and channel_secret_keys is not None:
-            raise ValueError("Account cannot be initialized with both 'channels'"
-                             " and 'channel_secret_keys' parameters")
 
         if channel_secret_keys is not None:
             # Use given channels
             self.channel_secret_keys = channel_secret_keys
-
-        elif channels is not None:
-            # Generate the channels for the user
-            self.channel_secret_keys = [Keypair.generate_hd_seed(seed, str(channel)) for channel in range(channels)]
         else:
             # Use the base account as the only channel
             self.channel_secret_keys = [seed]
-
-        if create_channels:
-            if channels is None:
-                raise ValueError("create_channels can only be used with the channels parameter")
-
-            # Create the channels using the base account
-            if self.channel_secret_keys == [seed]:
-                raise ValueError('There are no channels to create')
-            base_account = self._client.kin_account(seed, app_id=app_id)
-
-            # Verify that there is enough KIN to create the channels
-            # Balance should be at least number of channels * (1000 * minimum fee)
-            # TODO: move this to utils as an optional method
-            minimum_fee = self._client.get_minimum_fee()
-            if len(self.channel_secret_keys) * minimum_fee * 1000 > base_account.get_balance():
-                raise KinErrors.LowBalanceError('The base account does not have enough KIN to create the channels')
-
-            # Create the channels, pass if the channel already exists
-            for channel in self.channel_secret_keys:
-                try:
-                    # TODO: might want to make it a 1 multi operation tx
-                    base_account.create_account(Keypair.address_from_seed(channel),minimum_fee * 1000, minimum_fee)
-                except KinErrors.AccountExistsError:
-                    pass
 
         for channel_key in self.channel_secret_keys:
             # Verify channel seed
             if not is_valid_secret_key(channel_key):
                 raise KinErrors.StellarSecretInvalidError('invalid channel key: {}'.format(channel_key))
-            # Check that channel accounts exists (they do not have to be activated).
+            # Check that channel accounts exists.
             channel_address = Keypair.address_from_seed(channel_key)
             if not self._client.does_account_exists(channel_address):
                 raise KinErrors.AccountNotFoundError(channel_address)

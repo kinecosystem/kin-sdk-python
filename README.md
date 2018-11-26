@@ -43,28 +43,19 @@ MY_CUSTOM_ENVIRONMENT = Environemnt('name','horizon endpoint','network passphras
 
 Once you have a KinClient, you can use it to get a KinAccount object: 
 ```python
-# The KinAccount object can be initizlied in a number of ways:
+# The KinAccount object can be initizlied in two ways:
 
 # With a single seed:
 account = client.kin_account('seed')
 
-# With specific channels:
+# With channels:
 account = client.kin_account('seed', channel_secret_keys=['seed1','seed2','seed3'...])
-
-# With deterministic channels
-# This will generate the channels secret seeds for you, based on your primary seed. 
-# The generated channels will always be the same for the same primary seed.
-# If this is your first time using these channels, you should set 'create_channels' to true.
-# This will create the channel account from your primary seed (and will cost 1.6 * number of channels XLM)
-account = client.kin_account('seed',channels=number, create_channels=True/False)
-
-# Every seed can only send one transaction per ledger (~5 seconds),
-# so using channels will greatly increase your concurrency.
 
 # Additionaly, an unique app-id can be provided, this will mark all of your transactions and allow the Kin Ecosystem to track the kin usage of your app
 # A unique app-id should be received from the Kin Ecosystem
 account = client.kin_account('seed',app_id='unique_app_id')
 ```
+Read more about channels in the ["Channels" section](#Channels)
 
 ## Client Usage
 Most methods provided by the KinClient to query the blockchain about a specific account, can also be used from the KinAccount object to query the blockchain about itself
@@ -326,7 +317,8 @@ When you are done monitoring, make sure to stop the monitor, to terminate the th
 monitor.stop()
 ```
 
-## Limitations
+
+## Channels
 
 One of the most sensitive points in Stellar is [transaction sequence](https://www.stellar.org/developers/guides/concepts/transactions.html#sequence-number).
 In order for a transaction to be submitted successfully, this number should be correct. However, if you have several 
@@ -349,6 +341,22 @@ one Flask application is created, containing a single KinAccount instance.
 3. You have a number of load-balanced application servers. Here, each application server should a) have the setup outlined
 above, and b) have its own channel accounts. This way, you ensure you will not have any collisions in your transaction
 sequences.
+
+### Creating Channels
+```
+# The kin sdk allows you to create HD (highly desterministic) channels based on your seed and a passphrase to be used as a salt.
+# As long as you use the same seed and passphrase, you will always get the same seeds.
+
+import kin.utils
+
+channels = utils.create_channels(master_seed, environment, amount, starting_balance, salt)
+
+"channels" will be a list of seeds the sdk created for you, that can be used when initializing the KinAccount object.
+
+# If you just wish to get the list of the channels generated from your seed + passphrase combination without creating them
+
+channels = utils.get_hd_channels(master_seed, salt, amount)
+```
 
 
 ## License

@@ -179,6 +179,10 @@ class Horizon(object):
         url = '/ledgers/' + str(ledger_id)
         return self.query(url)
 
+    def ledger_transactions(self, ledger_id, params=None):
+        url = '/ledgers/' + str(ledger_id) + '/transactions/'
+        return self.query(url, params)
+
     def ledger_effects(self, ledger_id, params=None):
         url = '/ledgers/' + str(ledger_id) + '/effects/'
         return self.query(url, params)

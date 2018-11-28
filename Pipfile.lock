@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "3f0bc23ab8d4df7ac3e20c64d7bdbb1baa58ac86138d77216a48adf00d107b13"
+            "sha256": "c572270bf11bfcd4bad967b32891547044edf3f42d53c0477fe89aa1d876efae"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -62,11 +62,11 @@
         },
         "kin-base": {
             "hashes": [
-                "sha256:03e68252d1edc98b77e27653b31e431220840a5bc090bb62c544b6b6e054444c",
-                "sha256:23a18abf9da634c3bbfd5ef6a0713980e7c3e9101b66841a4459ef781fef7ea6"
+                "sha256:ce984ba114cabf45f5b61ca2069224ca5c899585d5d23b477765d71f3813e3aa",
+                "sha256:df01eae8605ccc0f168868c10bfb97d0425d15467655720dcd83e5913da58f06"
             ],
             "index": "pypi",
-            "version": "==1.0.5"
+            "version": "==1.0.6"
         },
         "mnemonic": {
             "hashes": [

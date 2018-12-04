@@ -25,7 +25,7 @@ class PModel(Model):
 class AccountData(PModel):
     class Thresholds(PModel):
         low_threshold = IntType(default=0)
-        medium_threshold = IntType(default=0)
+        med_threshold = IntType(default=0)
         high_threshold = IntType(default=0)
 
     class Flags(PModel):

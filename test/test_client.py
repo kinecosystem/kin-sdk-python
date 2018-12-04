@@ -79,7 +79,7 @@ def test_get_account_data(test_client, test_account):
 
     assert acc_data.thresholds
     assert acc_data.thresholds.low_threshold == 0
-    assert acc_data.thresholds.medium_threshold == 0
+    assert acc_data.thresholds.med_threshold == 0
     assert acc_data.thresholds.high_threshold == 0
 
     assert acc_data.flags

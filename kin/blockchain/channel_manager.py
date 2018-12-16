@@ -86,7 +86,8 @@ class ChannelStatuses(str, Enum):
     UNDERFUNDED = 'underfunded'
 
 
-class ChannelPool(queue.Queue):
+# TODO: remove object when we kill python2
+class ChannelPool(object, queue.Queue):
     """
     A thread-safe queue that sets a member's status instead of pulling it in/out of the queue.
     This queue gets members randomly when 'get' is used, as opposed to always get the last member.

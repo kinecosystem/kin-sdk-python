@@ -1,77 +1,142 @@
-"""Contains the channel manager class to take care of channels"""
+"""Contains classes and methods related to channels"""
 
 import sys
+import random
+from contextlib import contextmanager
+from enum import Enum
 
-from kin_base.keypair import Keypair
-
-from .builder import Builder
-from .errors import ChannelsBusyError
-
-import logging
-
-logger = logging.getLogger(__name__)
+from .errors import ChannelsBusyError, ChannelsFullError
 
 if sys.version[0] == '2':
     import Queue as queue
 else:
-    # noinspection PyUnresolvedReferences
-    import queue as queue
+    import queue
 
-CHANNEL_QUEUE_TIMEOUT = 11  # how much time to wait until a channel is available, in seconds
+CHANNEL_GET_TIMEOUT = 11  # how much time to wait until a channel is available, in seconds
 CHANNEL_PUT_TIMEOUT = 0.5  # how much time to wait for a channel to return to the queue
 
 
-class ChannelManager(object):
-    """ The class :class:`kin.ChannelManager` wraps channel-related specifics of transaction sending."""
+class ChannelManager:
+    """Provide useful methods to interact with the underlying ChannelPool"""
 
-    def __init__(self, secret_key, channel_keys, network, horizon):
-        self.base_key = secret_key
-        self.base_address = Keypair.from_seed(secret_key).address().decode()
-        self.num_channels = len(channel_keys)
-        self.channel_builders = queue.Queue(len(channel_keys))
-        self.horizon = horizon
-        self.low_balance_builders = []
-        for channel_key in channel_keys:
-            # create a channel transaction builder.
-            # fee gets updated once a transaction is being built
-            builder = Builder(secret=channel_key, network=network, horizon=horizon, fee=0.01)
-            self.channel_builders.put(builder)
-
-    def build_transaction(self, add_ops_fn, fee, memo_text=None):
-        """Send a transaction using an available channel account.
-
-        :param add_ops_fn: a function to call, that will add operations to the transaction. The function should be
-            `partial`, because a `source` parameter will be added.
-        :type add_ops_fn: callable[builder]
-
-        :param str memo_text: (optional) a text to add as transaction memo.
-
-        :return: transaction object
-        :rtype: dict
+    def __init__(self, channel_seeds):
         """
-        # get an available channel builder first (blocking with timeout)
+        Crete a channel manager instance
+        :param list[str] channel_seeds: The seeds of the channels to use
+        """
+        self.channel_pool = ChannelPool(channel_seeds)
+
+    @contextmanager
+    def get_channel(self, timeout=CHANNEL_GET_TIMEOUT):
+        """
+        Get an available channel
+        :param float timeout: (Optional) How long to wait before raising an exception
+        :return a free channel seed
+        :rtype str
+
+        :raises KinErrors.ChannelBusyError
+        """
         try:
-            builder = self.channel_builders.get(True, CHANNEL_QUEUE_TIMEOUT)
+            channel = self.channel_pool.get(timeout=timeout)
         except queue.Empty:
-            raise ChannelsBusyError
+            raise ChannelsBusyError()
 
-        # operation source is always the base account
-        source = self.base_address if builder.address != self.base_address else None
-
-        # add operation (using external partial) and sign
         try:
-            add_ops_fn(builder)(source=source)
-            # update the previous fee that was only used for initialization
-            builder.fee = fee
-            if memo_text:
-                builder.add_text_memo(memo_text)  # max memo length is 28
+            yield channel
+        finally:
+            if self.channel_pool.queue[channel] != ChannelStatuses.UNDERFUNDED:
+                self.put_channel(channel)
 
-            builder.sign()  # always sign with a channel key
-            if source:
-                builder.sign(secret=self.base_key)  # sign with the base key if needed
-        except:
-            # If something fails when building the tx, clear and return the builder to queue.
-            builder.clear()
-            self.channel_builders.put(builder,timeout=CHANNEL_PUT_TIMEOUT)
-            raise
-        return builder
+    def put_channel(self, channel, timeout=CHANNEL_PUT_TIMEOUT):
+        """
+        Set a channel status back to FREE
+        :param str channel: the channel to set back to FREE
+        :param float timeout: (Optional) How long to wait before raising an exception
+
+        :raises KinErrors.ChannelsFullError
+        """
+        try:
+            self.channel_pool.put(channel, timeout=timeout)
+        except queue.Full:
+            raise ChannelsFullError()
+
+    def get_status(self, verbose=False):
+        """
+        Return the current status of the channel manager
+        :param bool verbose: Include all channel seeds and their statuses in the response
+        :return: dict
+        """
+        free_channels = len(self.channel_pool.get_free_channels())
+        status = {
+            'total_channels': len(self.channel_pool.queue),
+            'free_channels': free_channels,
+            'non_free_channels': len(self.channel_pool.queue) - free_channels
+        }
+        if verbose:
+            status['channels'] = self.channel_pool.queue
+
+        return status
+
+
+class ChannelStatuses(str, Enum):
+    """Contains possible statuses for channels"""
+    # subclass str to be able to serialize to json
+    FREE = 'free'
+    TAKEN = 'taken'
+    UNDERFUNDED = 'underfunded'
+
+
+class ChannelPool(queue.Queue):
+    """
+    A thread-safe queue that sets a member's status instead of pulling it in/out of the queue.
+    This queue gets members randomly when 'get' is used, as opposed to always get the last member.
+    """
+    def __init__(self, channels_seeds):
+        """
+        Create an instance of ChannelPool
+        :param list[str] channels_seeds: The seeds to be put in the queue
+        """
+        # Init base queue
+        super(ChannelPool, self).__init__(len(channels_seeds))
+        # Change queue from a 'deque' object to a dict full of free channels
+        self.queue = {channel: ChannelStatuses.FREE for channel in channels_seeds}
+
+    def _get(self):
+        """
+        Randomly get an available free channel from the dict
+        :return: a channel seed
+        :rtype str
+        """
+        # Get a list of all free channels
+        free_channels = self.get_free_channels()
+        # Select a random free channel
+        selected_channel = random.choice(free_channels)
+        # Change channel state to taken
+        self.queue[selected_channel] = ChannelStatuses.TAKEN
+        return selected_channel
+
+    def _put(self, channel):
+        """
+        Change a channel status back to FREE
+        :param str channel: the channel seed
+        """
+        # Change channel state to free
+        self.queue[channel] = ChannelStatuses.FREE
+
+    def _qsize(self):
+        """
+        Used to determine if the queue is empty
+        :return: amount of free channels in the queue
+        :rtype int
+        """
+        # Base queue checks if the queue is not empty by checking the length of the queue (_qsize() != 0)
+        # We need to check it by checking how many channels are free
+        return len(self.get_free_channels())
+
+    def get_free_channels(self):
+        """
+        Get a list of channels with "FREE" status
+        :rtype list[str]
+        """
+        return list(filter(lambda key: self.queue[key] == ChannelStatuses.FREE, self.queue.keys()))
+

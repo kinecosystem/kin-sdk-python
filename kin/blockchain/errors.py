@@ -7,6 +7,10 @@ class ChannelsBusyError(Exception):
     pass
 
 
+class ChannelsFullError(Exception):
+    pass
+
+
 HORIZON_NS_PREFIX = 'https://stellar.org/horizon-errors/'
 
 '''

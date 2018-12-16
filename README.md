@@ -200,23 +200,25 @@ tx_hash = account.send_kin('destination', 1000, fee=100, memo_text='order123')
 ```
 
 ### Build/Submit transactions
-While the previous methods build and send the transaction for you, there is another way to send transactions with two steps
+While the previous methods build and send the transaction for you, there is another way to send transactions
 
 Step 1: Build the transaction
 ```python
-tx = account.build_send_kin('destination',1000, fee=100, memo_text='order123')
+builder = account.build_send_kin('destination',1000, fee=100, memo_text='order123')
 ```
-Step 2: Submit the transaction
+Step 2: Update the transaction
 ```python
-tx_hash = account.submit_transaction(tx)
+# do whatever you want with the builder
+with account.channel_manager.get_channel() as channel:
+    builder.set_channel(channel)
+    builder.sign(channel)
+    # If you used additional channels apart from your main account,
+    # sign with your main account
+    builder.sign(account.keypair.secret_seed)
 ```
-
-This can be useful for some advanced use cases, since the 'build' methods return a 'kin.Transaction' object.
-The transaction object can give you the tx_hash of the transaction before sending it, and can be used to perform advanced operations such as multi-signature/multi-operations **(Not implemented yet)**
-
-**Pay attention** - Building a tx locks a channel for this specific transaction, submiting it releases that lock. However if you wish to build a tx, but decide not to submit it, make sure to release this lock with
+Step 3: Send the transaction
 ```python
-tx.release()
+    tx_hash = account.submit_transaction(builder)
 ```
 
 ### Whitelist a transaction
@@ -230,6 +232,56 @@ whitelisted_tx = account.whitelist_transaction(client_transaction)
 
 # By defualt, any payment sent from you is already considered whitelisted,
 # so there is no need for this step for the server transactions
+```
+
+### Get account status
+```python
+# Get the status and config of the account
+account.get_status(verbose=False/True)
+# If verbose it set to true, all channels and statuses will be printed
+```
+
+```json
+{
+  "client": {
+    "sdk_version": "2.2.0",
+    "environment": "LOCAL",
+    "horizon": {
+      "uri": "http://localhost:8000",
+      "online": true,
+      "error": null
+    },
+    "transport": {
+      "pool_size": 10,
+      "num_retries": 5,
+      "request_timeout": 11,
+      "retry_statuses": [
+        503,
+        413,
+        429,
+        504
+      ],
+      "backoff_factor": 0.5
+    }
+  },
+  "account": {
+    "app_id": "anon",
+    "public_address": "GCLBBAIDP34M4JACPQJUYNSPZCQK7IRHV7ETKV6U53JPYYUIIVDVJJFQ",
+    "balance": 9999989999199.979,
+    "channels": {
+      "total_channels": 5,
+      "free_channels": 4,
+      "non_free_channels": 1,
+      "channels": {
+        "SBS3O5BGCPDIYWTTOV7TGLXFRPFSD6ACBEAEHJUMMPF5DUDF732MX6LL": "free",
+        "SC65CIJCAWJEJX5IVHDJK6FO6DM5BVPIUX5F7EULIC3C4PF7KTAUHHE2": "free",
+        "SABWFQ2HOYPQGCWN7INIV2RNZZLAZDOX67R3VHMGQAFF6FA3JIA2E7BB": "free",
+        "SBBQJTYF6K2TDUJ2LBUSXICUEEX75RXAQZRP6LLVF3JDXK5D4SVYX3X4": "taken",
+        "SCD36QIV3SFEGZDHRZZXO7MICNMOHSRAOV6L2MQKSW4TO4OTCR4IF2FD": "free"
+      }
+    }
+  }
+}
 ```
 
 ## Transactions

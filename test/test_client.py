@@ -55,7 +55,7 @@ def test_get_balance(test_client, test_account):
 
 def test_does_account_exists(test_client, test_account):
 
-    with pytest.raises(KinErrors.StellarAddressInvalidError, match='invalid address: bad'):
+    with pytest.raises(KinErrors.StellarAddressInvalidError):
         test_client.does_account_exists('bad')
 
     address = 'GB7F23F7235ADJ7T2L4LJZT46LA3256QAXIU56ANKPX5LSAAS3XVA465'
@@ -64,7 +64,7 @@ def test_does_account_exists(test_client, test_account):
 
 
 def test_get_account_data(test_client, test_account):
-    with pytest.raises(KinErrors.StellarAddressInvalidError, match='invalid address: bad'):
+    with pytest.raises(KinErrors.StellarAddressInvalidError):
         test_client.get_account_data('bad')
 
     address = 'GBSZO2C63WM2DHAH4XGCXDW5VGAM56FBIOGO2KFRSJYP5I4GGCPAVKHW'
@@ -99,7 +99,7 @@ def test_get_transaction_data(setup, test_client):
     from kin import OperationTypes
     from kin.transactions import RawTransaction
 
-    with pytest.raises(ValueError, match='invalid transaction hash: bad'):
+    with pytest.raises(ValueError):
         test_client.get_transaction_data('bad')
 
     with pytest.raises(KinErrors.ResourceNotFoundError):

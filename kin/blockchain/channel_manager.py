@@ -87,7 +87,7 @@ class ChannelStatuses(str, Enum):
 
 
 # TODO: remove object when we kill python2
-class ChannelPool(object, queue.Queue):
+class ChannelPool(queue.Queue, object):
     """
     A thread-safe queue that sets a member's status instead of pulling it in/out of the queue.
     This queue gets members randomly when 'get' is used, as opposed to always get the last member.

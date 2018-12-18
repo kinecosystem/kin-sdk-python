@@ -3,33 +3,31 @@
 from kin_base.builder import Builder as BaseBuilder
 from kin_base.keypair import Keypair
 from kin_base.memo import NoneMemo
-from kin_base.exceptions import StellarAddressInvalidError
-
-from .utils import is_valid_address, is_valid_secret_key
 
 
 class Builder(BaseBuilder):
     """
     This class overrides :class:`kin_base.builder` to provide additional functionality.
+    # TODO: maybe merge this with kin-base builder
     """
 
-    def __init__(self, network, horizon, fee, secret=None, address=None):
-        if secret:
-            if not is_valid_secret_key(secret):
-                raise ValueError('invalid secret key')
-            address = Keypair.from_seed(secret).address().decode()
-        elif address:
-            if not is_valid_address(address):
-                raise StellarAddressInvalidError('invalid address: {}'.format(address))
-        else:
-            raise Exception('either secret or address must be provided')
+    # TODO: make seed optional (need to change kin_base)
+    def __init__(self, network_name, horizon, fee, secret):
+        """
+        Create a new transaction builder
+        :param str network_name: The name of the network
+        :param Kin.Horizon horizon: The horizon instance to use
+        :param int fee: Fee for the transaction
+        :param str secret: The seed to be used
+        """
 
-        # call baseclass constructor to init base class variables
-        super(Builder, self).__init__(secret=secret, address=address, sequence=1, fee=fee)
+        # call base class constructor to init base class variables
+        # sequence is one since it get overridden later
+        super(Builder, self).__init__(secret=secret, sequence=1, fee=fee)
 
         # custom overrides
 
-        self.network = network
+        self.network = network_name
         self.horizon = horizon
 
     def clear(self):
@@ -40,9 +38,16 @@ class Builder(BaseBuilder):
         self.tx = None
         self.te = None
 
-    def get_sequence(self):
-        """Alternative implementation to expose exceptions"""
-        return self.horizon.account(self.address).get('sequence')
+    def update_sequence(self):
+        """
+        Update the builder with the *current* sequence of the account
+        # TODO: kin-base builder increments this value by 1 when building a tx.
+        #       Remove this functionality from py-stellar-base and change this method set the current sequence+1
+        """
+
+        # TODO: kin-base checks for 'not sequence' to find if there is no sequence, therefore
+        # Sequence of 0 fails, write it as a str for now and fix in kin-base later
+        self.sequence = str(self.get_sequence())
 
     def next(self):
         """
@@ -52,10 +57,11 @@ class Builder(BaseBuilder):
         self.clear()
         self.sequence = str(int(self.sequence) + 1)
 
-    def sign(self, secret=None):
+    def set_channel(self, channel_seed):
         """
-        Alternative implementation that does not use the self-managed sequence, but always fetches it from Horizon.
+        Set a channel to be used for this transaction
+        :param channel_seed: Seed to use as the channel
         """
-        if not secret:  # only get the new sequence for my own account
-            self.sequence = self.get_sequence()
-        super(Builder, self).sign(secret)
+        self.keypair = Keypair.from_seed(channel_seed)
+        self.address = self.keypair.address().decode()
+        self.update_sequence()

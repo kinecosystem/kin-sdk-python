@@ -1,8 +1,6 @@
 import pytest
 from kin import KinErrors
-from kin import Keypair
 from kin.config import MEMO_TEMPLATE, ANON_APP_ID
-from kin.blockchain.utils import is_valid_transaction_hash
 from time import sleep
 
 SDK_PUBLIC = 'GAIDUTTQ5UIZDW7VZ2S3ZAFLY6LCRT5ZVHF5X3HDJVDQ4OJWYGJVJDZB'
@@ -13,7 +11,7 @@ def test_create_basic(test_client, test_account):
     with pytest.raises(KinErrors.AccountNotFoundError):
         account = test_client.kin_account('SD6IDZHCMX3Z4QPDIC33PECKLLY572DAA5S3DZDALEVVACJKSZPVPJC6')
 
-    with pytest.raises(ValueError):
+    with pytest.raises(KinErrors.StellarSecretInvalidError):
         account = test_client.kin_account('bad format')
 
     account = test_client.kin_account(SDK_SEED)
@@ -24,27 +22,13 @@ def test_create_basic(test_client, test_account):
     assert account.channel_manager
 
 
-def test_create_exisitng_channels(test_client, test_account):
-    channels = [
-        'SBIS2IZXKV7ZQABHYAXO6DR2GZKBUHNHYFYKGC4MNVURPFTY5RFBT5QX',
-        'SAFROZPOSDXU2JME6EQ3IDXZVGMSRIFNTX7CSMSUCUX4SBZNRBQUAGVI',
-        'SCWOPWB2JPVWYYJMJO754AWPZ6VJWOZJMOK3JY3JPA3N3ER7SKMQEMXH'
-    ]
-
-    with pytest.raises(KinErrors.AccountNotFoundError):
-        account = test_client.kin_account(SDK_SEED, channel_secret_keys=channels)
-
-    with pytest.raises(KinErrors.StellarSecretInvalidError):
-        account = test_client.kin_account(SDK_SEED, channel_secret_keys=['bad'])
-
-
 def test_get_address(test_client, test_account):
     assert test_account.get_public_address() == SDK_PUBLIC
 
 
 def test_create_account(setup, test_client, test_account):
     with pytest.raises(KinErrors.AccountExistsError):
-        test_account.create_account(setup.issuer_address , 0, fee=100)
+        test_account.create_account(setup.issuer_address, 0, fee=100)
 
     test_account.create_account('GDN7KB72OO7G6VBD3CXNRFXVELLW6F36PS42N7ASZHODV7Q5GYPETQ74', 0, fee=100)
     assert test_client.does_account_exists('GDN7KB72OO7G6VBD3CXNRFXVELLW6F36PS42N7ASZHODV7Q5GYPETQ74')
@@ -56,6 +40,8 @@ def test_send_kin(test_client, test_account):
 
     test_account.send_kin(recipient, 10, fee=100)
     balance = test_client.get_account_balance(recipient)
+    with pytest.raises(KinErrors.NotValidParamError):
+        test_account.send_kin(recipient, 1.1234567898765, fee=100)
     assert balance == 10
 
 
@@ -68,20 +54,10 @@ def test_build_create_account(test_account):
     with pytest.raises(ValueError):
         test_account.build_create_account(recipient, -1, fee=100)
 
-    tx = test_account.build_create_account(recipient, starting_balance=10, fee=100)
+    builder = test_account.build_create_account(recipient, starting_balance=10, fee=100)
 
-    try:
-        assert tx
-        assert tx.builder
-        assert tx.channel_manager
-        assert is_valid_transaction_hash(tx.hash)
-        assert test_account.channel_manager.channel_builders.empty()
-    except Exception:
-        pass
-    finally:
-        tx.release()
-        assert test_account.channel_manager.channel_builders.full()
 
+    assert builder
 
 def test_build_send_kin(test_account):
     recipient = 'GBZWWLRJRWL4DLYOJMCHXJUOJJY5NLNJHQDRQHVQH43KFCPC3LEOWPYM'
@@ -91,22 +67,10 @@ def test_build_send_kin(test_account):
         test_account.build_send_kin(recipient, 10, memo_text='a' * 50, fee=100)
     with pytest.raises(ValueError):
         test_account.build_send_kin(recipient, -50, fee=100)
-    with pytest.raises(KinErrors.NotValidParamError):
-        test_account.build_send_kin(recipient, 1.1234567898765, fee=100)
 
-    tx = test_account.build_send_kin(recipient, 10, fee=100)
+    builder = test_account.build_send_kin(recipient, 10, fee=100)
 
-    try:
-        assert tx
-        assert tx.builder
-        assert tx.channel_manager
-        assert is_valid_transaction_hash(tx.hash)
-        assert test_account.channel_manager.channel_builders.empty()
-    except Exception:
-        pass
-    finally:
-        tx.release()
-        assert test_account.channel_manager.channel_builders.full()
+    assert builder
 
 
 def test_auto_top_up(test_client, test_account):
@@ -139,6 +103,14 @@ def test_memo(test_client, test_account):
 
     with pytest.raises(KinErrors.NotValidParamError):
         account2.create_account(recipient2, 0, memo_text='a'*25, fee=100)
+
+def test_get_transaction_builder(test_account):
+    builder = test_account.get_transaction_builder(fee=100)
+    assert builder
+    assert builder.address == test_account.get_public_address()
+    assert builder.fee == 100
+    assert builder.horizon is test_account.horizon
+    assert builder.network == test_account._client.environment.name
 
 
 def test_whitelist_transaction(test_account):

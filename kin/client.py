@@ -167,6 +167,7 @@ class KinClient(object):
         :raises: :class:`KinErrors.ResourceNotFoundError`: if the transaction does not exist.
         :raises: :class:`KinErrors.CantSimplifyError`: if the tx is too complex to simplify
         """
+        # TODO: separate to two methods, get_tx_data & get_raw_tx_data
         if not is_valid_transaction_hash(tx_hash):
             raise ValueError('invalid transaction hash: {}'.format(tx_hash))
 

@@ -62,6 +62,6 @@ class Keypair:
         :param salt: A unique string that will be used to generate the seed
         :return: a new seed.
         """
-        # Create a new raw seed from the first 32 bytes of this hash
-        raw_seed = sha256((base_seed + salt).encode()).digest()[:32]
+        # Create a new raw seed from this hash
+        raw_seed = sha256((base_seed + salt).encode()).digest()
         return BaseKeypair.from_raw_seed(raw_seed).seed().decode()

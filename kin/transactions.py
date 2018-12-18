@@ -22,48 +22,6 @@ PACKED_ENVELOP_TYPE = b'\x00\x00\x00\x02'
 NATIVE_ASSET_TYPE = 'native'
 
 
-class Transaction:
-    """A transaction instance ready to be submitted"""
-
-    # Provides a way to get the hash before sending, might be used in the future for multisig.
-    def __init__(self, builder, channel_manager):
-        """
-        Build a transaction instance
-        :param :class: `Kin.Builder` builder: The builder that contains the transaction
-        :param :class: `Kin.ChannelManager` channel_manager: The channel manager that owns the builder
-        """
-        self.builder = builder
-        self.channel_manager = channel_manager
-        self.hash = self.calculate_tx_hash(builder.tx, builder.te.network_id)
-
-    def release(self):
-        """
-        Clear the builder and return it to the queue.
-        """
-        self.builder.clear()
-        if self.builder not in self.channel_manager.low_balance_builders:
-            self.channel_manager.channel_builders.put(self.builder, timeout=CHANNEL_PUT_TIMEOUT)
-
-    @staticmethod
-    def calculate_tx_hash(tx, network_passphrase_hash):
-        """
-        Calculate a tx hash.
-
-        A tx hash is a sha256 hash of:
-        1. A sha256 hash of the network_id +
-        2. The xdr representation of ENVELOP_TYPE_TX +
-        3. The xdr representation of the transaction
-        :param tx: The builder's transaction object
-        :param network_passphrase_hash: The network passphrase hash
-        :return:
-        """
-        # Pack the transaction to xdr
-        packer = Xdr.StellarXDRPacker()
-        packer.pack_Transaction(tx.to_xdr_object())
-        packed_tx = packer.get_buffer()
-        return hexlify(sha256(network_passphrase_hash + PACKED_ENVELOP_TYPE + packed_tx).digest()).decode()
-
-
 class SimplifiedTransaction:
     """Class to hold simplified info about a transaction"""
 
@@ -157,10 +115,29 @@ def decode_transaction(b64_tx, network_id, simple=True):
     passphrase_hash = sha256(network_id.encode()).digest()
     base_tx = BaseEnvelop.from_xdr(b64_tx).tx
 
-    envelop.hash = Transaction.calculate_tx_hash(base_tx, passphrase_hash)
+    envelop.hash = calculate_tx_hash(base_tx, passphrase_hash)
 
     # Time cannot be extracted from the envelop
     envelop.timestamp = None
     if simple:
         return SimplifiedTransaction(envelop)
     return envelop.tx
+
+
+def calculate_tx_hash(tx, network_passphrase_hash):
+    """
+    Calculate a tx hash.
+
+    A tx hash is a sha256 hash of:
+    1. A sha256 hash of the network_id +
+    2. The xdr representation of ENVELOP_TYPE_TX +
+    3. The xdr representation of the transaction
+    :param tx: The builder's transaction object
+    :param network_passphrase_hash: The network passphrase hash
+    :return:
+    """
+    # Pack the transaction to xdr
+    packer = Xdr.StellarXDRPacker()
+    packer.pack_Transaction(tx.to_xdr_object())
+    packed_tx = packer.get_buffer()
+    return hexlify(sha256(network_passphrase_hash + PACKED_ENVELOP_TYPE + packed_tx).digest()).decode()

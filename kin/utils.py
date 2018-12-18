@@ -36,6 +36,10 @@ def create_channels(master_seed, environment, amount, starting_balance, salt):
     # If so, the user might only be interested in adding channels,
     # so we need to find what seed to start from
 
+    # First check if the last channel exists, if it does, we don't need to create any channel.
+    if client.does_account_exists(Keypair.address_from_seed(channels[-1])):
+        return channels
+
     for index, seed in enumerate(channels):
         if client.does_account_exists(Keypair.address_from_seed(seed)):
             continue
@@ -62,7 +66,12 @@ def get_hd_channels(master_seed, salt, amount):
     """
 
     if amount > 100:
-        raise ValueError('Only 100 channels can be created with a specific seed + salt combination')
+        """
+        The sdk's channels are not meant to be shared across multiple instances of the script,
+        and a single instance will never even use 100 channels at once.
+        This is a limit to stop developers from needlessly creating a huge amount of channels
+        """
+        raise ValueError('Only up to 100 channels can be created with a specific seed + salt combination')
     hashed_salt = sha256(salt.encode()).hexdigest()
 
     channels = []

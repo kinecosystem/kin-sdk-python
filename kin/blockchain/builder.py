@@ -22,7 +22,7 @@ class Builder(BaseBuilder):
         """
 
         # call base class constructor to init base class variables
-        # sequence is one since its get overridden later
+        # sequence is one since it get overridden later
         super(Builder, self).__init__(secret=secret, sequence=1, fee=fee)
 
         # custom overrides

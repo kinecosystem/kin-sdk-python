@@ -204,7 +204,7 @@ While the previous methods build and send the transaction for you, there is anot
 
 Step 1: Build the transaction
 ```python
-builder = account.build_send_kin('destination',1000, fee=100, memo_text='order123')
+builder = account.build_send_kin('destination', 1000, fee=100, memo_text='order123')
 ```
 Step 2: Update the transaction
 ```python

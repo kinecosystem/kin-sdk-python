@@ -139,5 +139,5 @@ class ChannelPool(queue.Queue, object):
         Get a list of channels with "FREE" status
         :rtype list[str]
         """
-        return list(filter(lambda key: self.queue[key] == ChannelStatuses.FREE, self.queue.keys()))
+        return [channel for channel, status in self.queue.items() if status == ChannelStatuses.FREE]
 

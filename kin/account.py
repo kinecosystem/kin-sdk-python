@@ -258,7 +258,7 @@ class KinAccount:
             return tx_builder.submit()['hash']
         # If the channel is out of KIN, top it up and try again
         except HorizonError as e:
-            logging.warning('send transaction error with channel {}: {}'.format(tx_builder.address, str(e)))
+            logger.warning('send transaction error with channel {}: {}'.format(tx_builder.address, str(e)))
             if e.type == HorizonErrorType.TRANSACTION_FAILED \
                     and e.extras.result_codes.transaction == TransactionResultCode.INSUFFICIENT_BALANCE:
 

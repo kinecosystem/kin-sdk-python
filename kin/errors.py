@@ -208,8 +208,11 @@ def translate_transaction_error(tx_error):
 
 def translate_operation_error(op_result_codes):
     """Operation error translator."""
-    # NOTE: we currently handle only one operation per transaction!
-    op_result_code = op_result_codes[0]
+    # Find first failed op
+    for code in op_result_codes:
+        if code != OperationResultCode.SUCCESS:
+            op_result_code = code
+            break
     if op_result_code == OperationResultCode.BAD_AUTH \
             or op_result_code == CreateAccountResultCode.MALFORMED \
             or op_result_code == PaymentResultCode.NO_ISSUER \

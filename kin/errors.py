@@ -213,7 +213,6 @@ def translate_operation_error(op_result_codes):
         if code != OperationResultCode.SUCCESS:
             op_result_code = code
             break
-    op_result_code = op_result_codes[0]
     if op_result_code == OperationResultCode.BAD_AUTH \
             or op_result_code == CreateAccountResultCode.MALFORMED \
             or op_result_code == PaymentResultCode.NO_ISSUER \

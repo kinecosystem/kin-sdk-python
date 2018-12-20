@@ -98,37 +98,40 @@ def test_translate_operation_error():
 
     fixtures = [
         # RequestError
-        [OperationResultCode.BAD_AUTH, KinErrors.RequestError, 'bad request', {}],
-        [CreateAccountResultCode.MALFORMED, KinErrors.RequestError, 'bad request', {}],
-        [PaymentResultCode.NO_ISSUER, KinErrors.RequestError, 'bad request', {}],
-        [PaymentResultCode.LINE_FULL, KinErrors.RequestError, 'bad request', {}],
-        [ChangeTrustResultCode.INVALID_LIMIT, KinErrors.RequestError, 'bad request', {}],
+        [[OperationResultCode.BAD_AUTH], KinErrors.RequestError, 'bad request', {}],
+        [[CreateAccountResultCode.MALFORMED], KinErrors.RequestError, 'bad request', {}],
+        [[PaymentResultCode.NO_ISSUER], KinErrors.RequestError, 'bad request', {}],
+        [[PaymentResultCode.LINE_FULL], KinErrors.RequestError, 'bad request', {}],
+        [[ChangeTrustResultCode.INVALID_LIMIT], KinErrors.RequestError, 'bad request', {}],
 
         # AccountNotFoundError
-        [OperationResultCode.NO_ACCOUNT, KinErrors.AccountNotFoundError, 'account not found', {}],
-        [PaymentResultCode.NO_DESTINATION, KinErrors.AccountNotFoundError, 'account not found', {}],
+        [[OperationResultCode.NO_ACCOUNT], KinErrors.AccountNotFoundError, 'account not found', {}],
+        [[PaymentResultCode.NO_DESTINATION], KinErrors.AccountNotFoundError, 'account not found', {}],
 
         # AccountExistsError
-        [CreateAccountResultCode.ACCOUNT_EXISTS, KinErrors.AccountExistsError, 'account already exists', {}],
+        [[CreateAccountResultCode.ACCOUNT_EXISTS], KinErrors.AccountExistsError, 'account already exists', {}],
 
         # LowBalanceError
-        [CreateAccountResultCode.LOW_RESERVE, KinErrors.LowBalanceError, 'low balance', {}],
-        [PaymentResultCode.UNDERFUNDED, KinErrors.LowBalanceError, 'low balance', {}],
+        [[CreateAccountResultCode.LOW_RESERVE], KinErrors.LowBalanceError, 'low balance', {}],
+        [[PaymentResultCode.UNDERFUNDED], KinErrors.LowBalanceError, 'low balance', {}],
 
         # AccountNotActivatedError
-        [PaymentResultCode.SRC_NO_TRUST, KinErrors.AccountNotActivatedError, 'account not activated', {}],
-        [PaymentResultCode.NO_TRUST, KinErrors.AccountNotActivatedError, 'account not activated', {}],
-        [PaymentResultCode.SRC_NOT_AUTHORIZED, KinErrors.AccountNotActivatedError, 'account not activated', {}],
-        [PaymentResultCode.NOT_AUTHORIZED, KinErrors.AccountNotActivatedError, 'account not activated', {}],
+        [[PaymentResultCode.SRC_NO_TRUST], KinErrors.AccountNotActivatedError, 'account not activated', {}],
+        [[PaymentResultCode.NO_TRUST], KinErrors.AccountNotActivatedError, 'account not activated', {}],
+        [[PaymentResultCode.SRC_NOT_AUTHORIZED], KinErrors.AccountNotActivatedError, 'account not activated', {}],
+        [[PaymentResultCode.NOT_AUTHORIZED], KinErrors.AccountNotActivatedError, 'account not activated', {}],
 
         # InternalError
-        ['unknown', KinErrors.InternalError, 'internal error', {'internal_error': 'unknown operation error'}]
+        [['unknown', KinErrors.InternalError], 'internal error', {'internal_error': 'unknown operation error'}],
+
+        # MultiOp
+        [[OperationResultCode.SUCCESS, PaymentResultCode.UNDERFUNDED], KinErrors.LowBalanceError, 'low balance', {}]
     ]
 
     for fixture in fixtures:
         err_dict['extras']['result_codes']['operations'] = [fixture[0]]
         e = KinErrors.translate_horizon_error(HorizonError(err_dict))
         assert isinstance(e, fixture[1])
-        assert e.error_code == fixture[0]
+        assert e.error_code == fixture[0][-1]
         assert e.message == fixture[2]
         assert e.extra == fixture[3]

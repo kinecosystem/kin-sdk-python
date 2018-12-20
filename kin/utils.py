@@ -48,6 +48,7 @@ def create_channels(master_seed, environment, amount, starting_balance, salt):
         for channel_seed in channels[index:]:
             builder.append_create_account_op(Keypair.address_from_seed(channel_seed), str(starting_balance))
 
+        builder.update_sequence()
         builder.sign()
         builder.submit()
         break

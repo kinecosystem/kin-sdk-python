@@ -129,7 +129,7 @@ def test_translate_operation_error():
     ]
 
     for fixture in fixtures:
-        err_dict['extras']['result_codes']['operations'] = [fixture[0]]
+        err_dict['extras']['result_codes']['operations'] = fixture[0]
         e = KinErrors.translate_horizon_error(HorizonError(err_dict))
         assert isinstance(e, fixture[1])
         assert e.error_code == fixture[0][-1]

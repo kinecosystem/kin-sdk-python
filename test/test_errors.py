@@ -122,7 +122,7 @@ def test_translate_operation_error():
         [[PaymentResultCode.NOT_AUTHORIZED], KinErrors.AccountNotActivatedError, 'account not activated', {}],
 
         # InternalError
-        [['unknown', KinErrors.InternalError], 'internal error', {'internal_error': 'unknown operation error'}],
+        [['unknown'], KinErrors.InternalError, 'internal error', {'internal_error': 'unknown operation error'}],
 
         # MultiOp
         [[OperationResultCode.SUCCESS, PaymentResultCode.UNDERFUNDED], KinErrors.LowBalanceError, 'low balance', {}]

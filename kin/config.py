@@ -19,8 +19,8 @@ MEMO_CAP = 28
 MEMO_TEMPLATE = '1-{}-'
 # hardcoded id for anonymous users
 ANON_APP_ID = 'anon'
-# 4 letters/numbers
-APP_ID_REGEX = '^[a-zA-Z0-9]{4}$'
+# 3/4 letters/numbers
+APP_ID_REGEX = '^[a-zA-Z0-9]{3,4}$'
 
 MAX_RECORDS_PER_REQUEST = 200
 

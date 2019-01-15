@@ -8,7 +8,6 @@ python_version = "3.7"
 
 [packages]
 schematics = "==2.0.1"
-"enum34" = "*"
 kin-base = "==1.0.7"
 
 [dev-packages]

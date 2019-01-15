@@ -9,7 +9,7 @@ The SDK is still in beta. No warranties are given, use on your own discretion.
 
 ## Requirements.
 
-Python 2 > 2.7.9 / 3 > 3.4
+Python >= 3.4
 
 ## Installation 
 
@@ -122,36 +122,32 @@ client.verify_kin_payment('tx_hash','addr1','addr3',10) >> False
 The handy `get_config` method will return some parameters the client was configured with, along with Horizon status:
 ```python
 status = client.get_config()
-print status
-{
-  "horizon": {
-    "uri": "https://horizon-playground.kininfrastructure.com",
-    "online": true,
-    "error": null
-  },
-  "sdk_version": "2.0.0",
-  "environment": "PLAYGROUND",
-  "kin_asset": {
-    "code": "KIN",
-    "issuer": "GBC3SG6NGTSZ2OMH3FFGB7UVRQWILW367U4GSOOF4TFSZONV42UJXUH7"
-  },
-  "transport": {
-    "pool_size": 10,
-    "request_timeout": 11,
-    "backoff_factor": 0.5,
-    "num_retries": 5,
-    "retry_statuses": [
-      503,
-      413,
-      429,
-      504
-    ]
+```
+
+```json
+  {
+    "sdk_version": "2.2.0",
+    "environment": "TEST",
+    "horizon": {
+      "uri": "https://horizon-playground.kininfrastructure.com",
+      "online": true,
+      "error": null
+    },
+    "transport": {
+      "pool_size": 10,
+      "num_retries": 5,
+      "request_timeout": 11,
+      "retry_statuses": [
+        503,
+        413,
+        429,
+        504
+      ],
+      "backoff_factor": 0.5
+    }
   }
-}
 ```
 - `sdk_version` - the version of this SDK.
-- `address` - the SDK wallet address.
-- `kin_asset` - the KIN asset the SDK was configured with.
 - `environment` - the environment the SDK was configured with (TEST/PROD/CUSTOM).
 - `horizon`:
   - `uri` - the endpoint URI of the Horizon server.

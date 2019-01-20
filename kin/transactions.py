@@ -36,7 +36,7 @@ class SimplifiedTransaction:
             else raw_tx.tx.memo.text.decode()  # will be none if the there is no memo
 
         if len(raw_tx.tx.operations) > 1:
-            raise CantSimplifyError('Cant simplify tx with {} operations'.format(raw_tx.operation_count))
+            raise CantSimplifyError('Cant simplify tx with {} operations'.format(len(raw_tx.tx.operations)))
         self.operation = SimplifiedOperation(raw_tx.tx.operations[0])
 
         # Override tx source with operation source if it exists.

@@ -5,14 +5,14 @@ from .blockchain.environment import Environment
 from .version import __version__
 
 # Create default environments.
-HORIZON_URI_PROD = 'https://horizon-ecosystem.kininfrastructure.com'
-HORIZON_PASSPHRASE_PROD = 'Public Global Kin Ecosystem Network ; June 2018'
-PROD_ENVIRONMENT = Environment('ECOSYSTEM', HORIZON_URI_PROD, HORIZON_PASSPHRASE_PROD)
+HORIZON_URI_PROD = 'https://horizon.kinfederation.com'
+HORIZON_PASSPHRASE_PROD = 'Kin Mainnet ; December 2018'
+PROD_ENVIRONMENT = Environment('PROD', HORIZON_URI_PROD, HORIZON_PASSPHRASE_PROD)
 
-HORIZON_URI_TEST = 'https://horizon-playground.kininfrastructure.com'
-HORIZON_PASSPHRASE_TEST = 'Kin Playground Network ; June 2018'
-FRIENDBOT_URL_TEST = "http://friendbot-playground.kininfrastructure.com"
-TEST_ENVIRONMENT = Environment('PLAYGROUND', HORIZON_URI_TEST, HORIZON_PASSPHRASE_TEST, FRIENDBOT_URL_TEST)
+HORIZON_URI_TEST = 'https://horizon-testnet.kininfrastructure.com'
+HORIZON_PASSPHRASE_TEST = 'Kin Testnet ; December 2018'
+FRIENDBOT_URL_TEST = "http://friendbot-testnet.kininfrastructure.com"
+TEST_ENVIRONMENT = Environment('TEST', HORIZON_URI_TEST, HORIZON_PASSPHRASE_TEST, FRIENDBOT_URL_TEST)
 
 MEMO_CAP = 28
 # Template version - app_id - free text

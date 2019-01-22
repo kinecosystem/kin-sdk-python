@@ -64,7 +64,8 @@ class ChannelManager:
         """
         Return the current status of the channel manager
         :param bool verbose: Include all channel seeds and their statuses in the response
-        :return: dict
+        :return: The status of the channel manager
+        :rtype dict
         """
         free_channels = len(self.channel_pool.get_free_channels())
         status = {

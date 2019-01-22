@@ -25,10 +25,10 @@ class KinClient(object):
 
     def __init__(self, environment):
         """Create a new instance of the KinClient to query the Kin blockchain.
-        :param `kin.Environment` environment: an environment for the client to point to.
+        :param kin.Environment environment: an environment for the client to point to.
 
         :return: An instance of the KinClient.
-        :rtype: :class:`KinErrors.KinClient`
+        :rtype: KinErrors.KinClient
         """
 
         self.environment = environment
@@ -41,12 +41,12 @@ class KinClient(object):
         """
         Create a new instance of a KinAccount to perform authenticated operations on the blockchain.
         :param str seed: The secret seed of the account that will be used
-        :param list of str channel_secret_keys: A list of seeds to be used as channels
+        :param list[str] channel_secret_keys: A list of seeds to be used as channels
         :param str app_id: the unique id of your app
         :return: An instance of KinAccount
         :rtype: kin.KinAccount
 
-        :raises: :class:`KinErrors.AccountNotFoundError`: if SDK wallet or channel account is not yet created.
+        :raises: KinErrors.AccountNotFoundError if SDK wallet or channel account is not yet created.
         """
 
         # Create a new kin account, using self as the KinClient to be used
@@ -101,7 +101,7 @@ class KinClient(object):
         :rtype: float
 
         :raises: StellarAddressInvalidError: if the provided address has the wrong format.
-        :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
+        :raises: KinErrors.AccountNotFoundError if the account does not exist.
         """
 
         if not is_valid_address(address):
@@ -119,7 +119,7 @@ class KinClient(object):
         :return: does the account exists on the blockchain
         :rtype boolean
 
-        :raises: :class:`KinErrors.StellarAddressInvalidError`: if the address is not valid.
+        :raises: KinErrors.StellarAddressInvalidError if the address is not valid.
         """
 
         if not is_valid_address(address):
@@ -137,7 +137,7 @@ class KinClient(object):
         :param str address: the public address of the account to query.
 
         :return: account data
-        :rtype: :class:`kin.AccountData`
+        :rtype: kin.blockchain.horizon_models.AccountData
 
         :raises: StellarAddressInvalidError: if the provided address has a wrong format.
         :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
@@ -161,7 +161,7 @@ class KinClient(object):
         :param boolean simple: (optional) returns a simplified transaction object
 
         :return: transaction data
-        :rtype: :class:`kin.TransactionData` or `kin.SimplifiedTransaction`
+        :rtype: kin.transactions.RawTransaction | kin.transactions.SimplifiedTransaction
 
         :raises: ValueError: if the provided hash is invalid.
         :raises: :class:`KinErrors.ResourceNotFoundError`: if the transaction does not exist.
@@ -189,7 +189,7 @@ class KinClient(object):
         :param int cursor: The horizon paging token
         :param bool simple: Should the returned txs be simplified, if True, complicated txs will be ignored
         :return: A list of transactions
-        :rtype: list
+        :rtype: list[kin.transactions.RawTransaction | kin.transactions.SimplifiedTransaction]
         """
 
         if not is_valid_address(address):
@@ -264,13 +264,14 @@ class KinClient(object):
         """
         Use the friendbot service to create and fund an account
         :param str address: The address to create and fund
-        :return: the hash of the friendobt transaction
+
+        :return: the hash of the friendbot transaction
         :rtype str
 
         :raises ValueError: if no friendbot service was provided
         :raises ValueError: if the address is invalid
-        :raises :class: `KinErrors.AccountExistsError`: if the account already exists
-        :raises :class: `KinErrors.FriendbotError`: If the friendbot request failed
+        :raises KinErrors.AccountExistsError if the account already exists
+        :raises KinErrors.FriendbotError If the friendbot request failed
         """
 
         if self.environment.friendbot_url is None:
@@ -294,14 +295,14 @@ class KinClient(object):
         :param str address: the address of the account to query.
 
         :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data, monitor)`.
-        :type: callable[str,:class:`kin.TransactionData`,:class:`kin.SingleMonitor`]
+        :type: callable[str,kin.transactions.SimplifiedTransaction, kin.SingleMonitor]
 
         :return: a monitor instance
-        :rtype: :class:`kin.SingleMonitor`
+        :rtype: kin.monitors.SingleMonitor
 
         :raises: ValueError: when no address is given.
         :raises: ValueError: if the address is in the wrong format
-        :raises: :class:`KinErrors.AccountNotActivatedError`: if the account given is not activated
+        :raises: KinErrors.AccountNotActivatedError if the account given is not activated
         """
 
         return SingleMonitor(self, address, callback_fn)
@@ -313,14 +314,14 @@ class KinClient(object):
         :param str addresses: the addresses of the accounts to query.
 
         :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data, monitor)`.
-        :type: callable[str,:class:`kin.TransactionData`,:class:`kin.MultiMonitor`]
+        :type: callable[str,kin.transactions.SimplifiedTransaction ,kin.monitors.MultiMonitor]
 
         :return: a monitor instance
-        :rtype: :class:`kin.MultiMonitor`
+        :rtype: kin.monitors.MultiMonitor
 
         :raises: ValueError: when no address is given.
         :raises: ValueError: if the addresses are in the wrong format
-        :raises: :class:`KinErrors.AccountNotActivatedError`: if the accounts given are not activated
+        :raises: KinErrors.AccountNotActivatedError if the accounts given are not activated
         """
 
         return MultiMonitor(self, addresses, callback_fn)

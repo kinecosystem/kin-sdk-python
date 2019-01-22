@@ -16,9 +16,10 @@ class SingleMonitor:
     def __init__(self, kin_client, address, callback_fn):
         """
         Monitors a single account for kin payments
-        :param kin_client: a kin client directed to the correct network
-        :param address: address to watch
-        :param callback_fn: function to callback when the payment is found
+        :param kin.KinClient kin_client: a kin client directed to the correct network
+        :param str address: address to watch
+        :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data, monitor)`.
+        :type: callable[str,kin.transactions.SimplifiedTransaction ,kin.monitors.MultiMonitor]
         """
         self.kin_client = kin_client
         self.callback_fn = callback_fn
@@ -57,7 +58,7 @@ class SingleMonitor:
     def event_processor(self, stop_event):
         """
         Method to filter through SSE events and find kin payments for an account
-        :param stop_event: an event that can be used to stop this method
+        :param threading.Event stop_event: an event that can be used to stop this method
         """
         import json
         try:
@@ -108,9 +109,10 @@ class MultiMonitor:
     def __init__(self, kin_client, addresses, callback_fn):
         """
         Monitors multiple accounts for kin payments
-        :param kin_client: a kin client directed to the correct network
-        :param addresses: addresses to watch
-        :param callback_fn: function to callback when the payment is found
+        :param kin.KinClient kin_client: a kin client directed to the correct network
+        :param str addresses: addresses to watch
+        :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data, monitor)`.
+        :type: callable[str,kin.transactions.SimplifiedTransaction ,kin.monitors.MultiMonitor]
         """
         self.kin_client = kin_client
         self.callback_fn = callback_fn
@@ -148,7 +150,7 @@ class MultiMonitor:
     def event_processor(self, stop_event):
         """
         Method to filter through SSE events and find kin payments for an account
-        :param stop_event: an event that can be used to stop this method
+        :param threading.Event stop_event: an event that can be used to stop this method
         """
         import json
         try:

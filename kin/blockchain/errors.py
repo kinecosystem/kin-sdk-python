@@ -12,8 +12,7 @@ class ChannelsFullError(Exception):
 
 
 HORIZON_NS_PREFIX = 'https://stellar.org/horizon-errors/'
-
-'''
+"""
 Horizon error example:
 
 {
@@ -37,7 +36,8 @@ Horizon error example:
     },
     'type': 'https://stellar.org/horizon-errors/transaction_failed'
 }
-'''
+
+"""
 
 
 class HorizonError(HTTPProblemDetails, Exception):

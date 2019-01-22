@@ -19,9 +19,7 @@ class Environment:
         :param str network_passphrase: The passphrase/network_id of the environment.
         :param str friendbot_url: a url to a friendbot service
         :return: An instance of the Environment class.
-        :rtype: :class: `kin.Environment`
-
-        :raises: ValueError: is the kin_issuer is invalid
+        :rtype: kin.Environment
         """
         # Add the network to the kin_base network list.
         NETWORKS[name.upper()] = network_passphrase

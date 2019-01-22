@@ -16,7 +16,7 @@ class Builder(BaseBuilder):
         """
         Create a new transaction builder
         :param str network_name: The name of the network
-        :param Kin.Horizon horizon: The horizon instance to use
+        :param kin.Horizon horizon: The horizon instance to use
         :param int fee: Fee for the transaction
         :param str secret: The seed to be used
         """
@@ -60,7 +60,7 @@ class Builder(BaseBuilder):
     def set_channel(self, channel_seed):
         """
         Set a channel to be used for this transaction
-        :param channel_seed: Seed to use as the channel
+        :param str channel_seed: Seed to use as the channel
         """
         self.keypair = Keypair.from_seed(channel_seed)
         self.address = self.keypair.address().decode()

@@ -87,8 +87,8 @@ class OperationTypes(Enum):
 def build_memo(app_id, memo):
     """
     Build a memo for a tx that fits the pre-defined template
-    :param app_id: The app_id to include in the memo
-    :param memo: The memo to include
+    :param str app_id: The app_id to include in the memo
+    :param str memo: The memo to include
     :return: the finished memo
     :rtype: str
     """
@@ -104,9 +104,9 @@ def decode_transaction(b64_tx, network_id, simple=True):
     Decode a base64 transaction envelop
     :param str b64_tx: a transaction envelop encoded in base64
     :param boolean simple: should the tx be simplified
-    :param network_id: the network_id for the transaction
+    :param str network_id: the network_id for the transaction
     :return: The transaction
-    :rtype kin.SimplifiedTransaction | kin_base.Transaction
+    :rtype kin.transactions.SimplifiedTransaction | kin_base.Transaction
     :raises: KinErrors.CantSimplifyError: if the tx cannot be simplified
     """
     unpacker = Xdr.StellarXDRUnpacker(base64.b64decode(b64_tx))

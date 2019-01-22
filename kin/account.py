@@ -70,7 +70,7 @@ class KinAccount:
         :return: the kin balance
         :rtype: float
 
-        :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
+        :raises: KinErrors.AccountNotFoundError if the account does not exist.
         """
         return self._client.get_account_balance(self.keypair.public_address)
 
@@ -79,9 +79,9 @@ class KinAccount:
         Gets this KinAccount's data
 
         :return: account data
-        :rtype: :class:`kin.AccountData`
+        :rtype: kin.blockchain.horizon_models.AccountData
 
-        :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
+        :raises: KinErrors.AccountNotFoundError if the account does not exist.
         """
         return self._client.get_account_data(self.keypair.public_address)
 
@@ -89,6 +89,7 @@ class KinAccount:
         """
         Get the config and status of this KinAccount object
         :param bool verbose: Should the channels status be verbose
+        :return: The config and status of this KinAccount object
         :rtype dict
         """
         account_status = {
@@ -125,7 +126,7 @@ class KinAccount:
         """
         Get a transaction builder using this account
         :param int fee: The fee that will be used for the transaction
-        :return: Kin.Builder
+        :return: kin.Builder
         """
         return Builder(self._client.environment.name, self.horizon, fee, self.keypair.secret_seed)
 
@@ -144,8 +145,8 @@ class KinAccount:
         :rtype: str
 
         :raises: KinErrors.StellarAddressInvalidError: if the provided address has a wrong format.
-        :raises: :class:`KinErrors.AccountExistsError`: if the account already exists.
-        :raises: :class:`KinErrors.NotValidParamError`: if the memo is longer than MEMO_CAP characters
+        :raises: KinErrors.AccountExistsError if the account already exists.
+        :raises: KinErrors.NotValidParamError if the memo is longer than MEMO_CAP characters
         :raises: KinErrors.NotValidParamError: if the amount is too precise
         :raises: KinErrors.NotValidParamError: if the fee is not valid
         """
@@ -176,9 +177,9 @@ class KinAccount:
         :raises: KinErrors.StellarAddressInvalidError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
         :raises: KinErrors.NotValidParamError: if the amount is too precise
-        :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
-        :raises: :class:`KinErrors.LowBalanceError`: if there is not enough KIN to send and pay transaction fee.
-        :raises: :class:`KinErrors.NotValidParamError`: if the memo is longer than MEMO_CAP characters
+        :raises: KinErrors.AccountNotFoundError if the account does not exist.
+        :raises: KinErrors.LowBalanceError if there is not enough KIN to send and pay transaction fee.
+        :raises: KinErrors.NotValidParamError if the memo is longer than MEMO_CAP characters
         :raises: KinErrors.NotValidParamError: if the fee is not valid
         """
         builder = self.build_send_kin(address, amount, fee, memo_text)
@@ -202,7 +203,7 @@ class KinAccount:
         :param int fee: fee to be deducted for the tx
 
         :return: a transaction builder object
-        :rtype: :class: `Kin.Builder`
+        :rtype: kin.Builder
 
         :raises: KinErrors.StellarAddressInvalidError: if the supplied address has a wrong format.
         """
@@ -230,7 +231,7 @@ class KinAccount:
         :param int fee: fee to be deducted for the tx
 
         :return: a transaction builder
-        :rtype: Kin.Builder
+        :rtype: kin.Builder
 
         :raises: KinErrors.StellarAddressInvalidError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
@@ -277,10 +278,10 @@ class KinAccount:
         NOTE: the function starts a background thread.
 
         :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data, monitor)`.
-        :type: callable[str,:class:`kin.TransactionData`,:class:`kin.SingleMonitor`]
+        :type: callable[str,kin.transactions.SimplifiedTransaction,kin.monitors.SingleMonitor]
 
         :return: a monitor instance
-        :rtype: :class:`kin.SingleMonitor`
+        :rtype: kin.monitors.SingleMonitor
         """
         return self._client.monitor_account_payments(self.keypair.public_address, callback_fn)
 

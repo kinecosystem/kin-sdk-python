@@ -15,7 +15,7 @@ class Keypair:
     def __init__(self, seed=None):
         """
         # Create an instance of Keypair.
-        :param seed: (Optional) The secret seed of an account
+        :param str seed: (Optional) The secret seed of an account
         """
         self.secret_seed = seed or self.generate_seed()
         if not is_valid_secret_key(self.secret_seed):
@@ -29,10 +29,10 @@ class Keypair:
 
     def sign(self, data):
         """
-        Sign any data using the keypair private key
+        Sign any data using the keypair's private key
         :param bytes data: any data to sign
         :return: a decorated signature
-        :rtype :class: DecoratedSignature
+        :rtype kin_base.stellarxdr.StellarXDR_type.DecoratedSignature
         """
         signature = self._signing_key.sign(data)
         return DecoratedSignature(self._hint, signature)
@@ -41,8 +41,9 @@ class Keypair:
     def address_from_seed(seed):
         """
         Get a public address from a secret seed.
-        :param seed: The secret seed of an account.
+        :param str seed: The secret seed of an account.
         :return: A public address.
+        :rtype str
         """
         return BaseKeypair.from_seed(seed).address().decode()
 
@@ -51,6 +52,7 @@ class Keypair:
         """
         Generate a random secret seed.
         :return: A secret seed.
+        :rtype str
         """
         return BaseKeypair.random().seed().decode()
 
@@ -58,9 +60,10 @@ class Keypair:
     def generate_hd_seed(base_seed, salt):
         """
         Generate a highly deterministic seed from a base seed + salt
-        :param base_seed: The base seed to generate a seed from
-        :param salt: A unique string that will be used to generate the seed
+        :param str base_seed: The base seed to generate a seed from
+        :param str salt: A unique string that will be used to generate the seed
         :return: a new seed.
+        :rtype str
         """
         # Create a new raw seed from this hash
         raw_seed = sha256((base_seed + salt).encode()).digest()

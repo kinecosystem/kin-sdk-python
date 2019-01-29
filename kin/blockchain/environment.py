@@ -29,3 +29,9 @@ class Environment:
 
         # Calculate the hash of the passphrase, can be used to calculate tx hash.
         self.passphrase_hash = sha256(network_passphrase.encode()).digest()
+
+    def __str__(self):
+        string_representation = '<Kin Environment>: Name: {}, ' \
+                                'Horizon: {}, ' \
+                                'Passphrase: {}'.format(self.name, self.horizon_uri, NETWORKS[self.name.upper()])
+        return string_representation

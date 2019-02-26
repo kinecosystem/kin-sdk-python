@@ -1,4 +1,5 @@
 """Contains the config for the Kin SDK"""
+from kin_base.operation import ONE as KIN_DECIMAL_PRECISION
 
 from .blockchain.environment import Environment
 

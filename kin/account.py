@@ -335,9 +335,9 @@ class KinAccount:
         # however it is virtually impossible that this situation will occur.
 
         # TODO: let user config the amount of kin to top up
-        min_fee = self._client.get_minimum_fee() / KIN_DECIMAL_PRECISION  # Fee is in stroops
+        min_fee = self._client.get_minimum_fee()
         builder = self.get_transaction_builder(min_fee)
-        builder.append_payment_op(address, str(min_fee * 1000))
+        builder.append_payment_op(address, str((min_fee / KIN_DECIMAL_PRECISION) * 1000))  # Enough for 1K txs
         builder.update_sequence()
         builder.sign()
         builder.submit()

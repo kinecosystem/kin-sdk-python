@@ -13,7 +13,7 @@ from .blockchain.channel_manager import ChannelManager, ChannelStatuses
 from . import errors as KinErrors
 from .transactions import build_memo
 from .blockchain.errors import TransactionResultCode, HorizonErrorType, HorizonError
-from .config import SDK_USER_AGENT, APP_ID_REGEX
+from .config import SDK_USER_AGENT, APP_ID_REGEX, KIN_DECIMAL_PRECISION
 from .blockchain.utils import is_valid_address, is_valid_secret_key
 
 import logging
@@ -337,7 +337,7 @@ class KinAccount:
         # TODO: let user config the amount of kin to top up
         min_fee = self._client.get_minimum_fee()
         builder = self.get_transaction_builder(min_fee)
-        builder.append_payment_op(address, str(min_fee * 1000))
+        builder.append_payment_op(address, str((min_fee / KIN_DECIMAL_PRECISION) * 1000))  # Enough for 1K txs
         builder.update_sequence()
         builder.sign()
         builder.submit()

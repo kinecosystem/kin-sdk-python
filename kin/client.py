@@ -1,31 +1,33 @@
 """Contains the KinClient class to interact with the blockchain"""
 
-import requests
+from kin_base import Horizon
 
-from .config import SDK_USER_AGENT, ANON_APP_ID, MAX_RECORDS_PER_REQUEST
+from .config import ANON_APP_ID, MAX_RECORDS_PER_REQUEST
 from . import errors as KinErrors
-from .blockchain.horizon import Horizon
 from .monitors import SingleMonitor, MultiMonitor
-from .transactions import OperationTypes, SimplifiedTransaction, RawTransaction, build_memo
+from .transactions import SimplifiedTransaction, RawTransaction
 from .account import KinAccount
 from .blockchain.horizon_models import AccountData
 from .blockchain.utils import is_valid_address, is_valid_transaction_hash
 from .version import __version__
+from .blockchain.environment import Environment
+
+from typing import List, Optional, Union
 
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class KinClient(object):
+class KinClient:
     """
     The :class:`kin.KinClient` class is the primary interface to the KIN Python SDK based on Kin Blockchain.
     It maintains a connection context with a Horizon node and hides all the specifics of dealing with Kin REST API.
     """
 
-    def __init__(self, environment):
+    def __init__(self, environment: Environment):
         """Create a new instance of the KinClient to query the Kin blockchain.
-        :param kin.Environment environment: an environment for the client to point to.
+        :param environment: an environment for the client to point to.
 
         :return: An instance of the KinClient.
         :rtype: KinErrors.KinClient
@@ -34,25 +36,24 @@ class KinClient(object):
         self.environment = environment
         self.network = environment.name
 
-        self.horizon = Horizon(horizon_uri=environment.horizon_uri, user_agent=SDK_USER_AGENT)
-        logger.info('Kin SDK inited on network {}, horizon endpoint {}'.format(self.network, self.horizon.horizon_uri))
+        self.horizon = Horizon(environment.horizon_uri)
+        logger.info('Kin Client initialized on network {}, horizon endpoint {}'.
+                    format(self.network, self.horizon.horizon_uri))
 
-    def kin_account(self, seed, channel_secret_keys=None, app_id=ANON_APP_ID):
+    def kin_account(self, seed: str, channel_secret_keys: Optional[List[str]] = None,
+                    app_id: Optional[str] = ANON_APP_ID) -> KinAccount:
         """
         Create a new instance of a KinAccount to perform authenticated operations on the blockchain.
-        :param str seed: The secret seed of the account that will be used
-        :param list[str] channel_secret_keys: A list of seeds to be used as channels
-        :param str app_id: the unique id of your app
+        :param seed: The secret seed of the account that will be used
+        :param channel_secret_keys: A list of seeds to be used as channels
+        :param app_id: the unique id of your app
         :return: An instance of KinAccount
-        :rtype: kin.KinAccount
-
-        :raises: KinErrors.AccountNotFoundError if SDK wallet or channel account is not yet created.
         """
 
         # Create a new kin account, using self as the KinClient to be used
-        return KinAccount(seed, self,channel_secret_keys, app_id)
+        return KinAccount(seed, self, channel_secret_keys, app_id)
 
-    def get_config(self):
+    async def get_config(self) -> dict:
         """Get system configuration data and online status.
         :return: a dictionary containing the data
         :rtype: dict
@@ -66,39 +67,36 @@ class KinClient(object):
                 'error': None,
             },
             'transport': {
-                'pool_size': self.horizon.pool_size,
+                'pool_size': self.horizon._session.connector.limit,
                 'num_retries': self.horizon.num_retries,
-                'request_timeout': self.horizon.request_timeout,
-                'retry_statuses': self.horizon.status_forcelist,
+                'request_timeout': self.horizon._session._timeout.total,
                 'backoff_factor': self.horizon.backoff_factor,
             }
         }
 
         # now check Horizon connection
         try:
-            self.horizon.query('')
+            await self.horizon.metrics()
             status['horizon']['online'] = True
         except Exception as e:
             status['horizon']['error'] = str(e)
 
         return status
 
-    def get_minimum_fee(self):
+    async def get_minimum_fee(self) -> int:
         """
         Get the current minimum fee acceptable for a tx
         :return: The minimum fee
-        :type: int
         """
         params = {'order': 'desc',
                   'limit': 1}
-        return self.horizon.ledgers(params=params)['_embedded']['records'][0]['base_fee_in_stroops']
+        return (await self.horizon.ledgers(order='desc', limit=1))['_embedded']['records'][0]['base_fee_in_stroops']
 
-    def get_account_balance(self, address):
+    async def get_account_balance(self, address: str) -> float:
         """
         Get the KIN balance of a given account
-        :param str address: the public address of the account to query
+        :param address: the public address of the account to query
         :return: the balance of the account
-        :rtype: float
 
         :raises: StellarAddressInvalidError: if the provided address has the wrong format.
         :raises: KinErrors.AccountNotFoundError if the account does not exist.
@@ -106,18 +104,17 @@ class KinClient(object):
 
         if not is_valid_address(address):
             raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
-        account_data = self.get_account_data(address)
+        account_data = await self.get_account_data(address)
         for balance in account_data.balances:
             # accounts will always have native asset
             if balance.asset_type == 'native':
                 return balance.balance
 
-    def does_account_exists(self, address):
+    async def does_account_exists(self, address: str) -> bool:
         """
         Find out if a given account exists on the blockchain
-        :param str address: The kin account to query about
+        :param address: The kin account to query about
         :return: does the account exists on the blockchain
-        :rtype boolean
 
         :raises: KinErrors.StellarAddressInvalidError if the address is not valid.
         """
@@ -126,18 +123,17 @@ class KinClient(object):
             raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
 
         try:
-            self.get_account_balance(address)
+            await self.get_account_balance(address)
             return True
         except KinErrors.AccountNotFoundError:
             return False
 
-    def get_account_data(self, address):
+    async def get_account_data(self, address: str) -> AccountData:
         """Get account data.
 
-        :param str address: the public address of the account to query.
+        :param address: the public address of the account to query.
 
         :return: account data
-        :rtype: kin.blockchain.horizon_models.AccountData
 
         :raises: StellarAddressInvalidError: if the provided address has a wrong format.
         :raises: :class:`KinErrors.AccountNotFoundError`: if the account does not exist.
@@ -147,21 +143,20 @@ class KinClient(object):
             raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
 
         try:
-            acc = self.horizon.account(address)
+            acc = await self.horizon.account(address)
             return AccountData(acc, strict=False)
         except Exception as e:
             err = KinErrors.translate_error(e)
             raise KinErrors.AccountNotFoundError(address) if \
                 isinstance(err, KinErrors.ResourceNotFoundError) else err
 
-    def get_transaction_data(self, tx_hash, simple=True):
+    async def get_transaction_data(self, tx_hash: str, simple: Optional[bool] = True) -> Union[SimplifiedTransaction, RawTransaction]:
         """Gets transaction data.
 
-        :param str tx_hash: transaction hash.
-        :param boolean simple: (optional) returns a simplified transaction object
+        :param tx_hash: transaction hash.
+        :param simple: (optional) Should the method return a simplified or raw transaction
 
         :return: transaction data
-        :rtype: kin.transactions.RawTransaction | kin.transactions.SimplifiedTransaction
 
         :raises: ValueError: if the provided hash is invalid.
         :raises: :class:`KinErrors.ResourceNotFoundError`: if the transaction does not exist.
@@ -172,7 +167,7 @@ class KinClient(object):
             raise ValueError('invalid transaction hash: {}'.format(tx_hash))
 
         try:
-            raw_tx = RawTransaction(self.horizon.transaction(tx_hash))
+            raw_tx = RawTransaction(await self.horizon.transaction(tx_hash))
         except Exception as e:
             raise KinErrors.translate_error(e)
 
@@ -180,16 +175,17 @@ class KinClient(object):
             return SimplifiedTransaction(raw_tx)
         return raw_tx
 
-    def get_account_tx_history(self, address, amount=10, descending=True, cursor=None, simple=True):
+    async def get_account_tx_history(self, address: str, amount: Optional[int] = 10, descending: Optional[bool] = True,
+                                     cursor: Optional[int, None] = None,
+                                     simple: Optional[bool] = True) -> List[Union[SimplifiedTransaction, RawTransaction]]:
         """
         Get the transaction history for a given account.
-        :param str address: The public address of the account to query
-        :param int amount: The maximum number of transactions to get
-        :param bool descending: The order of the transactions, True will start from the latest one
-        :param int cursor: The horizon paging token
-        :param bool simple: Should the returned txs be simplified, if True, complicated txs will be ignored
+        :param address: The public address of the account to query
+        :param amount: The maximum number of transactions to get
+        :param descending: The order of the transactions, True will start from the latest one
+        :param cursor: The horizon paging token
+        :param simple: Should the returned txs be simplified, if True, complicated txs will be ignored
         :return: A list of transactions
-        :rtype: list[kin.transactions.RawTransaction | kin.transactions.SimplifiedTransaction]
         """
 
         if not is_valid_address(address):
@@ -201,16 +197,10 @@ class KinClient(object):
         tx_list = []
 
         requested_amount = amount if amount < MAX_RECORDS_PER_REQUEST else MAX_RECORDS_PER_REQUEST
-        params = {
-            'limit': requested_amount,
-            'order': 'desc' if descending else 'asc'
-        }
 
-        # cursor is optional
-        if cursor is not None:
-            params['cursor'] = cursor
-
-        horizon_response = self.horizon.account_transactions(address, params)
+        horizon_response = await self.horizon.account_transactions(address,
+                                                             cursor=cursor, limit=requested_amount,
+                                                             order='desc' if descending else 'asc')
 
         for transaction in horizon_response['_embedded']['records']:
             raw_tx = RawTransaction(transaction)
@@ -229,44 +219,14 @@ class KinClient(object):
         if remaining_txs <= 0 or len(horizon_response['_embedded']['records']) < amount:
             return tx_list
         # If there are anymore transactions, recursively get the next transaction page
-        return tx_list.extend(self.get_account_tx_history(address, remaining_txs, descending, last_cursor, simple))
+        return tx_list.extend(await self.get_account_tx_history(address, remaining_txs, descending, last_cursor, simple))
 
-    def verify_kin_payment(self, tx_hash, source, destination, amount, memo=None, check_memo=False, app_id=ANON_APP_ID):
-        """
-        Verify that a give tx matches the desired parameters
-        :param str tx_hash: The hash of the transaction to query
-        :param str source: The expected source account
-        :param str destination: The expected destination account
-        :param float amount: The expected amount
-        :param str memo: (optional) The expected memo
-        :param boolean check_memo: (optional) Should the memo match
-        :param str app_id: the id of the app that sent the tx
-        :return: True/False
-        :rtype: boolean
-        """
-
-        try:
-            tx = self.get_transaction_data(tx_hash)
-            operation = tx.operation
-            if operation.type != OperationTypes.PAYMENT:
-                return False
-            if source != tx.source or destination != operation.destination or amount != operation.amount:
-                return False
-            if check_memo and build_memo(app_id, memo) != tx.memo:
-                return False
-
-            return True
-
-        except KinErrors.CantSimplifyError:
-            return False
-
-    def friendbot(self, address):
+    async def friendbot(self, address: str):
         """
         Use the friendbot service to create and fund an account
-        :param str address: The address to create and fund
+        :param address: The address to create and fund
 
         :return: the hash of the friendbot transaction
-        :rtype str
 
         :raises ValueError: if no friendbot service was provided
         :raises ValueError: if the address is invalid
@@ -282,12 +242,13 @@ class KinClient(object):
         if self.does_account_exists(address):
             raise KinErrors.AccountExistsError(address)
 
-        response = requests.get(self.environment.friendbot_url, params={'addr': address})
-        if response.ok:
-            return response.json()['hash']
+        response = await self.horizon._session.get(self.environment.friendbot_url, params={'addr': address})
+        if response.status == 200:
+            return (await response.json(encoding='utf-8'))['hash']
         else:
-            raise KinErrors.FriendbotError(response.status_code, response.text)
+            raise KinErrors.FriendbotError(response.status, await (response.text(encoding='utf-8')))
 
+    # TODO: asyncify
     def monitor_account_payments(self, address, callback_fn):
         """Monitor KIN payment transactions related to the account identified by provided address.
         NOTE: the function starts a background thread.

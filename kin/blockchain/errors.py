@@ -39,15 +39,6 @@ Horizon error example:
 
 """
 
-
-class HorizonError(HTTPProblemDetails, Exception):
-    def __init__(self, err_dict):
-        super(HTTPProblemDetails, self).__init__(err_dict, strict=False)
-        super(Exception, self).__init__(self.title)
-        if len(self.type) > len(HORIZON_NS_PREFIX):
-            self.type = self.type[len(HORIZON_NS_PREFIX):]
-
-
 # noinspection PyClassHasNoInit
 class HorizonErrorType:
     BAD_REQUEST = 'bad_request'  # cannot understand the request due to invalid parameters

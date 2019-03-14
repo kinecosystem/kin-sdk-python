@@ -10,7 +10,6 @@ from kin_base.transaction import Transaction as BaseTransaction
 from kin_base.transaction_envelope import TransactionEnvelope as BaseEnvelop
 from kin_base.memo import TextMemo, NoneMemo
 from kin_base.operation import Payment, CreateAccount
-from .blockchain.channel_manager import CHANNEL_PUT_TIMEOUT
 
 from .errors import CantSimplifyError
 from .config import MEMO_TEMPLATE

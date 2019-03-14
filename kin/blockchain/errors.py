@@ -1,16 +1,5 @@
 """Contains errors types related to horizon"""
 
-from .horizon_models import HTTPProblemDetails
-
-
-class ChannelsBusyError(Exception):
-    pass
-
-
-class ChannelsFullError(Exception):
-    pass
-
-
 HORIZON_NS_PREFIX = 'https://stellar.org/horizon-errors/'
 """
 Horizon error example:

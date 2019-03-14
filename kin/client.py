@@ -4,7 +4,7 @@ from kin_base import Horizon
 
 from .config import ANON_APP_ID, MAX_RECORDS_PER_REQUEST
 from . import errors as KinErrors
-from .monitors import SingleMonitor, MultiMonitor
+from .monitors import single_monitor, multi_monitor
 from .transactions import SimplifiedTransaction, RawTransaction
 from .account import KinAccount
 from .blockchain.horizon_models import AccountData
@@ -12,7 +12,7 @@ from .blockchain.utils import is_valid_address, is_valid_transaction_hash
 from .version import __version__
 from .blockchain.environment import Environment
 
-from typing import List, Optional, Union
+from typing import List, Optional, Union, AsyncGenerator
 
 import logging
 
@@ -39,6 +39,12 @@ class KinClient:
         self.horizon = Horizon(environment.horizon_uri)
         logger.info('Kin Client initialized on network {}, horizon endpoint {}'.
                     format(self.network, self.horizon.horizon_uri))
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.horizon.__aexit__(exc_type, exc_val, exc_tb)
 
     def kin_account(self, seed: str, channel_secret_keys: Optional[List[str]] = None,
                     app_id: Optional[str] = ANON_APP_ID) -> KinAccount:
@@ -176,7 +182,7 @@ class KinClient:
         return raw_tx
 
     async def get_account_tx_history(self, address: str, amount: Optional[int] = 10, descending: Optional[bool] = True,
-                                     cursor: Optional[int, None] = None,
+                                     cursor: Optional[int] = None,
                                      simple: Optional[bool] = True) -> List[Union[SimplifiedTransaction, RawTransaction]]:
         """
         Get the transaction history for a given account.
@@ -246,43 +252,25 @@ class KinClient:
         if response.status == 200:
             return (await response.json(encoding='utf-8'))['hash']
         else:
-            raise KinErrors.FriendbotError(response.status, await (response.text(encoding='utf-8')))
+            raise KinErrors.FriendbotError(response.status, await response.text(encoding='utf-8'))
 
-    # TODO: asyncify
-    def monitor_account_payments(self, address, callback_fn):
+    def monitor_account_payments(self, address: str, timeout: Optional[float] = None) -> AsyncGenerator[SimplifiedTransaction, None]:
         """Monitor KIN payment transactions related to the account identified by provided address.
-        NOTE: the function starts a background thread.
 
         :param str address: the address of the account to query.
+        :param timeout: How long to wait for each event
 
-        :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data, monitor)`.
-        :type: callable[str,kin.transactions.SimplifiedTransaction, kin.SingleMonitor]
-
-        :return: a monitor instance
-        :rtype: kin.monitors.SingleMonitor
-
-        :raises: ValueError: when no address is given.
         :raises: ValueError: if the address is in the wrong format
-        :raises: KinErrors.AccountNotActivatedError if the account given is not activated
+        :raises: asyncio.TimeoutError: If too much time has passed between events (only if "timeout" is set)
         """
+        return single_monitor(self, address, timeout=timeout)
 
-        return SingleMonitor(self, address, callback_fn)
-
-    def monitor_accounts_payments(self, addresses, callback_fn):
+    def monitor_accounts_payments(self, addresses: set, timeout: Optional[float] = None) -> AsyncGenerator[SimplifiedTransaction, None]:
         """Monitor KIN payment transactions related to multiple accounts
-        NOTE: the function starts a background thread.
 
-        :param str addresses: the addresses of the accounts to query.
+        :param addresses: the addresses of the accounts to query.
+        :param timeout: How long to wait for each event
 
-        :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data, monitor)`.
-        :type: callable[str,kin.transactions.SimplifiedTransaction ,kin.monitors.MultiMonitor]
-
-        :return: a monitor instance
-        :rtype: kin.monitors.MultiMonitor
-
-        :raises: ValueError: when no address is given.
-        :raises: ValueError: if the addresses are in the wrong format
-        :raises: KinErrors.AccountNotActivatedError if the accounts given are not activated
+        :raises: asyncio.TimeoutError: If too much time has passed between events (only if "timeout" is set)
         """
-
-        return MultiMonitor(self, addresses, callback_fn)
+        return multi_monitor(self, addresses, timeout=timeout)

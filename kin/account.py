@@ -11,7 +11,7 @@ from .blockchain.keypair import Keypair
 from .blockchain.channel_manager import ChannelManager, ChannelStatuses
 from . import errors as KinErrors
 from .transactions import build_memo, RawTransaction, SimplifiedTransaction
-from .blockchain.errors import TransactionResultCode, HorizonErrorType, HorizonError
+from .blockchain.errors import TransactionResultCode, HorizonErrorType
 from .config import APP_ID_REGEX, KIN_DECIMAL_PRECISION
 from .blockchain.utils import is_valid_address, is_valid_secret_key
 from .blockchain.horizon_models import AccountData
@@ -95,7 +95,7 @@ class KinAccount:
         return total_status
 
     async def get_transaction_history(self, amount: Optional[int] = 10, descending: Optional[bool] = True,
-                                      cursor: Optional[int, None] = None,
+                                      cursor: Optional[int] = None,
                                       simple: Optional[bool] = True) -> List[Union[SimplifiedTransaction, RawTransaction]]:
         """
         Get the transaction history for this kin account
@@ -141,7 +141,7 @@ class KinAccount:
         """
         builder = self.build_create_account(address, starting_balance, fee, memo_text)
 
-        with self.channel_manager.get_channel() as channel: # TODO: async with?
+        async with self.channel_manager.get_channel() as channel:
             await builder.set_channel(channel)
             builder.sign(channel)
             # Also sign with the root account if a different channel was used
@@ -169,7 +169,7 @@ class KinAccount:
         :raises: KinErrors.NotValidParamError: if the fee is not valid
         """
         builder = self.build_send_kin(address, amount, fee, memo_text)
-        with self.channel_manager.get_channel() as channel:
+        async with self.channel_manager.get_channel() as channel:
             await builder.set_channel(channel)
             builder.sign(channel)
             # Also sign with the root account if a different channel was used
@@ -226,7 +226,7 @@ class KinAccount:
         builder.append_payment_op(address, str(amount), source=self.keypair.public_address)
         return builder
 
-    async def submit_transaction(self, tx_builder) -> str:
+    async def submit_transaction(self, tx_builder: Builder) -> str:
         """
         Submit a transaction to the blockchain.
         :param kin.Builder tx_builder: The transaction builder
@@ -236,21 +236,22 @@ class KinAccount:
         try:
             return (await tx_builder.submit())['hash']
         # If the channel is out of KIN, top it up and try again
-        except HorizonError as e:
+        except KinErrors.HorizonError as e:
             logger.warning('send transaction error with channel {}: {}'.format(tx_builder.address, str(e)))
             if e.type == HorizonErrorType.TRANSACTION_FAILED \
-                    and e.extras.result_codes.transaction == TransactionResultCode.INSUFFICIENT_BALANCE:
+                    and e.extras['result_codes']['transaction'] == TransactionResultCode.INSUFFICIENT_BALANCE:
 
                 self.channel_manager.channel_pool.queue[tx_builder.address] = ChannelStatuses.UNDERFUNDED
-                self._top_up(tx_builder.address)
+                await self._top_up(tx_builder.address)
                 self.channel_manager.channel_pool.queue[tx_builder.address] = ChannelStatuses.TAKEN
 
                 # Insufficient balance is a "fast-fail", the sequence number doesn't increment
                 # so there is no need to build the transaction again
-                self.submit_transaction(tx_builder)
+                await self.submit_transaction(tx_builder)
             else:
                 raise KinErrors.translate_error(e)
 
+    # TODO: asyncify
     def monitor_payments(self, callback_fn):
         """Monitor KIN payment transactions related to this account
         NOTE: the function starts a background thread.
@@ -263,12 +264,11 @@ class KinAccount:
         """
         return self._client.monitor_account_payments(self.keypair.public_address, callback_fn)
 
-    def whitelist_transaction(self, payload):
+    def whitelist_transaction(self, payload: Union[str, dict]) -> str:
         """
         Sign on a transaction to whitelist it
-        :param str payload: the json received from the client
+        :param payload: the json received from the client
         :return: a signed transaction encoded as base64
-        :rtype str
         """
 
         # load the object from the json
@@ -302,20 +302,16 @@ class KinAccount:
 
     # Internal methods
 
-    def _top_up(self, address):
+    async def _top_up(self, address: str) -> None:
         """
         Top up a channel with the base account.
-        :param str address: The address to top up
+        :param address: The address to top up
         """
-        # In theory, if the sdk runs in threads, and 2 or more channels
-        # are out of funds and needed to be topped up at the exact same time
-        # there is a chance for a bad_sequence error,
-        # however it is virtually impossible that this situation will occur.
 
         # TODO: let user config the amount of kin to top up
-        min_fee = self._client.get_minimum_fee()
+        min_fee = await self._client.get_minimum_fee()
         builder = self.get_transaction_builder(min_fee)
         builder.append_payment_op(address, str((min_fee / KIN_DECIMAL_PRECISION) * 1000))  # Enough for 1K txs
-        builder.update_sequence()
+        await builder.update_sequence()
         builder.sign()
-        builder.submit()
+        await builder.submit()

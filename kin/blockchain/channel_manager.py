@@ -1,80 +1,59 @@
 """Contains classes and methods related to channels"""
 
-import sys
 import random
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
+from asyncio.queues import Queue as queue
 from enum import Enum
 
-from .errors import ChannelsBusyError, ChannelsFullError
-
-if sys.version[0] == '2':
-    import Queue as queue
-else:
-    import queue
-
-CHANNEL_GET_TIMEOUT = 11  # how much time to wait until a channel is available, in seconds
-CHANNEL_PUT_TIMEOUT = 0.5  # how much time to wait for a channel to return to the queue
+from typing import List, Optional
 
 
 class ChannelManager:
     """Provide useful methods to interact with the underlying ChannelPool"""
 
-    def __init__(self, channel_seeds):
+    def __init__(self, channel_seeds: List[str]):
         """
         Crete a channel manager instance
-        :param list[str] channel_seeds: The seeds of the channels to use
+        :param channel_seeds: The seeds of the channels to use
         """
         self.channel_pool = ChannelPool(channel_seeds)
 
-    @contextmanager
-    def get_channel(self, timeout=CHANNEL_GET_TIMEOUT):
+    @asynccontextmanager
+    async def get_channel(self) -> str:
         """
         Get an available channel
-        :param float timeout: (Optional) How long to wait before raising an exception
         :return a free channel seed
-        :rtype str
 
-        :raises KinErrors.ChannelBusyError
         """
-        try:
-            channel = self.channel_pool.get(timeout=timeout)
-        except queue.Empty:
-            raise ChannelsBusyError()
+        channel = await self.channel_pool.get()
 
         try:
             yield channel
         finally:
-            if self.channel_pool.queue[channel] != ChannelStatuses.UNDERFUNDED:
-                self.put_channel(channel)
+            if self.channel_pool._queue[channel] != ChannelStatuses.UNDERFUNDED:
+                await self.put_channel(channel)
 
-    def put_channel(self, channel, timeout=CHANNEL_PUT_TIMEOUT):
+    async def put_channel(self, channel) -> None:
         """
         Set a channel status back to FREE
         :param str channel: the channel to set back to FREE
-        :param float timeout: (Optional) How long to wait before raising an exception
-
-        :raises KinErrors.ChannelsFullError
         """
-        try:
-            self.channel_pool.put(channel, timeout=timeout)
-        except queue.Full:
-            raise ChannelsFullError()
+        await self.channel_pool.put(channel)
 
-    def get_status(self, verbose=False):
+    def get_status(self, verbose: Optional[bool] = False) -> dict:
         """
         Return the current status of the channel manager
-        :param bool verbose: Include all channel seeds and their statuses in the response
+        :param verbose: Include all channel seeds and their statuses in the response
         :return: The status of the channel manager
-        :rtype dict
         """
         free_channels = len(self.channel_pool.get_free_channels())
         status = {
-            'total_channels': len(self.channel_pool.queue),
+            'total_channels': len(self.channel_pool._queue),
             'free_channels': free_channels,
-            'non_free_channels': len(self.channel_pool.queue) - free_channels
+            'non_free_channels': len(self.channel_pool._queue) - free_channels
         }
         if verbose:
-            status['channels'] = self.channel_pool.queue
+            status['channels'] = self.channel_pool._queue
 
         return status
 
@@ -87,10 +66,9 @@ class ChannelStatuses(str, Enum):
     UNDERFUNDED = 'underfunded'
 
 
-# TODO: remove object when we kill python2
-class ChannelPool(queue.Queue, object):
+class ChannelPool(queue):
     """
-    A thread-safe queue that sets a member's status instead of pulling it in/out of the queue.
+    An async queue that sets a member's status instead of pulling it in/out of the queue.
     This queue gets members randomly when 'get' is used, as opposed to always get the last member.
     """
     def __init__(self, channels_seeds):
@@ -101,44 +79,45 @@ class ChannelPool(queue.Queue, object):
         # Init base queue
         super(ChannelPool, self).__init__(len(channels_seeds))
         # Change queue from a 'deque' object to a dict full of free channels
-        self.queue = {channel: ChannelStatuses.FREE for channel in channels_seeds}
+        self._queue = {channel: ChannelStatuses.FREE for channel in channels_seeds}
 
-    def _get(self):
+    def _get(self) -> str:
         """
         Randomly get an available free channel from the dict
         :return: a channel seed
-        :rtype str
         """
         # Get a list of all free channels
         free_channels = self.get_free_channels()
         # Select a random free channel
         selected_channel = random.choice(free_channels)
         # Change channel state to taken
-        self.queue[selected_channel] = ChannelStatuses.TAKEN
+        self._queue[selected_channel] = ChannelStatuses.TAKEN
         return selected_channel
 
-    def _put(self, channel):
+    def _put(self, channel: str) -> None:
         """
         Change a channel status back to FREE
         :param str channel: the channel seed
         """
         # Change channel state to free
-        self.queue[channel] = ChannelStatuses.FREE
+        self._queue[channel] = ChannelStatuses.FREE
 
-    def _qsize(self):
+    def qsize(self) -> int:
         """
-        Used to determine if the queue is empty
+        Counts free channels in the queue
         :return: amount of free channels in the queue
-        :rtype int
         """
-        # Base queue checks if the queue is not empty by checking the length of the queue (_qsize() != 0)
-        # We need to check it by checking how many channels are free
         return len(self.get_free_channels())
 
-    def get_free_channels(self):
+    def empty(self) -> bool:
+        """
+        Used to check if the queue is empty
+        """
+        return len(self.get_free_channels()) == 0
+
+    def get_free_channels(self) -> List[str]:
         """
         Get a list of channels with "FREE" status
-        :rtype list[str]
         """
-        return [channel for channel, status in self.queue.items() if status == ChannelStatuses.FREE]
+        return [channel for channel, status in self._queue.items() if status == ChannelStatuses.FREE]
 

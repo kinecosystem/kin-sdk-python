@@ -222,6 +222,7 @@ class KinClient:
 
         remaining_txs = amount - len(tx_list)
         # if we got all the txs that we wanted, or there are no more txs
+        # TODO: paging does not work DP-370
         if remaining_txs <= 0 or len(horizon_response['_embedded']['records']) < amount:
             return tx_list
         # If there are anymore transactions, recursively get the next transaction page

@@ -1,6 +1,4 @@
 """Contains classes for monitoring the blockchain"""
-import json
-
 from .blockchain.utils import is_valid_address
 from .transactions import OperationTypes, SimplifiedTransaction, RawTransaction
 from .errors import CantSimplifyError, StellarAddressInvalidError
@@ -41,18 +39,14 @@ async def single_monitor(kin_client: 'KinClient', address: str,
         yield tx_data
 
 
-async def multi_monitor(kin_client: 'KinClient', addresses: set,
-                         timeout: Optional[float] = None) -> AsyncGenerator[SimplifiedTransaction, None]:
+async def multi_monitor(kin_client: 'KinClient', addresses: set) -> AsyncGenerator[SimplifiedTransaction, None]:
     """
     Monitors a single account for kin payments
     :param kin_client: a kin client directed to the correct network
     :param addresses: set of addresses to watch
-    :param timeout: How long to wait for a new event
-
-    :raises: asyncio.TimeoutError: If too much time has passed between events (only if "timeout" is set)
     """
 
-    sse_client = await kin_client.horizon.transactions(sse=True, sse_timeout=timeout)
+    sse_client = await kin_client.horizon.transactions(sse=True)
 
     async for tx in sse_client:
         try:

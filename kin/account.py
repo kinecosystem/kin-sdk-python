@@ -16,7 +16,7 @@ from .config import APP_ID_REGEX, KIN_DECIMAL_PRECISION
 from .blockchain.utils import is_valid_address, is_valid_secret_key
 from .blockchain.horizon_models import AccountData
 
-from typing import List, Optional, Union
+from typing import List, Optional, Union, AsyncGenerator
 import logging
 
 logger = logging.getLogger(__name__)
@@ -241,9 +241,9 @@ class KinAccount:
             if e.type == HorizonErrorType.TRANSACTION_FAILED \
                     and e.extras['result_codes']['transaction'] == TransactionResultCode.INSUFFICIENT_BALANCE:
 
-                self.channel_manager.channel_pool.queue[tx_builder.address] = ChannelStatuses.UNDERFUNDED
+                self.channel_manager.channel_pool._queue[tx_builder.address] = ChannelStatuses.UNDERFUNDED
                 await self._top_up(tx_builder.address)
-                self.channel_manager.channel_pool.queue[tx_builder.address] = ChannelStatuses.TAKEN
+                self.channel_manager.channel_pool._queue[tx_builder.address] = ChannelStatuses.TAKEN
 
                 # Insufficient balance is a "fast-fail", the sequence number doesn't increment
                 # so there is no need to build the transaction again
@@ -251,18 +251,14 @@ class KinAccount:
             else:
                 raise KinErrors.translate_error(e)
 
-    # TODO: asyncify
-    def monitor_payments(self, callback_fn):
+    def monitor_payments(self, timeout: Optional[float] = None) -> AsyncGenerator[SimplifiedTransaction, None]:
         """Monitor KIN payment transactions related to this account
-        NOTE: the function starts a background thread.
+        :param timeout: How long to wait for each event
 
-        :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data, monitor)`.
-        :type: callable[str,kin.transactions.SimplifiedTransaction,kin.monitors.SingleMonitor]
-
-        :return: a monitor instance
-        :rtype: kin.monitors.SingleMonitor
+        :raises: ValueError: if the address is in the wrong format
+        :raises: asyncio.TimeoutError: If too much time has passed between events (only if "timeout" is set)
         """
-        return self._client.monitor_account_payments(self.keypair.public_address, callback_fn)
+        return self._client.monitor_account_payments(self.keypair.public_address, timeout)
 
     def whitelist_transaction(self, payload: Union[str, dict]) -> str:
         """

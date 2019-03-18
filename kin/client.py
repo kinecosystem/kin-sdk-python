@@ -68,7 +68,7 @@ class KinClient:
             'sdk_version': __version__,
             'environment': self.environment.name,
             'horizon': {
-                'uri': self.horizon.horizon_uri,
+                'uri': str(self.horizon.horizon_uri),
                 'online': False,
                 'error': None,
             },
@@ -85,7 +85,7 @@ class KinClient:
             await self.horizon.metrics()
             status['horizon']['online'] = True
         except Exception as e:
-            status['horizon']['error'] = str(e)
+            status['horizon']['error'] = repr(e)
 
         return status
 
@@ -246,7 +246,7 @@ class KinClient:
 
         if not is_valid_address(address):
             raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
-        if self.does_account_exists(address):
+        if await self.does_account_exists(address):
             raise KinErrors.AccountExistsError(address)
 
         response = await self.horizon._session.get(self.environment.friendbot_url, params={'addr': address})

@@ -1,9 +1,5 @@
-attrs==17.4.0
 codecov==2.0.15
 coverage==4.5.1
-funcsigs==1.0.2
-pluggy==0.6.0
-py==1.5.2
 pytest-cov==2.5.1
 pytest==3.4.0
 pytest-asyncio==0.10.0

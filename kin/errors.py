@@ -141,8 +141,6 @@ def translate_error(err):
     """A high-level error translator."""
     if isinstance(err, ClientError):
         return NetworkError({'internal_error': str(err)})
-    if isinstance(err, ChannelsBusyError):
-        return ThrottleError
     if isinstance(err, HorizonError):
         return translate_horizon_error(err)
     return InternalError(None, {'internal_error': str(err)})
@@ -152,7 +150,7 @@ def translate_horizon_error(horizon_error):
     """Horizon error translator."""
     # query errors
     if horizon_error.type == HorizonErrorType.BAD_REQUEST:
-        return RequestError(horizon_error.type, {'invalid_field': horizon_error.extras.invalid_field})
+        return RequestError(horizon_error.type, {'invalid_field': horizon_error.extras.get('invalid_field')})
     if horizon_error.type == HorizonErrorType.NOT_FOUND:
         return ResourceNotFoundError(horizon_error.type)
     if horizon_error.type in [HorizonErrorType.FORBIDDEN,

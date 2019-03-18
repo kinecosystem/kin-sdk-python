@@ -1,5 +1,3 @@
-from requests.exceptions import RequestException
-
 from kin import KinErrors
 from kin.blockchain.errors import *
 
@@ -13,10 +11,6 @@ def test_sdk_error():
 
 
 def test_translate_error():
-    e = KinErrors.translate_error(RequestException('error'))
-    assert isinstance(e, KinErrors.NetworkError)
-    assert e.extra['internal_error'] == 'error'
-
     e = KinErrors.translate_error(Exception('error'))
     assert isinstance(e, KinErrors.InternalError)
     assert e.extra['internal_error'] == 'error'

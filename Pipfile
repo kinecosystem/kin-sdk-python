@@ -8,7 +8,7 @@ python_version = "3.7"
 
 [packages]
 schematics = "==2.1.*"
-kin-base = {ref = "async-kin", git = "https://github.com/kinecosystem/py-kin-base"}
+kin-base = "==1.2.0"
 
 [dev-packages]
 codecov = "*"

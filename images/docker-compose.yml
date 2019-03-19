@@ -2,7 +2,7 @@ version: "3"
 
 services:
   stellar-core-1:
-    image: kinecosystem/stellar-core:latset
+    image: kinecosystem/stellar-core:latest
     ports:
       - 11626:11626
     links:

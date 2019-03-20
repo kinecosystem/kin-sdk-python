@@ -9,7 +9,7 @@ from typing import List, Optional
 
 # Python 3.6 didnt support asynccontextmanager, so the kin-sdk installs a backport for it
 if sys.version_info.minor == 6:
-    from asyncgenerator import asynccontextmanager
+    from async-generator import asynccontextmanager
 else:
     from contextlib import asynccontextmanager
 

@@ -1,11 +1,17 @@
 """Contains classes and methods related to channels"""
 
+import sys
 import random
-from contextlib import asynccontextmanager
 from asyncio.queues import Queue as queue
 from enum import Enum
 
 from typing import List, Optional
+
+# Python 3.6 didnt support asynccontextmanager, so the kin-sdk installs a backport for it
+if sys.version_info.minor == 6:
+    from asyncgenerator import asynccontextmanager
+else:
+    from contextlib import asynccontextmanager
 
 
 class ChannelManager:

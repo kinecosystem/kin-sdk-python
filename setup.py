@@ -31,5 +31,5 @@ setup(
     ],
     install_requires=requires,
     tests_require=tests_requires,
-    python_requires='>=3.5.3',
+    python_requires='>=3.6',
 )

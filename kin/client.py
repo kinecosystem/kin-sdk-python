@@ -44,7 +44,11 @@ class KinClient:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.horizon.__aexit__(exc_type, exc_val, exc_tb)
+        await self.close()
+
+    async def close(self) -> None:
+        """Close the connection to the horizon server"""
+        await self.horizon.close()
 
     def kin_account(self, seed: str, channel_secret_keys: Optional[List[str]] = None,
                     app_id: Optional[str] = ANON_APP_ID) -> KinAccount:

@@ -85,7 +85,7 @@ class KinAccount:
             'app_id': self.app_id,
             'public_address': self.get_public_address(),
             'balance': await self.get_balance(),
-            'channels': self.channel_manager.get_status(verbose) #TODO: await?
+            'channels': self.channel_manager.get_status(verbose)
         }
         total_status = {
             'client': await self._client.get_config(),

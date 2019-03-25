@@ -5,9 +5,9 @@ from setuptools import setup, find_packages
 exec(open("kin/version.py").read())
 
 with open('requirements.txt') as f:
-    requires = [line.split(' ')[0] for line in f]
+    requires = f.readlines()
 with open('requirements-dev.txt') as f:
-    tests_requires = [line.split(' ')[0] for line in f]
+    tests_requires = f.readlines()
 
 setup(
     name='kin-sdk',

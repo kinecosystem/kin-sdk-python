@@ -16,6 +16,7 @@ async def create_channels(master_seed: str, environment: Environment, amount: in
                           starting_balance: float, salt: str) -> List[str]:
     """
     Create HD seeds based on a master seed and salt
+
     :param master_seed: The master seed that creates the seeds
     :param environment: The blockchain environment to create the seeds on
     :param amount: Number of seeds to create (Up to 100)
@@ -63,6 +64,7 @@ async def create_channels(master_seed: str, environment: Environment, amount: in
 def get_hd_channels(master_seed: str, salt: str, amount: int) -> List[str]:
     """
     Get a list of channels generated based on a seed and salt
+
     :param master_seed: the base seed that created the channels
     :param salt: A string to be used to generate the seeds
     :param amount: Number of seeds to generate (Up to 100)

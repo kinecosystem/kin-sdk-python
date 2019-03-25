@@ -8,10 +8,11 @@ from typing import Optional
 
 
 class Environment:
-    """Environments holds the parameters that will be used to connect to horizon"""
     def __init__(self, name: str, horizon_endpoint_uri: str, network_passphrase: str,
                  friendbot_url: Optional[str] = None):
         """
+        Environments holds the parameters that will be used to connect to horizon
+
         :param name: Name of the environment.
         :param horizon_uri: a Horizon endpoint.
         :param network_passphrase: The passphrase/network_id of the environment.

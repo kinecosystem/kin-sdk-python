@@ -20,6 +20,7 @@ class ChannelManager:
     def __init__(self, channel_seeds: List[str]):
         """
         Crete a channel manager instance
+
         :param channel_seeds: The seeds of the channels to use
         """
         self.channel_pool = ChannelPool(channel_seeds)
@@ -28,6 +29,7 @@ class ChannelManager:
     async def get_channel(self) -> str:
         """
         Get an available channel
+
         :return a free channel seed
 
         """
@@ -42,6 +44,7 @@ class ChannelManager:
     async def put_channel(self, channel) -> None:
         """
         Set a channel status back to FREE
+
         :param str channel: the channel to set back to FREE
         """
         await self.channel_pool.put(channel)
@@ -49,6 +52,7 @@ class ChannelManager:
     def get_status(self, verbose: Optional[bool] = False) -> dict:
         """
         Return the current status of the channel manager
+
         :param verbose: Include all channel seeds and their statuses in the response
         :return: The status of the channel manager
         """
@@ -66,6 +70,7 @@ class ChannelManager:
 
 class ChannelStatuses(str, Enum):
     """Contains possible statuses for channels"""
+
     # subclass str to be able to serialize to json
     FREE = 'free'
     TAKEN = 'taken'
@@ -90,6 +95,7 @@ class ChannelPool(queue):
     def _get(self) -> str:
         """
         Randomly get an available free channel from the dict
+
         :return: a channel seed
         """
         # Get a list of all free channels
@@ -103,6 +109,7 @@ class ChannelPool(queue):
     def _put(self, channel: str) -> None:
         """
         Change a channel status back to FREE
+
         :param str channel: the channel seed
         """
         # Change channel state to free
@@ -111,19 +118,16 @@ class ChannelPool(queue):
     def qsize(self) -> int:
         """
         Counts free channels in the queue
+
         :return: amount of free channels in the queue
         """
         return len(self.get_free_channels())
 
     def empty(self) -> bool:
-        """
-        Used to check if the queue is empty
-        """
+        """Used to check if the queue is empty"""
         return len(self.get_free_channels()) == 0
 
     def get_free_channels(self) -> List[str]:
-        """
-        Get a list of channels with "FREE" status
-        """
+        """Get a list of channels with "FREE" status"""
         return [channel for channel, status in self._queue.items() if status == ChannelStatuses.FREE]
 

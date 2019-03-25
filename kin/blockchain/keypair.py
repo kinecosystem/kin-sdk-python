@@ -17,6 +17,7 @@ class Keypair:
     def __init__(self, seed: Optional[str] = None):
         """
         # Create an instance of Keypair.
+
         :param seed: (Optional) The secret seed of an account
         """
         self.secret_seed = seed or self.generate_seed()
@@ -32,6 +33,7 @@ class Keypair:
     def sign(self, data: bytes) -> DecoratedSignature:
         """
         Sign any data using the keypair's private key
+
         :param data: any data to sign
         :return: a decorated signature
         """
@@ -42,6 +44,7 @@ class Keypair:
     def address_from_seed(seed: str) -> str:
         """
         Get a public address from a secret seed.
+
         :param seed: The secret seed of an account.
         :return: A public address.
         """
@@ -51,6 +54,7 @@ class Keypair:
     def generate_seed() -> str:
         """
         Generate a random secret seed.
+
         :return: A secret seed.
         """
         return BaseKeypair.random().seed().decode()
@@ -59,6 +63,7 @@ class Keypair:
     def generate_hd_seed(base_seed: str, salt: str) -> str:
         """
         Generate a highly deterministic seed from a base seed + salt
+
         :param base_seed: The base seed to generate a seed from
         :param salt: A unique string that will be used to generate the seed
         :return: a new seed.

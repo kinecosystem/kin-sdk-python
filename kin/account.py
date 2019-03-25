@@ -58,6 +58,7 @@ class KinAccount:
     async def get_balance(self) -> float:
         """
         Get the KIN balance of this KinAccount
+
         :return: the kin balance
 
         :raises: KinErrors.AccountNotFoundError if the account does not exist.
@@ -77,6 +78,7 @@ class KinAccount:
     async def get_status(self, verbose: Optional[bool] = False) -> dict:
         """
         Get the config and status of this KinAccount object
+
         :param verbose: Should the channels status be verbose
         :return: The config and status of this KinAccount object
         :rtype dict
@@ -99,6 +101,7 @@ class KinAccount:
                                       simple: Optional[bool] = True) -> List[Union[SimplifiedTransaction, RawTransaction]]:
         """
         Get the transaction history for this kin account
+
         :param amount: The maximum number of transactions to get
         :param descending: The order of the transactions, True will start from the latest one
         :param cursor: The horizon paging token
@@ -115,6 +118,7 @@ class KinAccount:
     def get_transaction_builder(self, fee: int) -> Builder:
         """
         Get a transaction builder using this account
+
         :param fee: The fee that will be used for the transaction
         """
         return Builder(horizon=self._client.horizon,
@@ -180,6 +184,7 @@ class KinAccount:
     def build_create_account(self, address: str, starting_balance: Union[float, str], fee: int,
                           memo_text: Optional[str] = None) -> Builder:
         """Build a tx that will create an account identified by the provided address.
+        
         :param address: the address of the account to create.
         :param starting_balance: the starting XLM balance of the account.
         :param memo_text: (optional) a text to put into transaction memo, up to MEMO_CAP chars.
@@ -204,6 +209,7 @@ class KinAccount:
     def build_send_kin(self, address: str, amount: Union[float, str], fee: int,
                        memo_text: Optional[str] = None) -> Builder:
         """Build a tx to send KIN to the account identified by the provided address.
+
         :param address: the account to send asset to.
         :param amount: the KIN amount to send.
         :param memo_text: (optional) a text to put into transaction memo.
@@ -229,7 +235,9 @@ class KinAccount:
     async def submit_transaction(self, tx_builder: Builder) -> str:
         """
         Submit a transaction to the blockchain.
+
         :param kin.Builder tx_builder: The transaction builder
+
         :return: The hash of the transaction.
         :rtype: str
         """
@@ -253,6 +261,7 @@ class KinAccount:
 
     def monitor_payments(self, timeout: Optional[float] = None) -> AsyncGenerator[SimplifiedTransaction, None]:
         """Monitor KIN payment transactions related to this account
+
         :param timeout: How long to wait for each event
 
         :raises: ValueError: if the address is in the wrong format
@@ -263,6 +272,7 @@ class KinAccount:
     def whitelist_transaction(self, payload: Union[str, dict]) -> str:
         """
         Sign on a transaction to whitelist it
+
         :param payload: the json received from the client
         :return: a signed transaction encoded as base64
         """
@@ -301,6 +311,7 @@ class KinAccount:
     async def _top_up(self, address: str) -> None:
         """
         Top up a channel with the base account.
+
         :param address: The address to top up
         """
 

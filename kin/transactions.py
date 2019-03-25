@@ -22,9 +22,10 @@ NATIVE_ASSET_TYPE = 'native'
 
 
 class RawTransaction:
-    """Class to hold raw info about a transaction"""
     def __init__(self, horizon_tx_response: dict):
         """
+        Class to hold raw info about a transaction
+
         :param horizon_tx_response: the json response from an horizon query
         """
         # Network_id is left as '' since we override the hash anyway
@@ -34,9 +35,12 @@ class RawTransaction:
 
 
 class SimplifiedTransaction:
-    """Class to hold simplified info about a transaction"""
-
     def __init__(self, raw_tx: RawTransaction):
+        """
+        Class to hold simplified info about a transaction
+
+        :param raw_tx: The raw transaction object to simplify
+        """
         self.id = raw_tx.hash
         self.timestamp = raw_tx.timestamp
 
@@ -55,9 +59,12 @@ class SimplifiedTransaction:
 
 
 class SimplifiedOperation:
-    """Class to hold simplified info about a operation"""
-
     def __init__(self, op_data: Union[CreateAccount, Payment]):
+        """
+        Class to hold simplified info about a operation
+
+        :param op_data: Operation to simplify
+        """
         if isinstance(op_data, Payment):
             # Raise error if its not a KIN payment
             if op_data.asset.type != NATIVE_ASSET_TYPE:
@@ -86,6 +93,7 @@ class OperationTypes(Enum):
 def build_memo(app_id: str, memo: Union[str, None]) -> str:
     """
     Build a memo for a tx that fits the pre-defined template
+
     :param app_id: The app_id to include in the memo
     :param memo: The memo to include
     :return: the finished memo
@@ -100,6 +108,7 @@ def build_memo(app_id: str, memo: Union[str, None]) -> str:
 def decode_transaction(b64_tx: str, network_id: str, simple: Optional[bool] = True) -> Union[SimplifiedTransaction, RawTransaction]:
     """
     Decode a base64 transaction envelop
+
     :param b64_tx: a transaction envelop encoded in base64
     :param simple: should the tx be simplified
     :param network_id: the network_id for the transaction
@@ -130,6 +139,7 @@ def calculate_tx_hash(tx: BaseTransaction, network_passphrase_hash: bytes) -> st
     1. A sha256 hash of the network_id +
     2. The xdr representation of ENVELOP_TYPE_TX +
     3. The xdr representation of the transaction
+
     :param tx: The builder's transaction object
     :param network_passphrase_hash: The network passphrase hash
     :return: The hex encoded transaction hash

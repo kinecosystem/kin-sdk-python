@@ -27,6 +27,7 @@ class KinClient:
 
     def __init__(self, environment: Environment):
         """Create a new instance of the KinClient to query the Kin blockchain.
+
         :param environment: an environment for the client to point to.
 
         :return: An instance of the KinClient.
@@ -54,6 +55,7 @@ class KinClient:
                     app_id: Optional[str] = ANON_APP_ID) -> KinAccount:
         """
         Create a new instance of a KinAccount to perform authenticated operations on the blockchain.
+
         :param seed: The secret seed of the account that will be used
         :param channel_secret_keys: A list of seeds to be used as channels
         :param app_id: the unique id of your app
@@ -65,6 +67,7 @@ class KinClient:
 
     async def get_config(self) -> dict:
         """Get system configuration data and online status.
+
         :return: a dictionary containing the data
         :rtype: dict
         """
@@ -96,6 +99,7 @@ class KinClient:
     async def get_minimum_fee(self) -> int:
         """
         Get the current minimum fee acceptable for a tx
+
         :return: The minimum fee
         """
         params = {'order': 'desc',
@@ -105,6 +109,7 @@ class KinClient:
     async def get_account_balance(self, address: str) -> float:
         """
         Get the KIN balance of a given account
+
         :param address: the public address of the account to query
         :return: the balance of the account
 
@@ -123,6 +128,7 @@ class KinClient:
     async def does_account_exists(self, address: str) -> bool:
         """
         Find out if a given account exists on the blockchain
+
         :param address: The kin account to query about
         :return: does the account exists on the blockchain
 
@@ -190,6 +196,7 @@ class KinClient:
                                      simple: Optional[bool] = True) -> List[Union[SimplifiedTransaction, RawTransaction]]:
         """
         Get the transaction history for a given account.
+
         :param address: The public address of the account to query
         :param amount: The maximum number of transactions to get
         :param descending: The order of the transactions, True will start from the latest one
@@ -235,6 +242,7 @@ class KinClient:
     async def friendbot(self, address: str):
         """
         Use the friendbot service to create and fund an account
+
         :param address: The address to create and fund
 
         :return: the hash of the friendbot transaction

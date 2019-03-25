@@ -24,38 +24,38 @@ async def create_channels(master_seed: str, environment: Environment, amount: in
     :return: The list of seeds generated
     """
 
-    client = KinClient(environment)
-    base_key = Keypair(master_seed)
-    if not await client.does_account_exists(base_key.public_address):
-        raise AccountNotFoundError(base_key.public_address)
+    async with KinClient(environment) as client:
+        base_key = Keypair(master_seed)
+        if not await client.does_account_exists(base_key.public_address):
+            raise AccountNotFoundError(base_key.public_address)
 
-    fee = await client.get_minimum_fee()
+        fee = await client.get_minimum_fee()
 
-    channels = get_hd_channels(master_seed, salt, amount)
+        channels = get_hd_channels(master_seed, salt, amount)
 
-    # Create a builder for the transaction
-    builder = Builder(client.horizon, environment.name, fee, master_seed)
+        # Create a builder for the transaction
+        builder = Builder(client.horizon, environment.name, fee, master_seed)
 
-    # Find out if this salt+seed combination was ever used to create channels.
-    # If so, the user might only be interested in adding channels,
-    # so we need to find what seed to start from
+        # Find out if this salt+seed combination was ever used to create channels.
+        # If so, the user might only be interested in adding channels,
+        # so we need to find what seed to start from
 
-    # First check if the last channel exists, if it does, we don't need to create any channel.
-    if await client.does_account_exists(Keypair.address_from_seed(channels[-1])):
-        return channels
+        # First check if the last channel exists, if it does, we don't need to create any channel.
+        if await client.does_account_exists(Keypair.address_from_seed(channels[-1])):
+            return channels
 
-    for index, seed in enumerate(channels):
-        if await client.does_account_exists(Keypair.address_from_seed(seed)):
-            continue
+        for index, seed in enumerate(channels):
+            if await client.does_account_exists(Keypair.address_from_seed(seed)):
+                continue
 
-        # Start creating from the current seed forward
-        for channel_seed in channels[index:]:
-            builder.append_create_account_op(Keypair.address_from_seed(channel_seed), str(starting_balance))
+            # Start creating from the current seed forward
+            for channel_seed in channels[index:]:
+                builder.append_create_account_op(Keypair.address_from_seed(channel_seed), str(starting_balance))
 
-        await builder.update_sequence()
-        builder.sign()
-        await builder.submit()
-        break
+            await builder.update_sequence()
+            builder.sign()
+            await builder.submit()
+            break
 
     return channels
 

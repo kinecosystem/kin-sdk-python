@@ -1,4 +1,4 @@
-# This branch is deprecated, and no longer maintained. The current branch for the kin-sdk is "master-v2". (Will move to to master at a later date)
+# This branch is deprecated, and no longer maintained. The current branch for the kin-sdk is "v2-master". (Will move to master at a later date)
 
 ![Kin Logo](kin.png)  ![Stelalr Logo](stellar.png)
 

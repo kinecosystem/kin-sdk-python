@@ -1,5 +1,4 @@
 """Contains classes and methods related to transactions and operations"""
-import sys
 from hashlib import sha256
 from binascii import hexlify
 import base64
@@ -10,11 +9,11 @@ from kin_base.transaction import Transaction as BaseTransaction
 from kin_base.transaction_envelope import TransactionEnvelope as BaseEnvelop
 from kin_base.memo import TextMemo, NoneMemo
 from kin_base.operation import Payment, CreateAccount
-from .blockchain.channel_manager import CHANNEL_PUT_TIMEOUT
 
 from .errors import CantSimplifyError
 from .config import MEMO_TEMPLATE
 
+from typing import Union, Optional
 
 # This is needed in order to calculate transaction hash.
 # It is the xdr representation of kin_base.XDR.const.ENVELOP_TYPE_TX (2)
@@ -22,10 +21,26 @@ PACKED_ENVELOP_TYPE = b'\x00\x00\x00\x02'
 NATIVE_ASSET_TYPE = 'native'
 
 
-class SimplifiedTransaction:
-    """Class to hold simplified info about a transaction"""
+class RawTransaction:
+    def __init__(self, horizon_tx_response: dict):
+        """
+        Class to hold raw info about a transaction
 
-    def __init__(self, raw_tx):
+        :param horizon_tx_response: the json response from an horizon query
+        """
+        # Network_id is left as '' since we override the hash anyway
+        self.tx = decode_transaction(horizon_tx_response['envelope_xdr'], network_id='', simple=False)
+        self.timestamp = horizon_tx_response['created_at']
+        self.hash = horizon_tx_response['hash']
+
+
+class SimplifiedTransaction:
+    def __init__(self, raw_tx: RawTransaction):
+        """
+        Class to hold simplified info about a transaction
+
+        :param raw_tx: The raw transaction object to simplify
+        """
         self.id = raw_tx.hash
         self.timestamp = raw_tx.timestamp
 
@@ -44,9 +59,12 @@ class SimplifiedTransaction:
 
 
 class SimplifiedOperation:
-    """Class to hold simplified info about a operation"""
+    def __init__(self, op_data: Union[CreateAccount, Payment]):
+        """
+        Class to hold simplified info about a operation
 
-    def __init__(self, op_data):
+        :param op_data: Operation to simplify
+        """
         if isinstance(op_data, Payment):
             # Raise error if its not a KIN payment
             if op_data.asset.type != NATIVE_ASSET_TYPE:
@@ -65,18 +83,6 @@ class SimplifiedOperation:
             raise CantSimplifyError('Cant simplify operation with {} operation'.format(op_data.type))
 
 
-class RawTransaction:
-    """Class to hold raw info about a transaction"""
-    def __init__(self, horizon_tx_response):
-        """
-        :param dict horizon_tx_response: the json response from an horizon query
-        """
-        # Network_id is left as '' since we override the hash anyway
-        self.tx = decode_transaction(horizon_tx_response['envelope_xdr'], network_id='', simple=False)
-        self.timestamp = horizon_tx_response['created_at']
-        self.hash = horizon_tx_response['hash']
-
-
 class OperationTypes(Enum):
     """Possible operation types for a simple operation"""
 
@@ -84,13 +90,13 @@ class OperationTypes(Enum):
     CREATE_ACCOUNT = 2
 
 
-def build_memo(app_id, memo):
+def build_memo(app_id: str, memo: Union[str, None]) -> str:
     """
     Build a memo for a tx that fits the pre-defined template
-    :param str app_id: The app_id to include in the memo
-    :param str memo: The memo to include
+
+    :param app_id: The app_id to include in the memo
+    :param memo: The memo to include
     :return: the finished memo
-    :rtype: str
     """
     finished_memo = MEMO_TEMPLATE.format(app_id)
     if memo is not None:
@@ -99,14 +105,15 @@ def build_memo(app_id, memo):
     return finished_memo
 
 
-def decode_transaction(b64_tx, network_id, simple=True):
+def decode_transaction(b64_tx: str, network_id: str, simple: Optional[bool] = True) -> Union[SimplifiedTransaction, RawTransaction]:
     """
     Decode a base64 transaction envelop
-    :param str b64_tx: a transaction envelop encoded in base64
-    :param boolean simple: should the tx be simplified
-    :param str network_id: the network_id for the transaction
+
+    :param b64_tx: a transaction envelop encoded in base64
+    :param simple: should the tx be simplified
+    :param network_id: the network_id for the transaction
     :return: The transaction
-    :rtype kin.transactions.SimplifiedTransaction | kin_base.Transaction
+
     :raises: KinErrors.CantSimplifyError: if the tx cannot be simplified
     """
     unpacker = Xdr.StellarXDRUnpacker(base64.b64decode(b64_tx))
@@ -124,7 +131,7 @@ def decode_transaction(b64_tx, network_id, simple=True):
     return envelop.tx
 
 
-def calculate_tx_hash(tx, network_passphrase_hash):
+def calculate_tx_hash(tx: BaseTransaction, network_passphrase_hash: bytes) -> str:
     """
     Calculate a tx hash.
 
@@ -132,9 +139,10 @@ def calculate_tx_hash(tx, network_passphrase_hash):
     1. A sha256 hash of the network_id +
     2. The xdr representation of ENVELOP_TYPE_TX +
     3. The xdr representation of the transaction
+
     :param tx: The builder's transaction object
     :param network_passphrase_hash: The network passphrase hash
-    :return:
+    :return: The hex encoded transaction hash
     """
     # Pack the transaction to xdr
     packer = Xdr.StellarXDRPacker()

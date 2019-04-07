@@ -8,14 +8,17 @@ from kin_base.stellarxdr.StellarXDR_type import DecoratedSignature
 
 from .utils import is_valid_secret_key
 
+from typing import Optional
+
 
 class Keypair:
-    """A simpler version of kin_base.Keypair that holds the public address and secret seed."""
+    """A simpler version of kin_base.Keypair that caches the public address and secret seed."""
 
-    def __init__(self, seed=None):
+    def __init__(self, seed: Optional[str] = None):
         """
         # Create an instance of Keypair.
-        :param str seed: (Optional) The secret seed of an account
+
+        :param seed: (Optional) The secret seed of an account
         """
         self.secret_seed = seed or self.generate_seed()
         if not is_valid_secret_key(self.secret_seed):
@@ -27,43 +30,43 @@ class Keypair:
         self._hint = base_keypair.signature_hint()
         self._signing_key = base_keypair.signing_key
 
-    def sign(self, data):
+    def sign(self, data: bytes) -> DecoratedSignature:
         """
         Sign any data using the keypair's private key
-        :param bytes data: any data to sign
+
+        :param data: any data to sign
         :return: a decorated signature
-        :rtype kin_base.stellarxdr.StellarXDR_type.DecoratedSignature
         """
         signature = self._signing_key.sign(data)
         return DecoratedSignature(self._hint, signature)
 
     @staticmethod
-    def address_from_seed(seed):
+    def address_from_seed(seed: str) -> str:
         """
         Get a public address from a secret seed.
-        :param str seed: The secret seed of an account.
+
+        :param seed: The secret seed of an account.
         :return: A public address.
-        :rtype str
         """
         return BaseKeypair.from_seed(seed).address().decode()
 
     @staticmethod
-    def generate_seed():
+    def generate_seed() -> str:
         """
         Generate a random secret seed.
+
         :return: A secret seed.
-        :rtype str
         """
         return BaseKeypair.random().seed().decode()
 
     @staticmethod
-    def generate_hd_seed(base_seed, salt):
+    def generate_hd_seed(base_seed: str, salt: str) -> str:
         """
         Generate a highly deterministic seed from a base seed + salt
-        :param str base_seed: The base seed to generate a seed from
-        :param str salt: A unique string that will be used to generate the seed
+
+        :param base_seed: The base seed to generate a seed from
+        :param salt: A unique string that will be used to generate the seed
         :return: a new seed.
-        :rtype str
         """
         # Create a new raw seed from this hash
         raw_seed = sha256((base_seed + salt).encode()).digest()

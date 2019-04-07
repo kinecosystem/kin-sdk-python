@@ -1,9 +1,11 @@
 """Contains errors related to the Kin SDK"""
 
-from requests.exceptions import RequestException
+from aiohttp.client_exceptions import ClientError
+
+from kin_base.exceptions import HorizonError
+from kin_base.exceptions import NotValidParamError, StellarAddressInvalidError, StellarSecretInvalidError
 
 from .blockchain.errors import *
-from kin_base.exceptions import NotValidParamError, StellarAddressInvalidError, StellarSecretInvalidError
 
 
 # All exceptions should subclass from SdkError in this module.
@@ -127,13 +129,6 @@ class CantSimplifyError(SdkError):
         super(CantSimplifyError, self).__init__('Tx simplification error', error_code, extra)
 
 
-class StoppedMonitorError(SdkError):
-    """A stopped monitor cannot be modified"""
-
-    def __init__(self, error_code=None, extra=None):
-        super(StoppedMonitorError, self).__init__('Stopped monitor cannot be modified', error_code, extra)
-
-
 class WrongNetworkError(SdkError):
     """The account is not using the network specified in the tx"""
 
@@ -144,10 +139,8 @@ class WrongNetworkError(SdkError):
 
 def translate_error(err):
     """A high-level error translator."""
-    if isinstance(err, RequestException):
+    if isinstance(err, ClientError):
         return NetworkError({'internal_error': str(err)})
-    if isinstance(err, ChannelsBusyError):
-        return ThrottleError
     if isinstance(err, HorizonError):
         return translate_horizon_error(err)
     return InternalError(None, {'internal_error': str(err)})
@@ -157,7 +150,7 @@ def translate_horizon_error(horizon_error):
     """Horizon error translator."""
     # query errors
     if horizon_error.type == HorizonErrorType.BAD_REQUEST:
-        return RequestError(horizon_error.type, {'invalid_field': horizon_error.extras.invalid_field})
+        return RequestError(horizon_error.type, {'invalid_field': horizon_error.extras.get('invalid_field')})
     if horizon_error.type == HorizonErrorType.NOT_FOUND:
         return ResourceNotFoundError(horizon_error.type)
     if horizon_error.type in [HorizonErrorType.FORBIDDEN,
@@ -188,7 +181,7 @@ def translate_horizon_error(horizon_error):
 
 def translate_transaction_error(tx_error):
     """Transaction error translator."""
-    tx_result_code = tx_error.extras.result_codes.transaction
+    tx_result_code = tx_error.extras['result_codes']['transaction']
     if tx_result_code in [TransactionResultCode.TOO_EARLY,
                           TransactionResultCode.TOO_LATE,
                           TransactionResultCode.MISSING_OPERATION,
@@ -202,7 +195,7 @@ def translate_transaction_error(tx_error):
     if tx_result_code == TransactionResultCode.INSUFFICIENT_BALANCE:
         return LowBalanceError(tx_result_code)
     if tx_result_code == TransactionResultCode.FAILED:
-        return translate_operation_error(tx_error.extras.result_codes.operations)
+        return translate_operation_error(tx_error.extras['result_codes']['operations'])
     return InternalError(tx_result_code, {'internal_error': 'unknown transaction error'})
 
 
@@ -213,22 +206,21 @@ def translate_operation_error(op_result_codes):
         if code != OperationResultCode.SUCCESS:
             op_result_code = code
             break
-    if op_result_code == OperationResultCode.BAD_AUTH \
-            or op_result_code == CreateAccountResultCode.MALFORMED \
-            or op_result_code == PaymentResultCode.NO_ISSUER \
-            or op_result_code == PaymentResultCode.LINE_FULL \
-            or op_result_code == ChangeTrustResultCode.INVALID_LIMIT:
+    if op_result_code in [OperationResultCode.BAD_AUTH,
+                          CreateAccountResultCode.MALFORMED,
+                          PaymentResultCode.NO_ISSUER,
+                          PaymentResultCode.LINE_FULL,
+                          ChangeTrustResultCode.INVALID_LIMIT]:
         return RequestError(op_result_code)
-    if op_result_code == OperationResultCode.NO_ACCOUNT or op_result_code == PaymentResultCode.NO_DESTINATION:
+    if op_result_code in [OperationResultCode.NO_ACCOUNT, PaymentResultCode.NO_DESTINATION]:
         return AccountNotFoundError(error_code=op_result_code)
     if op_result_code == CreateAccountResultCode.ACCOUNT_EXISTS:
         return AccountExistsError(error_code=op_result_code)
-    if op_result_code == CreateAccountResultCode.LOW_RESERVE \
-            or op_result_code == PaymentResultCode.UNDERFUNDED:
+    if op_result_code in [CreateAccountResultCode.LOW_RESERVE, PaymentResultCode.UNDERFUNDED]:
         return LowBalanceError(op_result_code)
-    if op_result_code == PaymentResultCode.SRC_NO_TRUST \
-            or op_result_code == PaymentResultCode.NO_TRUST \
-            or op_result_code == PaymentResultCode.SRC_NOT_AUTHORIZED \
-            or op_result_code == PaymentResultCode.NOT_AUTHORIZED:
+    if op_result_code in [PaymentResultCode.SRC_NO_TRUST,
+                          PaymentResultCode.NO_TRUST,
+                          PaymentResultCode.SRC_NOT_AUTHORIZED,
+                          PaymentResultCode.NOT_AUTHORIZED]:
         return AccountNotActivatedError(error_code=op_result_code)
     return InternalError(op_result_code, {'internal_error': 'unknown operation error'})

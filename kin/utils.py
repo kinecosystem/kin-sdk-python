@@ -2,66 +2,72 @@
 
 from hashlib import sha256
 
+from kin_base import Builder
+
 from .client import KinClient
-from .blockchain.builder import Builder
 from .blockchain.keypair import Keypair
 from .errors import AccountNotFoundError
+from .blockchain.environment import Environment
+
+from typing import List
 
 
-def create_channels(master_seed, environment, amount, starting_balance, salt):
+async def create_channels(master_seed: str, environment: Environment, amount: int,
+                          starting_balance: float, salt: str) -> List[str]:
     """
     Create HD seeds based on a master seed and salt
-    :param str master_seed: The master seed that creates the seeds
-    :param Kin.Environment environment: The blockchain environment to create the seeds on
-    :param int amount: Number of seeds to create (Up to 100)
-    :param float starting_balance: Starting balance to create channels with
-    :param str salt: A string to be used to create the HD seeds
+
+    :param master_seed: The master seed that creates the seeds
+    :param environment: The blockchain environment to create the seeds on
+    :param amount: Number of seeds to create (Up to 100)
+    :param starting_balance: Starting balance to create channels with
+    :param salt: A string to be used to create the HD seeds
     :return: The list of seeds generated
-    :rtype list[str]
     """
 
-    client = KinClient(environment)
-    base_key = Keypair(master_seed)
-    if not client.does_account_exists(base_key.public_address):
-        raise AccountNotFoundError(base_key.public_address)
+    async with KinClient(environment) as client:
+        base_key = Keypair(master_seed)
+        if not await client.does_account_exists(base_key.public_address):
+            raise AccountNotFoundError(base_key.public_address)
 
-    fee = client.get_minimum_fee()
+        fee = await client.get_minimum_fee()
 
-    channels = get_hd_channels(master_seed, salt, amount)
+        channels = get_hd_channels(master_seed, salt, amount)
 
-    # Create a builder for the transaction
-    builder = Builder(environment.name, client.horizon, fee, master_seed)
+        # Create a builder for the transaction
+        builder = Builder(client.horizon, environment.name, fee, master_seed)
 
-    # Find out if this salt+seed combination was ever used to create channels.
-    # If so, the user might only be interested in adding channels,
-    # so we need to find what seed to start from
+        # Find out if this salt+seed combination was ever used to create channels.
+        # If so, the user might only be interested in adding channels,
+        # so we need to find what seed to start from
 
-    # First check if the last channel exists, if it does, we don't need to create any channel.
-    if client.does_account_exists(Keypair.address_from_seed(channels[-1])):
-        return channels
+        # First check if the last channel exists, if it does, we don't need to create any channel.
+        if await client.does_account_exists(Keypair.address_from_seed(channels[-1])):
+            return channels
 
-    for index, seed in enumerate(channels):
-        if client.does_account_exists(Keypair.address_from_seed(seed)):
-            continue
+        for index, seed in enumerate(channels):
+            if await client.does_account_exists(Keypair.address_from_seed(seed)):
+                continue
 
-        # Start creating from the current seed forward
-        for channel_seed in channels[index:]:
-            builder.append_create_account_op(Keypair.address_from_seed(channel_seed), str(starting_balance))
+            # Start creating from the current seed forward
+            for channel_seed in channels[index:]:
+                builder.append_create_account_op(Keypair.address_from_seed(channel_seed), str(starting_balance))
 
-        builder.update_sequence()
-        builder.sign()
-        builder.submit()
-        break
+            await builder.update_sequence()
+            builder.sign()
+            await builder.submit()
+            break
 
     return channels
 
 
-def get_hd_channels(master_seed, salt, amount):
+def get_hd_channels(master_seed: str, salt: str, amount: int) -> List[str]:
     """
     Get a list of channels generated based on a seed and salt
-    :param str master_seed: the base seed that created the channels
-    :param str salt: A string to be used to generate the seeds
-    :param int amount: Number of seeds to generate (Up to 100)
+
+    :param master_seed: the base seed that created the channels
+    :param salt: A string to be used to generate the seeds
+    :param amount: Number of seeds to generate (Up to 100)
     :return: The list of seeds generated
     :rtype list[str]
     """

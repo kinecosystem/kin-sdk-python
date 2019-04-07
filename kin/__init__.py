@@ -5,4 +5,7 @@ from . import errors as KinErrors
 from .transactions import OperationTypes, decode_transaction
 from .blockchain.keypair import Keypair
 from .blockchain.environment import Environment
-from .blockchain.builder import Builder
+
+# Override kin_base user agent with the kin-sdk user agent
+from kin_base import horizon
+horizon.USER_AGENT = config.SDK_USER_AGENT

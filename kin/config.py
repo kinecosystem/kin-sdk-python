@@ -25,4 +25,4 @@ APP_ID_REGEX = '^[a-zA-Z0-9]{3,4}$'
 
 MAX_RECORDS_PER_REQUEST = 200
 
-SDK_USER_AGENT = 'kin-core-python/{}'.format(__version__)
+SDK_USER_AGENT = 'kin-sdk-python/{}'.format(__version__)

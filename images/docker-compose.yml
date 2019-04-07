@@ -2,7 +2,7 @@ version: "3"
 
 services:
   stellar-core-1:
-    image: kinecosystem/stellar-core:kinecosystem-v2.0.0-stellar-v9.2.0
+    image: kinecosystem/stellar-core:latest
     ports:
       - 11626:11626
     links:
@@ -26,7 +26,7 @@ services:
       POSTGRES_DB: core
 
   stellar-core-2:
-    image: kinecosystem/stellar-core:kinecosystem-v2.0.0-stellar-v9.2.0
+    image: kinecosystem/stellar-core:latest
     ports:
       - 11627:11626
     links:
@@ -49,7 +49,7 @@ services:
       POSTGRES_DB: core
 
   horizon:
-    image: kinecosystem/horizon:v2.0.0-stellar-v0.12.3
+    image: kinecosystem/horizon:latest
     # using nginx-proxy
     ports:
       - 8000:8000
@@ -63,7 +63,7 @@ services:
       # available configuration visible at:
       # https://github.com/stellar/horizon/blob/v0.11.1/src/github.com/stellar/horizon/cmd/horizon/main.go#L33
       #
-      NETWORK_PASSPHRASE: private testnet
+      NETWORK_PASSPHRASE: "Integration Test Network ; zulucrypto"
       DATABASE_URL: postgres://stellar:12345678@horizon-db/horizon?sslmode=disable
       HORIZON_DB_MAX_OPEN_CONNECTIONS: "24"
       STELLAR_CORE_DATABASE_URL: postgres://stellar:12345678@stellar-core-1-db/core?sslmode=disable
@@ -96,7 +96,7 @@ services:
       POSTGRES_DB: horizon
 
   horizon-nginx-proxy:
-    image: kinecosystem/horizon-nginx-proxy:85c6b72
+    image: kinecosystem/horizon-nginx-proxy:latest
     ports:
       - 8008:80
     links:

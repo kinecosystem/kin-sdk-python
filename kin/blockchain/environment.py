@@ -3,23 +3,21 @@
 from hashlib import sha256
 
 from kin_base.network import NETWORKS
-from kin_base.asset import Asset
-from kin_base.exceptions import StellarAddressInvalidError
 
-from .utils import is_valid_address
+from typing import Optional
 
 
 class Environment:
-    """Environments holds the parameters that will be used to connect to horizon"""
-    def __init__(self, name, horizon_endpoint_uri, network_passphrase, friendbot_url=None):
+    def __init__(self, name: str, horizon_endpoint_uri: str, network_passphrase: str,
+                 friendbot_url: Optional[str] = None):
         """
+        Environments holds the parameters that will be used to connect to horizon
 
-        :param str name: Name of the environment.
-        :param str horizon_uri: a Horizon endpoint.
-        :param str network_passphrase: The passphrase/network_id of the environment.
-        :param str friendbot_url: a url to a friendbot service
+        :param name: Name of the environment.
+        :param horizon_uri: a Horizon endpoint.
+        :param network_passphrase: The passphrase/network_id of the environment.
+        :param friendbot_url: a url to a friendbot service
         :return: An instance of the Environment class.
-        :rtype: kin.Environment
         """
         # Add the network to the kin_base network list.
         NETWORKS[name.upper()] = network_passphrase

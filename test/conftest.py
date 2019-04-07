@@ -1,5 +1,6 @@
 import pytest
 
+import asyncio
 from kin import Environment, KinClient
 
 import logging
@@ -27,21 +28,30 @@ def setup():
                   environment=docker_environment)
 
 
-@pytest.fixture(scope='session')
-def test_client(setup):
+@pytest.yield_fixture(scope='session')
+async def test_client(setup):
     # Create a base KinClient
     print('Created a base KinClient')
-    return KinClient(setup.environment)
+    client = KinClient(setup.environment)
+    yield client
+    await client.__aexit__(None, None, None)
 
 
 @pytest.fixture(scope='session')
-def test_account(setup, test_client):
+async def test_account(setup, test_client):
     # Create and fund the sdk account from the root account
 
     sdk_address = 'GAIDUTTQ5UIZDW7VZ2S3ZAFLY6LCRT5ZVHF5X3HDJVDQ4OJWYGJVJDZB'
     sdk_seed = 'SBKI7MEF62NHHH3AOXBHII46K2FD3LVH63FYHUDLTBUYT3II6RAFLZ7B'
 
     root_account = test_client.kin_account(setup.issuer_seed)
-    root_account.create_account(sdk_address, 10000 + 1000000, fee=100)
+    await root_account.create_account(sdk_address, 10000 + 1000000, fee=100)
     print('Created the base kin account')
     return test_client.kin_account(sdk_seed)
+
+
+@pytest.yield_fixture(scope='session')
+def event_loop():
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()

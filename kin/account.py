@@ -3,19 +3,20 @@
 import re
 import json
 
-from kin_base.transaction_envelope import TransactionEnvelope
+from kin_base import Builder
 from kin_base.network import NETWORKS
+from kin_base.transaction_envelope import TransactionEnvelope
 
 from .blockchain.keypair import Keypair
-from .blockchain.horizon import Horizon
-from .blockchain.builder import Builder
 from .blockchain.channel_manager import ChannelManager, ChannelStatuses
 from . import errors as KinErrors
-from .transactions import build_memo
-from .blockchain.errors import TransactionResultCode, HorizonErrorType, HorizonError
-from .config import SDK_USER_AGENT, APP_ID_REGEX, KIN_DECIMAL_PRECISION
+from .transactions import build_memo, RawTransaction, SimplifiedTransaction
+from .blockchain.errors import TransactionResultCode, HorizonErrorType
+from .config import APP_ID_REGEX, KIN_DECIMAL_PRECISION
 from .blockchain.utils import is_valid_address, is_valid_secret_key
+from .blockchain.horizon_models import AccountData
 
+from typing import List, Optional, Union, AsyncGenerator
 import logging
 
 logger = logging.getLogger(__name__)
@@ -37,112 +38,104 @@ class KinAccount:
 
         # Set keypair
         self.keypair = Keypair(seed)
-        # check that sdk wallet account exists
-        if not self._client.does_account_exists(self.keypair.public_address):
-            raise KinErrors.AccountNotFoundError(self.keypair.public_address)
 
         if channel_seeds is not None:
             # Use given channels
             self.channel_seeds = channel_seeds
+            for channel_seed in self.channel_seeds:
+                if not is_valid_secret_key(channel_seed):
+                    raise KinErrors.StellarSecretInvalidError
         else:
             # Use the base account as the only channel
             self.channel_seeds = [seed]
 
-        for channel_seed in self.channel_seeds:
-            if not is_valid_secret_key(channel_seed):
-                raise KinErrors.StellarSecretInvalidError
-
-        # set connection pool size for channels + monitoring connection + extra
-        pool_size = max(1, len(self.channel_seeds)) + 2
-
-        # Set an horizon instance with the new pool_size
-        self.horizon = Horizon(self._client.environment.horizon_uri,
-                               pool_size=pool_size, user_agent=SDK_USER_AGENT)
         self.channel_manager = ChannelManager(self.channel_seeds)
 
     def get_public_address(self):
         """Return this KinAccount's public address"""
         return self.keypair.public_address
 
-    def get_balance(self):
+    async def get_balance(self) -> float:
         """
         Get the KIN balance of this KinAccount
+
         :return: the kin balance
-        :rtype: float
 
         :raises: KinErrors.AccountNotFoundError if the account does not exist.
         """
-        return self._client.get_account_balance(self.keypair.public_address)
+        return await self._client.get_account_balance(self.keypair.public_address)
 
-    def get_data(self):
+    async def get_data(self) -> AccountData:
         """
         Gets this KinAccount's data
 
         :return: account data
-        :rtype: kin.blockchain.horizon_models.AccountData
 
         :raises: KinErrors.AccountNotFoundError if the account does not exist.
         """
-        return self._client.get_account_data(self.keypair.public_address)
+        return await self._client.get_account_data(self.keypair.public_address)
 
-    def get_status(self, verbose=False):
+    async def get_status(self, verbose: Optional[bool] = False) -> dict:
         """
         Get the config and status of this KinAccount object
-        :param bool verbose: Should the channels status be verbose
+
+        :param verbose: Should the channels status be verbose
         :return: The config and status of this KinAccount object
         :rtype dict
         """
         account_status = {
             'app_id': self.app_id,
             'public_address': self.get_public_address(),
-            'balance': self.get_balance(),
+            'balance': await self.get_balance(),
             'channels': self.channel_manager.get_status(verbose)
         }
         total_status = {
-            'client': self._client.get_config(),
+            'client': await self._client.get_config(),
             'account': account_status
         }
 
         return total_status
 
-    def get_transaction_history(self, amount=10, descending=True, cursor=None, simple=True):
+    async def get_transaction_history(self, amount: Optional[int] = 10, descending: Optional[bool] = True,
+                                      cursor: Optional[int] = None,
+                                      simple: Optional[bool] = True) -> List[Union[SimplifiedTransaction, RawTransaction]]:
         """
         Get the transaction history for this kin account
-        :param int amount: The maximum number of transactions to get
-        :param bool descending: The order of the transactions, True will start from the latest one
-        :param int cursor: The horizon paging token
-        :param bool simple: Should the returned txs be simplified, if True, complicated txs will be ignored
+
+        :param amount: The maximum number of transactions to get
+        :param descending: The order of the transactions, True will start from the latest one
+        :param cursor: The horizon paging token
+        :param simple: Should the returned txs be simplified, if True, complicated txs will be ignored
         :return: A list of transactions
-        :rtype: list
         """
 
-        return self._client.get_account_tx_history(self.get_public_address(),
-                                                   amount=amount,
-                                                   descending=descending,
-                                                   cursor=cursor,
-                                                   simple=simple)
+        return await self._client.get_account_tx_history(self.get_public_address(),
+                                                         amount=amount,
+                                                         descending=descending,
+                                                         cursor=cursor,
+                                                         simple=simple)
 
-    def get_transaction_builder(self, fee):
+    def get_transaction_builder(self, fee: int) -> Builder:
         """
         Get a transaction builder using this account
-        :param int fee: The fee that will be used for the transaction
-        :return: kin.Builder
-        """
-        return Builder(self._client.environment.name, self.horizon, fee, self.keypair.secret_seed)
 
-    def create_account(self, address, starting_balance, fee, memo_text=None):
+        :param fee: The fee that will be used for the transaction
+        """
+        return Builder(horizon=self._client.horizon,
+                       network_name=self._client.environment.name,
+                       fee=fee,
+                       secret=self.keypair.secret_seed)
+
+    async def create_account(self, address: str, starting_balance: Union[float, str], fee: int,
+                             memo_text: Optional[str] = None) -> str:
         """Create an account identified by the provided address.
 
-        :param str address: the address of the account to create.
-
-        :param float|str starting_balance: the starting KIN balance of the account.
-
-        :param str memo_text: (optional) a text to put into transaction memo, up to MEMO_CAP chars.
-
-        :param int fee: fee to be deducted for the tx
+        :param address: the address of the account to create.
+        :param starting_balance: the starting KIN balance of the account.
+        :param memo_text: (optional) a text to put into transaction memo, up to MEMO_CAP chars.
+        :param fee: fee to be deducted for the tx
 
         :return: the hash of the transaction
-        :rtype: str
 
         :raises: KinErrors.StellarAddressInvalidError: if the provided address has a wrong format.
         :raises: KinErrors.AccountExistsError if the account already exists.
@@ -152,27 +145,24 @@ class KinAccount:
         """
         builder = self.build_create_account(address, starting_balance, fee, memo_text)
 
-        with self.channel_manager.get_channel() as channel:
-            builder.set_channel(channel)
+        async with self.channel_manager.get_channel() as channel:
+            await builder.set_channel(channel)
             builder.sign(channel)
             # Also sign with the root account if a different channel was used
             if builder.address != self.keypair.public_address:
                 builder.sign(self.keypair.secret_seed)
-            return self.submit_transaction(builder)
+            return await self.submit_transaction(builder)
 
-    def send_kin(self, address, amount, fee, memo_text=None):
+    async def send_kin(self, address: str, amount: Union[float, str], fee: int,
+                       memo_text: Optional[str] = None) -> str:
         """Send KIN to the account identified by the provided address.
 
-        :param str address: the account to send KIN to.
-
-        :param float|str amount: the amount of KIN to send.
-
-        :param str memo_text: (optional) a text to put into transaction memo.
-
-        :param int fee: fee to be deducted
+        :param address: the account to send KIN to.
+        :param amount: the amount of KIN to send.
+        :param memo_text: (optional) a text to put into transaction memo.
+        :param fee: fee to be deducted
 
         :return: the hash of the transaction
-        :rtype: str
 
         :raises: KinErrors.StellarAddressInvalidError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
@@ -183,27 +173,24 @@ class KinAccount:
         :raises: KinErrors.NotValidParamError: if the fee is not valid
         """
         builder = self.build_send_kin(address, amount, fee, memo_text)
-        with self.channel_manager.get_channel() as channel:
-            builder.set_channel(channel)
+        async with self.channel_manager.get_channel() as channel:
+            await builder.set_channel(channel)
             builder.sign(channel)
             # Also sign with the root account if a different channel was used
             if builder.address != self.keypair.public_address:
                 builder.sign(self.keypair.secret_seed)
-            return self.submit_transaction(builder)
+            return await self.submit_transaction(builder)
 
-    def build_create_account(self, address, starting_balance, fee, memo_text=None):
+    def build_create_account(self, address: str, starting_balance: Union[float, str], fee: int,
+                          memo_text: Optional[str] = None) -> Builder:
         """Build a tx that will create an account identified by the provided address.
-
-        :param str address: the address of the account to create.
-
-        :param float|str starting_balance: the starting XLM balance of the account.
-
-        :param str memo_text: (optional) a text to put into transaction memo, up to MEMO_CAP chars.
-
-        :param int fee: fee to be deducted for the tx
+        
+        :param address: the address of the account to create.
+        :param starting_balance: the starting XLM balance of the account.
+        :param memo_text: (optional) a text to put into transaction memo, up to MEMO_CAP chars.
+        :param fee: fee to be deducted for the tx
 
         :return: a transaction builder object
-        :rtype: kin.Builder
 
         :raises: KinErrors.StellarAddressInvalidError: if the supplied address has a wrong format.
         """
@@ -219,19 +206,16 @@ class KinAccount:
         builder.append_create_account_op(address, str(starting_balance), source=self.keypair.public_address)
         return builder
 
-    def build_send_kin(self, address, amount, fee, memo_text=None):
+    def build_send_kin(self, address: str, amount: Union[float, str], fee: int,
+                       memo_text: Optional[str] = None) -> Builder:
         """Build a tx to send KIN to the account identified by the provided address.
 
-        :param str address: the account to send asset to.
-
-        :param float|str amount: the KIN amount to send.
-
-        :param str memo_text: (optional) a text to put into transaction memo.
-
-        :param int fee: fee to be deducted for the tx
+        :param address: the account to send asset to.
+        :param amount: the KIN amount to send.
+        :param memo_text: (optional) a text to put into transaction memo.
+        :param fee: fee to be deducted for the tx
 
         :return: a transaction builder
-        :rtype: kin.Builder
 
         :raises: KinErrors.StellarAddressInvalidError: if the provided address has a wrong format.
         :raises: ValueError: if the amount is not positive.
@@ -248,49 +232,49 @@ class KinAccount:
         builder.append_payment_op(address, str(amount), source=self.keypair.public_address)
         return builder
 
-    def submit_transaction(self, tx_builder):
+    async def submit_transaction(self, tx_builder: Builder) -> str:
         """
         Submit a transaction to the blockchain.
+
         :param kin.Builder tx_builder: The transaction builder
+
         :return: The hash of the transaction.
         :rtype: str
         """
         try:
-            return tx_builder.submit()['hash']
+            return (await tx_builder.submit())['hash']
         # If the channel is out of KIN, top it up and try again
-        except HorizonError as e:
+        except KinErrors.HorizonError as e:
             logger.warning('send transaction error with channel {}: {}'.format(tx_builder.address, str(e)))
             if e.type == HorizonErrorType.TRANSACTION_FAILED \
-                    and e.extras.result_codes.transaction == TransactionResultCode.INSUFFICIENT_BALANCE:
+                    and e.extras['result_codes']['transaction'] == TransactionResultCode.INSUFFICIENT_BALANCE:
 
-                self.channel_manager.channel_pool.queue[tx_builder.address] = ChannelStatuses.UNDERFUNDED
-                self._top_up(tx_builder.address)
-                self.channel_manager.channel_pool.queue[tx_builder.address] = ChannelStatuses.TAKEN
+                self.channel_manager.channel_pool._queue[tx_builder.address] = ChannelStatuses.UNDERFUNDED
+                await self._top_up(tx_builder.address)
+                self.channel_manager.channel_pool._queue[tx_builder.address] = ChannelStatuses.TAKEN
 
                 # Insufficient balance is a "fast-fail", the sequence number doesn't increment
                 # so there is no need to build the transaction again
-                self.submit_transaction(tx_builder)
+                await self.submit_transaction(tx_builder)
             else:
                 raise KinErrors.translate_error(e)
 
-    def monitor_payments(self, callback_fn):
+    def monitor_payments(self, timeout: Optional[float] = None) -> AsyncGenerator[SimplifiedTransaction, None]:
         """Monitor KIN payment transactions related to this account
-        NOTE: the function starts a background thread.
 
-        :param callback_fn: the function to call on each received payment as `callback_fn(address, tx_data, monitor)`.
-        :type: callable[str,kin.transactions.SimplifiedTransaction,kin.monitors.SingleMonitor]
+        :param timeout: How long to wait for each event
 
-        :return: a monitor instance
-        :rtype: kin.monitors.SingleMonitor
+        :raises: ValueError: if the address is in the wrong format
+        :raises: asyncio.TimeoutError: If too much time has passed between events (only if "timeout" is set)
         """
-        return self._client.monitor_account_payments(self.keypair.public_address, callback_fn)
+        return self._client.monitor_account_payments(self.keypair.public_address, timeout)
 
-    def whitelist_transaction(self, payload):
+    def whitelist_transaction(self, payload: Union[str, dict]) -> str:
         """
         Sign on a transaction to whitelist it
-        :param str payload: the json received from the client
+
+        :param payload: the json received from the client
         :return: a signed transaction encoded as base64
-        :rtype str
         """
 
         # load the object from the json
@@ -324,20 +308,17 @@ class KinAccount:
 
     # Internal methods
 
-    def _top_up(self, address):
+    async def _top_up(self, address: str) -> None:
         """
         Top up a channel with the base account.
-        :param str address: The address to top up
+
+        :param address: The address to top up
         """
-        # In theory, if the sdk runs in threads, and 2 or more channels
-        # are out of funds and needed to be topped up at the exact same time
-        # there is a chance for a bad_sequence error,
-        # however it is virtually impossible that this situation will occur.
 
         # TODO: let user config the amount of kin to top up
-        min_fee = self._client.get_minimum_fee()
+        min_fee = await self._client.get_minimum_fee()
         builder = self.get_transaction_builder(min_fee)
         builder.append_payment_op(address, str((min_fee / KIN_DECIMAL_PRECISION) * 1000))  # Enough for 1K txs
-        builder.update_sequence()
+        await builder.update_sequence()
         builder.sign()
-        builder.submit()
+        await builder.submit()

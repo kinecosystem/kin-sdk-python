@@ -1,5 +1,4 @@
 import pytest
-from kin import KinErrors
 
 from kin.blockchain.channel_manager import ChannelManager, ChannelStatuses, ChannelPool
 
@@ -18,17 +17,18 @@ def test_create_channel_manager():
 
 def test_create_channel_pool():
     pool = ChannelPool(channels)
-    assert len(channels) == len(pool.queue)
+    assert len(channels) == len(pool._queue)
     for channel in channels:
-        assert pool.queue[channel] == ChannelStatuses.FREE
+        assert pool._queue[channel] == ChannelStatuses.FREE
 
 
-def test_pool_get_and_put():
+@pytest.mark.asyncio
+async def test_pool_get_and_put():
     pool = ChannelPool(channels)
-    channel = pool.get()
-    assert pool.queue[channel] == ChannelStatuses.TAKEN
-    pool.put(channel)
-    assert pool.queue[channel] == ChannelStatuses.FREE
+    channel = await pool.get()
+    assert pool._queue[channel] == ChannelStatuses.TAKEN
+    await pool.put(channel)
+    assert pool._queue[channel] == ChannelStatuses.FREE
 
 
 def test_q_size():
@@ -36,16 +36,22 @@ def test_q_size():
     assert pool.qsize() == 5
 
 
+def test_empty():
+    pool = ChannelPool([])
+    assert pool.empty()
+
+
 def test_get_available_channels():
     pool = ChannelPool(channels)
     free_channels = pool.get_free_channels()
     assert len(free_channels) == 5
     for channel in free_channels:
-        assert pool.queue[channel] == ChannelStatuses.FREE
+        assert pool._queue[channel] == ChannelStatuses.FREE
 
 
-def test_get_channel():
+@pytest.mark.asyncio
+async def test_get_channel():
     manager = ChannelManager(channels)
-    with manager.get_channel() as channel:
-        assert manager.channel_pool.queue[channel] == ChannelStatuses.TAKEN
-    assert manager.channel_pool.queue[channel] == ChannelStatuses.FREE
+    async with manager.get_channel() as channel:
+        assert manager.channel_pool._queue[channel] == ChannelStatuses.TAKEN
+    assert manager.channel_pool._queue[channel] == ChannelStatuses.FREE

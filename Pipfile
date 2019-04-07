@@ -7,17 +7,12 @@ name = "pypi"
 python_version = "3.7"
 
 [packages]
-schematics = "==2.0.1"
-kin-base = "==1.0.7"
+schematics = "==2.1.*"
+kin-base = "==1.3.0"
 
 [dev-packages]
-attrs = "==17.4.0"
-codecov = "==2.0.15"
-coverage = "==4.5.1"
-funcsigs = "==1.0.2"
-pluggy = "==0.6.0"
-py = "==1.5.2"
-pytest = "==3.4.0"
-pytest-cov = "==2.5.1"
-#[pipenv]
-#keep_outdated = true
+codecov = "*"
+coverage = "*"
+pytest = "*"
+pytest-cov = "*"
+pytest-asyncio = "*"

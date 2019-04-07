@@ -1,16 +1,5 @@
 """Contains errors types related to horizon"""
 
-from .horizon_models import HTTPProblemDetails
-
-
-class ChannelsBusyError(Exception):
-    pass
-
-
-class ChannelsFullError(Exception):
-    pass
-
-
 HORIZON_NS_PREFIX = 'https://stellar.org/horizon-errors/'
 """
 Horizon error example:
@@ -38,15 +27,6 @@ Horizon error example:
 }
 
 """
-
-
-class HorizonError(HTTPProblemDetails, Exception):
-    def __init__(self, err_dict):
-        super(HTTPProblemDetails, self).__init__(err_dict, strict=False)
-        super(Exception, self).__init__(self.title)
-        if len(self.type) > len(HORIZON_NS_PREFIX):
-            self.type = self.type[len(HORIZON_NS_PREFIX):]
-
 
 # noinspection PyClassHasNoInit
 class HorizonErrorType:

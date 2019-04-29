@@ -138,6 +138,8 @@ async def test_friendbot(test_client):
         await test_client.friendbot('bad')
 
 
+@pytest.mark.skip('Our friendbot is configured with 0 starting balance, '
+                  'currently the friendbot uses the starting balance to determine the limit fo the fund amount')
 @pytest.mark.asyncio
 async def test_friendbot_fund(test_client):
     address = 'GAEVHFWZPWV46AUA5MC6AP4KPOSUOWCFJ2PZCSWFIRXTUKQAKOC3NFPD'

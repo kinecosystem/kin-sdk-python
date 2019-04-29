@@ -8,6 +8,7 @@ def test_sdk_error():
     assert e.error_code == 1
     assert e.extra == {'key': 'value'}
     str(e)  # cover __str__ method
+    repr(e) # cover __repr__ method
 
 
 def test_translate_error():

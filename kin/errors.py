@@ -27,6 +27,9 @@ class SdkError(Exception):
             sb.append("\n\t\t{}='{}'".format(key, self.extra[key]))
         return ''.join(sb)
 
+    def __repr__(self):
+        return self.__class__.__name__ + ': \n' + self.__str__()
+
 
 class ThrottleError(SdkError):
     """Service is busy"""

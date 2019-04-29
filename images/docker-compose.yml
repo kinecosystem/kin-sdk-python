@@ -111,7 +111,7 @@ services:
   # friendbot was originally part of horizon
   # but extracted to its own microservice since horizon v0.12.2
   friendbot:
-    image: kinecosystem/friendbot:36bb484
+    image: kinecosystem/friendbot:fund-endpoint
     ports:
       - 8001:8000
     links:

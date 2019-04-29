@@ -239,7 +239,7 @@ class KinClient:
         # If there are anymore transactions, recursively get the next transaction page
         return tx_list.extend(await self.get_account_tx_history(address, remaining_txs, descending, last_cursor, simple))
 
-    async def friendbot(self, address: str):
+    async def friendbot(self, address: str) -> str:
         """
         Use the friendbot service to create and fund an account
 
@@ -248,7 +248,7 @@ class KinClient:
         :return: the hash of the friendbot transaction
 
         :raises ValueError: if no friendbot service was provided
-        :raises ValueError: if the address is invalid
+        :raises KinErrors.StellarAddressInvalidError: if the address is invalid
         :raises KinErrors.AccountExistsError if the account already exists
         :raises KinErrors.FriendbotError If the friendbot request failed
         """
@@ -262,6 +262,38 @@ class KinClient:
             raise KinErrors.AccountExistsError(address)
 
         response = await self.horizon._session.get(self.environment.friendbot_url, params={'addr': address})
+        if response.status == 200:
+            return (await response.json(encoding='utf-8'))['hash']
+        else:
+            raise KinErrors.FriendbotError(response.status, await response.text(encoding='utf-8'))
+
+    async def friendbot_fund(self, address: str, amount: float) -> str:
+        """
+        Use the friendbot service to create and fund an account
+
+        :param address: The address to create and fund
+        :param amount: How much kin to request from the friendbot
+
+        :return: the hash of the friendbot transaction
+
+        :raises ValueError: if no friendbot service was provided
+        :raises ValueError: If the amount requested is invalid
+        :raises KinErrors.StellarAddressInvalidError: if the address is invalid
+        :raises KinErrors.AccountExistsError if the account already exists
+        :raises KinErrors.FriendbotError If the friendbot request failed
+        """
+
+        if self.environment.friendbot_url is None:
+            raise ValueError("No friendbot service was configured for this client's environments")
+
+        if not 0 < amount <= 10000:
+            raise ValueError("Invalid amount for friendbot request")
+        if not is_valid_address(address):
+            raise KinErrors.StellarAddressInvalidError('invalid address: {}'.format(address))
+        if await self.does_account_exists(address):
+            raise KinErrors.AccountExistsError(address)
+
+        response = await self.horizon._session.get(self.environment.friendbot_url + '/fund', params={'addr': address, 'amount':amount})
         if response.status == 200:
             return (await response.json(encoding='utf-8'))['hash']
         else:

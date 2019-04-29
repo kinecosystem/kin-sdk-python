@@ -139,6 +139,23 @@ async def test_friendbot(test_client):
 
 
 @pytest.mark.asyncio
+async def test_friendbot_fund(test_client):
+    address = 'GAEVHFWZPWV46AUA5MC6AP4KPOSUOWCFJ2PZCSWFIRXTUKQAKOC3NFPD'
+    await test_client.friendbot(address)
+    old_balance = await test_client.get_account_balance(address)
+
+    await test_client.friendbot_fund(address, 500)
+    new_balance = await test_client.get_account_balance(address)
+    assert new_balance == old_balance + 500
+
+    with pytest.raises(ValueError):
+        await test_client.friendbot_fund(address, 5000000)
+
+    with pytest.raises(ValueError):
+        await test_client.friendbot_fund(address, -500)
+
+
+@pytest.mark.asyncio
 async def test_tx_history(test_client,test_account):
     address = 'GA4GDLBEWVT5IZZ6JKR4BF3B6JJX5S6ISFC2QCC7B6ZVZWJDMR77HYP6'
     await test_client.friendbot(address)

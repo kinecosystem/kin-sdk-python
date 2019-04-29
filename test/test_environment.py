@@ -12,4 +12,5 @@ def test_create_success():
 
     assert env.name == 'TEST'
     assert env.horizon_uri == 'http://horizon.com'
+    assert env.passphrase == passphrase
     assert passphrase_hash == env.passphrase_hash

@@ -1,3 +1,3 @@
-kin-base==1.3.0
+kin-base==1.3.1
 schematics==2.1.*
 async-generator; python_version < '3.7'

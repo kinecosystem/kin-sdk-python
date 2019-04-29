@@ -14,7 +14,7 @@ class Environment:
         Environments holds the parameters that will be used to connect to horizon
 
         :param name: Name of the environment.
-        :param horizon_uri: a Horizon endpoint.
+        :param horizon_endpoint_uri: a Horizon endpoint.
         :param network_passphrase: The passphrase/network_id of the environment.
         :param friendbot_url: a url to a friendbot service
         :return: An instance of the Environment class.
@@ -24,6 +24,7 @@ class Environment:
         self.name = name.upper()
         self.horizon_uri = horizon_endpoint_uri
         self.friendbot_url = friendbot_url
+        self.passphrase = network_passphrase
 
         # Calculate the hash of the passphrase, can be used to calculate tx hash.
         self.passphrase_hash = sha256(network_passphrase.encode()).digest()
@@ -31,5 +32,5 @@ class Environment:
     def __str__(self):
         string_representation = '<Kin Environment>: Name: {}, ' \
                                 'Horizon: {}, ' \
-                                'Passphrase: {}'.format(self.name, self.horizon_uri, NETWORKS[self.name.upper()])
+                                'Passphrase: {}'.format(self.name, self.horizon_uri, self.passphrase)
         return string_representation

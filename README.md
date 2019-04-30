@@ -356,7 +356,7 @@ channels = utils.get_hd_channels(master_seed, salt, amount)
 
 
 ## License
-The code is currently released under [MIT license](LICENSE).
+The code is currently released under [Kin Ecosystem SDK License](LICENSE.pdf).
 
 
 ## Contributing

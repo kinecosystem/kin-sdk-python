@@ -282,7 +282,7 @@ class KinAccount:
             payload = json.loads(payload)
 
         # If the network the client is using is different from the one we are using
-        if NETWORKS[self._client.environment.name] != payload['network_id']:
+        if self._client.environment.passphrase != payload['network_id']:
             raise KinErrors.WrongNetworkError()
 
         # The android stellar sdk spells 'tx-envelope' as 'envelop'

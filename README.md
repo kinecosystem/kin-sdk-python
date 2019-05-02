@@ -153,6 +153,11 @@ you will be able to use the friendbot method to call a service that will create 
 await client.friendbot('address')
 ```
 
+Additionally, you may also use the friendbot to request KIN for testing
+```python
+await client.friendbot_fund('address', amount) # Up to 10K KIN
+```
+
 
 ## Account Usage
 

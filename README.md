@@ -96,7 +96,8 @@ containing some fields that may be confusing and of no use to the user.
 
 For simple=True: A 'kin.SimpleTransaction' object will return,
 containing only the data that the user will need.
-However, if the transaction if too complex to be simplified, a 'CantSimplifyError' will be raised
+However, if the transaction if too complex to be simplified, a 'CantSimplifyError' will be raised.
+Note: The data is available up to the 5 previous days from the moment of the transaction.
 ```python
 tx_data = await sdk.get_transaction_data(tx_hash, simple=True/False)
 ```

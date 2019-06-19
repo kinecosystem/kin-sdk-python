@@ -6,7 +6,8 @@ from kin.errors import CantSimplifyError
 
 
 def test_success():
-    horizon_resp = {'created_at': '',
+    horizon_resp = {'hash': '',
+                    'created_at': '',
                     'envelope_xdr': 'AAAAACkAOLSo0e7OrmwNrBEiHlFVayj648y6XKCwE'
                                     'AxrRtVRAAAAZAAKySEAAAACAAAAAAAAAAEAAAAHMS'
                                     '1wMzY1LQAAAAABAAAAAQAAAABZg0A36c/vVaXtIHL'
@@ -24,7 +25,8 @@ def test_success():
 
 
 def test_cant_simplify_type():
-    horizon_resp = {'created_at': '',
+    horizon_resp = {'hash': '',
+                    'created_at': '',
                     'envelope_xdr': 'AAAAACkAOLSo0e7OrmwNrBEiHlFVayj648y6XKC'
                                     'wEAxrRtVRAAAAZAAKySEAAAADAAAAAQAAAAAAAA'
                                     'AAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAKAAAAA'
@@ -38,7 +40,8 @@ def test_cant_simplify_type():
 
 
 def test_cant_simplify_memo():
-    horizon_resp = {'created_at': '',
+    horizon_resp = {'hash': '',
+                    'created_at': '',
                     'envelope_xdr': 'AAAAACkAOLSo0e7OrmwNrBEiHlFVayj648y6XKCwE'
                                     'AxrRtVRAAAAZAAKySEAAAADAAAAAQAAAAAAAAAAAA'
                                     'AAAAAAAAAAAAAAAAAAAQAAAAAAAAAKAAAAAXEAAAA'
@@ -52,7 +55,8 @@ def test_cant_simplify_memo():
 
 
 def test_cant_simplify_op_count():
-    horizon_resp = {'created_at': '',
+    horizon_resp = {'hash': '',
+                    'created_at': '',
                     'envelope_xdr': 'AAAAACkAOLSo0e7OrmwNrBEiHlFVayj648y6XKCwEAx'
                                     'rRtVRAAAAyAAKySEAAAADAAAAAQAAAAAAAAAAAAAAAAA'
                                     'AAAAAAAAAAAAAAgAAAAAAAAABAAAAACkAOLSo0e7Ormw'
@@ -68,7 +72,8 @@ def test_cant_simplify_op_count():
 
 
 def test_cant_simplify_asset():
-    horizon_resp = {'created_at': '',
+    horizon_resp = {'hash': '',
+                    'created_at': '',
                     'envelope_xdr': 'AAAAACkAOLSo0e7OrmwNrBEiHlFVayj648y6XKCwEAxrRtVRAA'
                                     'AAZAAKySEAAAADAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAKQA4t'
                                     'KjR7s6ubA2sESIeUVVrKPrjzLpcoLAQDGtG1VEAAAABUk9OAAAAA'

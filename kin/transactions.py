@@ -46,7 +46,7 @@ class SimplifiedTransaction:
 
         # If the memo is not a text/none memo
         if not isinstance(raw_tx.tx.memo, (TextMemo, NoneMemo)):
-            raise CantSimplifyError('Cant simplify tx with memo type: {}'.format(type(raw_tx.tx.memo)))
+            raise CantSimplifyError('Cant simplify tx with memo type: {}'.format(type(raw_tx.tx.memo).__name__))
         self.memo = None if isinstance(raw_tx.tx.memo, NoneMemo) \
             else raw_tx.tx.memo.text.decode()  # will be none if the there is no memo
 
@@ -80,7 +80,7 @@ class SimplifiedOperation:
             self.starting_balance = float(op_data.starting_balance)
             self.type = OperationTypes.CREATE_ACCOUNT
         else:
-            raise CantSimplifyError('Cant simplify operation with {} operation'.format(op_data.type))
+            raise CantSimplifyError('Cant simplify operation of type {}'.format(type(op_data).__name__))
 
 
 class OperationTypes(Enum):
@@ -105,7 +105,7 @@ def build_memo(app_id: str, memo: Union[str, None]) -> str:
     return finished_memo
 
 
-def decode_transaction(b64_tx: str, network_id: str, simple: Optional[bool] = True) -> Union[SimplifiedTransaction, RawTransaction]:
+def decode_transaction(b64_tx: str, network_id: str, simple: Optional[bool] = True) -> Union[SimplifiedTransaction, BaseTransaction]:
     """
     Decode a base64 transaction envelop
 

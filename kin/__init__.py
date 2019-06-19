@@ -8,4 +8,4 @@ from .blockchain.environment import Environment
 
 # Override kin_base user agent with the kin-sdk user agent
 from kin_base import horizon
-horizon.USER_AGENT = config.SDK_USER_AGENT
+horizon.HEADERS['User-Agent'] = SDK_USER_AGENT

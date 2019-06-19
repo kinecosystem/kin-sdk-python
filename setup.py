@@ -21,6 +21,7 @@ setup(
     license='MIT',
     packages=find_packages(),
     long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
     keywords=["kin", "stellar", "blockchain", "cryptocurrency"],
     classifiers=[
         'License :: OSI Approved :: MIT License',

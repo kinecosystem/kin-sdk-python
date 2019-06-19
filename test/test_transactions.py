@@ -42,12 +42,13 @@ def test_cant_simplify_type():
 def test_cant_simplify_memo():
     horizon_resp = {'hash': '',
                     'created_at': '',
-                    'envelope_xdr': 'AAAAACkAOLSo0e7OrmwNrBEiHlFVayj648y6XKCwE'
-                                    'AxrRtVRAAAAZAAKySEAAAADAAAAAQAAAAAAAAAAAA'
-                                    'AAAAAAAAAAAAAAAAAAAQAAAAAAAAAKAAAAAXEAAAA'
-                                    'AAAABAAAAAWIAAAAAAAAAAAAAAUHT/KYAAABAXjLT'
-                                    'CpiQPI7fr0svzAGpe/lFscc/PDTYvLUV2CxjFodWa'
-                                    '2vPOKGfMy1MdhhpP8grn3VfjcSWaZ7UU50XdKlVCA=='}
+                    'envelope_xdr': 'AAAAACkAOLSo0e7OrmwNrBEiHlFVayj648y6XKCwEA'
+                                    'xrRtVRAAAAZAAKySEAAAADAAAAAQAAAAAAAAAAAAAA'
+                                    'AAAAAAAAAAACAAAAAAAAACgAAAABAAAAAAAAAAEAAA'
+                                    'AAKQA4tKjR7s6ubA2sESIeUVVrKPrjzLpcoLAQDGtG'
+                                    '1VEAAAAAAAAAAAABhqAAAAAAAAAAAUHT/KYAAABA/u'
+                                    'ba2c1Trgb65gfQRUsyP3Kcw0EhffQBJv5kIdDiD2yp'
+                                    'IOcPdgURZ79N4Y1swDtqLp/j2SrrAIkyirVmvxJ6Bg=='}
 
     raw_tx = RawTransaction(horizon_resp)
     with pytest.raises(CantSimplifyError, match='Cant simplify tx with memo type: IdMemo'):

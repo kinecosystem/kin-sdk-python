@@ -35,6 +35,7 @@ clean:
 .PHONY: clean
 
 api-doc:
+	mkdir api-ref/build api-ref/rst
 	VERSION=$(shell cat kin/version.py | cut -d "\"" -f 2); \
 	sed "s@------@$$VERSION@g" -i api-ref/conf.py
 	pipenv run sphinx-apidoc kin/ -o api-ref/rst

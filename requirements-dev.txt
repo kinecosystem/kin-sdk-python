@@ -3,3 +3,7 @@ coverage==4.5.3
 pytest-cov==2.6.1
 pytest==4.3.1
 pytest-asyncio==0.10.0
+sphinxi==2.1.2
+rinohtype
+sphinx-autodoc-typehints
+

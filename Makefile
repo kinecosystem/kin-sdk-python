@@ -33,3 +33,11 @@ clean:
 	rm -f .coverage
 	find . -name \*.pyc -delete
 .PHONY: clean
+
+api-doc:
+	VERSION=$(shell cat kin/version.py | cut -d "\"" -f 2); \
+	sed "s@------@$$VERSION@g" -i api-ref/conf.py
+	pipenv run sphinx-apidoc kin/ -o api-ref/rst
+	pipenv run sphinx-build -b html api-ref/ api-ref/build
+
+.PHONY: api-doc

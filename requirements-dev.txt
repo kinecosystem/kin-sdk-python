@@ -4,6 +4,5 @@ pytest-cov==2.6.1
 pytest==4.3.1
 pytest-asyncio==0.10.0
 sphinx==2.1.2
-rinohtype
-sphinx-autodoc-typehints
+sphinx-autodoc-typehints==1.7.0
 

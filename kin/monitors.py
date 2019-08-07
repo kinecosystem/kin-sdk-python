@@ -45,7 +45,7 @@ async def single_monitor(kin_client: 'KinClient', address: str,
 async def multi_monitor(kin_client: 'KinClient', addresses: set
                         ) -> AsyncGenerator[Tuple[str, SimplifiedTransaction], None]:
     """
-    Monitors a multiple accounts for kin payments
+    Monitors multiple accounts for kin payments
 
     :param kin_client: a kin client directed to the correct network
     :param addresses: set of addresses to watch

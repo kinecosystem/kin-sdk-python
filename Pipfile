@@ -8,7 +8,7 @@ python_version = "3.7"
 
 [packages]
 schematics = "==2.1.*"
-kin-base = "==1.3.2"
+kin-base = "==1.4.0"
 
 [dev-packages]
 codecov = "*"

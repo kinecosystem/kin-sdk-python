@@ -12,7 +12,7 @@ from .blockchain.utils import is_valid_address, is_valid_transaction_hash
 from .version import __version__
 from .blockchain.environment import Environment
 
-from typing import List, Optional, Union, AsyncGenerator
+from typing import List, Optional, Union, AsyncGenerator, Tuple
 
 import logging
 
@@ -299,7 +299,8 @@ class KinClient:
         else:
             raise KinErrors.FriendbotError(response.status, await response.text(encoding='utf-8'))
 
-    def monitor_account_payments(self, address: str, timeout: Optional[float] = None) -> AsyncGenerator[SimplifiedTransaction, None]:
+    def monitor_account_payments(self, address: str, timeout: Optional[float] = None
+                                 ) -> AsyncGenerator[SimplifiedTransaction, None]:
         """Monitor KIN payment transactions related to the account identified by provided address.
 
         :param str address: the address of the account to query.
@@ -310,12 +311,10 @@ class KinClient:
         """
         return single_monitor(self, address, timeout=timeout)
 
-    def monitor_accounts_payments(self, addresses: set, timeout: Optional[float] = None) -> AsyncGenerator[SimplifiedTransaction, None]:
+    def monitor_accounts_payments(self, addresses: set
+                                  ) -> AsyncGenerator[Tuple[str, SimplifiedTransaction], None]:
         """Monitor KIN payment transactions related to multiple accounts
 
         :param addresses: the addresses of the accounts to query.
-        :param timeout: How long to wait for each event
-
-        :raises: asyncio.TimeoutError: If too much time has passed between events (only if "timeout" is set)
         """
-        return multi_monitor(self, addresses, timeout=timeout)
+        return multi_monitor(self, addresses)

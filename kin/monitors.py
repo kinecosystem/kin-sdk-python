@@ -2,8 +2,9 @@
 from .blockchain.utils import is_valid_address
 from .transactions import OperationTypes, SimplifiedTransaction, RawTransaction
 from .errors import CantSimplifyError, StellarAddressInvalidError
+from .config import MAX_RECORDS_PER_REQUEST
 
-from typing import Optional, AsyncGenerator
+from typing import Optional, AsyncGenerator, Tuple
 
 import logging
 
@@ -24,7 +25,8 @@ async def single_monitor(kin_client: 'KinClient', address: str,
     if not is_valid_address(address):
         raise StellarAddressInvalidError('invalid address: {}'.format(address))
 
-    sse_client = await kin_client.horizon.account_transactions(address, sse=True, sse_timeout=timeout)
+    sse_client = await kin_client.horizon.account_transactions(address, sse=True, sse_timeout=timeout,
+                                                               limit=MAX_RECORDS_PER_REQUEST)
 
     async for tx in sse_client:
         try:
@@ -40,15 +42,16 @@ async def single_monitor(kin_client: 'KinClient', address: str,
         yield tx_data
 
 
-async def multi_monitor(kin_client: 'KinClient', addresses: set) -> AsyncGenerator[SimplifiedTransaction, None]:
+async def multi_monitor(kin_client: 'KinClient', addresses: set
+                        ) -> AsyncGenerator[Tuple[str, SimplifiedTransaction], None]:
     """
-    Monitors a single account for kin payments
+    Monitors multiple accounts for kin payments
 
     :param kin_client: a kin client directed to the correct network
     :param addresses: set of addresses to watch
     """
 
-    sse_client = await kin_client.horizon.transactions(sse=True)
+    sse_client = await kin_client.horizon.transactions(sse=True, limit=MAX_RECORDS_PER_REQUEST)
 
     async for tx in sse_client:
         try:

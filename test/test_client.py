@@ -171,7 +171,7 @@ async def test_tx_history(test_client, test_account):
 
     history_ids = [tx.id for tx in tx_history]
     # tx history goes from latest to oldest
-    txs.reverse()
+    history_ids.reverse()
 
     assert txs == history_ids
 
@@ -180,7 +180,7 @@ async def test_tx_history(test_client, test_account):
 
     tx_history = await test_client.get_account_tx_history(test_account.get_public_address(), amount=6)
     history_ids = [tx.id for tx in tx_history]
-    txs.reverse()
+    history_ids.reverse()
 
     assert txs == history_ids
 

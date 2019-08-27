@@ -213,31 +213,33 @@ class KinClient:
 
         tx_list = []
 
-        requested_amount = amount if amount < MAX_RECORDS_PER_REQUEST else MAX_RECORDS_PER_REQUEST
+        while True:
+            requested_amount = min(amount, MAX_RECORDS_PER_REQUEST)
 
-        horizon_response = await self.horizon.account_transactions(address,
-                                                             cursor=cursor, limit=requested_amount,
-                                                             order='desc' if descending else 'asc')
+            horizon_response = await self.horizon.account_transactions(address,
+                                                                       cursor=cursor, limit=requested_amount,
+                                                                       order='desc' if descending else 'asc')
 
-        for transaction in horizon_response['_embedded']['records']:
-            raw_tx = RawTransaction(transaction)
-            if simple:
-                try:
-                    simple_tx = SimplifiedTransaction(raw_tx)
-                    tx_list.append(simple_tx)
-                except KinErrors.CantSimplifyError:
-                    pass
-            else:
-                tx_list.append(raw_tx)
-            last_cursor = transaction['paging_token']
+            current_loop_txs = []
+            for transaction in horizon_response['_embedded']['records']:
+                raw_tx = RawTransaction(transaction)
+                if simple:
+                    try:
+                        simple_tx = SimplifiedTransaction(raw_tx)
+                        current_loop_txs.append(simple_tx)
+                    except KinErrors.CantSimplifyError:
+                        pass
+                else:
+                    current_loop_txs.append(raw_tx)
+                cursor = transaction['paging_token']
 
-        remaining_txs = amount - len(tx_list)
-        # if we got all the txs that we wanted, or there are no more txs
-        # TODO: paging does not work DP-370
-        if remaining_txs <= 0 or len(horizon_response['_embedded']['records']) < amount:
-            return tx_list
-        # If there are anymore transactions, recursively get the next transaction page
-        return tx_list.extend(await self.get_account_tx_history(address, remaining_txs, descending, last_cursor, simple))
+            amount -= len(current_loop_txs)
+            tx_list.extend(current_loop_txs)
+            # if we got all the txs that we wanted, or there are no more txs
+            if amount <= 0 or len(horizon_response['_embedded']['records']) < requested_amount:
+                return tx_list
+
+            # If there are more transactions, loop again to get the next transaction page
 
     async def friendbot(self, address: str) -> str:
         """

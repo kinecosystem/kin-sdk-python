@@ -2,7 +2,7 @@ import pytest
 from time import sleep
 
 from kin import KinClient, TEST_ENVIRONMENT, KinErrors
-from kin import config
+from kin import config, client
 
 
 def test_create():
@@ -158,7 +158,7 @@ async def test_friendbot_fund(test_client):
 
 
 @pytest.mark.asyncio
-async def test_tx_history(test_client,test_account):
+async def test_tx_history(test_client, test_account):
     address = 'GA4GDLBEWVT5IZZ6JKR4BF3B6JJX5S6ISFC2QCC7B6ZVZWJDMR77HYP6'
     await test_client.friendbot(address)
     txs = []
@@ -171,16 +171,16 @@ async def test_tx_history(test_client,test_account):
 
     history_ids = [tx.id for tx in tx_history]
     # tx history goes from latest to oldest
-    txs.reverse()
+    history_ids.reverse()
 
     assert txs == history_ids
 
-    # TODO: INCORRECT TESTING, broken
     # test paging
-    config.MAX_RECORDS_PER_REQUEST = 2
+    client.MAX_RECORDS_PER_REQUEST = 4
 
     tx_history = await test_client.get_account_tx_history(test_account.get_public_address(), amount=6)
     history_ids = [tx.id for tx in tx_history]
+    history_ids.reverse()
 
     assert txs == history_ids
 
